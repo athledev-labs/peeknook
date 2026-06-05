@@ -33,6 +33,20 @@ public struct InferenceModelOption: Identifiable, Equatable, Sendable {
         if let downloadHint { parts.append(downloadHint) }
         return parts.joined(separator: " · ")
     }
+
+    /// Subtitle on the Settings download row.
+    public var downloadRowSubtitle: String {
+        if let downloadHint {
+            return "\(downloadHint) model file · once via \(provider)"
+        }
+        return "Large model file · once via \(provider)"
+    }
+
+    /// Body copy for the download confirmation dialog.
+    public var downloadConfirmationMessage: String {
+        let size = downloadHint ?? "a large download"
+        return "\(size) model file via \(provider). Peek won't capture until it's on your Mac."
+    }
 }
 
 public enum TextModelCatalog {

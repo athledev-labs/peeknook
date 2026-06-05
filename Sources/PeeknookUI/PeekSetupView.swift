@@ -41,7 +41,7 @@ public struct PeekSetupView: View {
     }
 
     private var header: some View {
-        Text("Local Gemma 4 via Ollama. Nothing leaves your Mac unless you change that later.")
+        Text("Gemma 4 runs on your Mac through Ollama. Nothing is sent to the cloud.")
             .font(.system(size: 11))
             .foregroundStyle(theme.secondaryLabel)
     }
@@ -49,19 +49,19 @@ public struct PeekSetupView: View {
     private var stepList: some View {
         VStack(alignment: .leading, spacing: 10) {
             SetupStepRow(
-                title: "Ollama running",
+                title: "Ollama server",
                 detail: ollamaDetail,
                 state: setup.ollamaStep,
                 theme: theme,
                 primaryEnabled: true,
                 primaryAction: { SetupCoordinator.openOllamaApp() },
                 secondaryAction: { SetupCoordinator.openOllamaDownload() },
-                secondaryLabel: "Download"
+                secondaryLabel: "Get Ollama app"
             )
 
             SetupStepRow(
                 title: TextModelCatalog.displayName(for: setup.settings.textModel),
-                detail: "\(setup.suggestedModelDiskHint). Downloads once.",
+                detail: modelDetail,
                 state: setup.modelStep,
                 theme: theme,
                 primaryEnabled: !setup.isPullingModel,
@@ -95,7 +95,16 @@ public struct PeekSetupView: View {
     }
 
     private var ollamaDetail: String {
-        "Recommended: \(TextModelCatalog.displayName(for: SystemProfile.current().suggestedTextModel)) on this Mac."
+        let profile = SystemProfile.current()
+        let model = TextModelCatalog.displayName(for: profile.suggestedTextModel)
+        return "Runs vision models locally. Recommended model for \(profile.physicalMemoryGB) GB RAM: \(model)."
+    }
+
+    private var modelDetail: String {
+        if let option = TextModelCatalog.option(for: setup.settings.textModel) {
+            return "\(option.downloadRowSubtitle)."
+        }
+        return "\(setup.suggestedModelDiskHint) · once via Ollama."
     }
 
     @ViewBuilder
@@ -218,10 +227,15 @@ private struct SetupStepRow: View {
         switch title {
         case "Test capture":
             return "Try now"
-        case "Ollama running":
+        case "Ollama server":
             return "Open Ollama"
         default:
-            return detail.contains("Downloads once.") ? "Download model" : "Fix"
+            return isModelStep ? "Download model" : "Fix"
         }
+    }
+
+    private var isModelStep: Bool {
+        TextModelCatalog.offered.contains { $0.displayName == title }
+            || detail.contains("model file")
     }
 }

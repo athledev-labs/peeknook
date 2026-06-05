@@ -118,13 +118,22 @@ struct ValueDropdownPill<MenuContent: View>: View {
 
 struct ValueMenuRow: View {
     let title: String
+    var subtitle: String?
     let selected: Bool
     var needsDownload = false
 
     var body: some View {
-        HStack(spacing: 6) {
-            Text(title)
-                .font(.system(size: 11))
+        HStack(alignment: .top, spacing: 6) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.system(size: 11))
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.system(size: 9))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: 8)
             if selected {
                 Image(systemName: "checkmark")
                     .font(.system(size: 10, weight: .semibold))

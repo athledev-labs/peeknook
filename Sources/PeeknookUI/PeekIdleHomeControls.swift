@@ -81,7 +81,6 @@ struct PeekIdleCommandBar: View {
     var moduleDefaults: UserDefaults
     var onCapture: () -> Void
     var onResume: (() -> Void)?
-    var onOpenSetup: () -> Void
 
     @State private var pendingDownload: InferenceModelOption?
 
@@ -130,7 +129,7 @@ struct PeekIdleCommandBar: View {
             }
         } message: {
             if let pendingDownload {
-                Text(downloadConfirmationMessage(for: pendingDownload))
+                Text(pendingDownload.downloadConfirmationMessage)
             }
         }
     }
@@ -147,11 +146,6 @@ struct PeekIdleCommandBar: View {
         return "Download \(pendingDownload.displayName)?"
     }
 
-    private func downloadConfirmationMessage(for option: InferenceModelOption) -> String {
-        let size = option.downloadHint ?? "a large download"
-        return "\(size) via Ollama. Peek won't capture until this model is on your Mac."
-    }
-
     private var modelMenu: some View {
         ValueDropdownPill(
             symbol: "cpu",
@@ -165,6 +159,7 @@ struct PeekIdleCommandBar: View {
                 } label: {
                     ValueMenuRow(
                         title: option.displayName,
+                        subtitle: option.downloadHint,
                         selected: isSelectedModel(option),
                         needsDownload: !setup.isModelInstalled(option.tag)
                     )
@@ -188,6 +183,7 @@ struct PeekIdleCommandBar: View {
                 } label: {
                     ValueMenuRow(
                         title: option.barLabel,
+                        subtitle: option.menuDetail,
                         selected: depth == option
                     )
                 }
@@ -209,7 +205,8 @@ struct PeekIdleCommandBar: View {
                     close()
                 } label: {
                     ValueMenuRow(
-                        title: option.barLabel,
+                        title: option.displayName,
+                        subtitle: option.menuDetail,
                         selected: scope == option
                     )
                 }
@@ -239,7 +236,6 @@ struct PeekIdleCommandBar: View {
         orchestrator.settings.textModel = option.tag
         orchestrator.persistSettings(to: moduleDefaults)
         setup.pullRecommendedModel()
-        onOpenSetup()
     }
 
     private func setQuickMode(_ quick: Bool) {

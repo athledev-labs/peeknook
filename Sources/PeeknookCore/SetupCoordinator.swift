@@ -50,13 +50,11 @@ public final class SetupCoordinator {
     }
 
     public var suggestedModelDiskHint: String {
-        switch settings.textModel {
-        case "gemma4:e2b": "~7 GB download"
-        case "gemma4:e4b", "gemma4": "~10 GB download"
-        case "gemma4:26b": "~18 GB download"
-        case "gemma4:31b": "~20 GB download"
-        default: "Large download — stay on Wi‑Fi"
+        if let option = TextModelCatalog.option(for: settings.textModel),
+           let size = option.downloadHint {
+            return "\(size) model file"
         }
+        return "Large model file"
     }
 
     public func startAutoRefresh() {

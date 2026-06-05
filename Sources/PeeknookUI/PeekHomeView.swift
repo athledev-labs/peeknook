@@ -140,8 +140,7 @@ public struct PeekHomeView: View {
                         setup: setup,
                         moduleDefaults: moduleDefaults,
                         onCapture: { orchestrator.beginCapture() },
-                        onResume: idleResumeAction,
-                        onOpenSetup: onOpenSetup
+                        onResume: idleResumeAction
                     )
                 } else {
                     primaryActionRow

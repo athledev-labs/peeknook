@@ -93,6 +93,21 @@ public enum CaptureScope: String, Codable, Sendable, CaseIterable, Identifiable 
         case .display: "Screen"
         }
     }
+
+    /// Explanatory subtitle for menus and Settings.
+    public var menuDetail: String {
+        switch self {
+        case .window: "One window at your cursor"
+        case .display: "Full display at your cursor"
+        }
+    }
+
+    public var settingsIcon: String {
+        switch self {
+        case .window: "macwindow"
+        case .display: "display"
+        }
+    }
 }
 
 public enum AnswerDepth: String, CaseIterable, Sendable {
@@ -110,6 +125,13 @@ public enum AnswerDepth: String, CaseIterable, Sendable {
         switch self {
         case .quick: "2–3 line answers, faster"
         case .deep: "Full answers"
+        }
+    }
+
+    public var settingsIcon: String {
+        switch self {
+        case .quick: "hare"
+        case .deep: "tortoise"
         }
     }
 
