@@ -304,4 +304,39 @@ final class ConversationTests: XCTestCase {
 
         XCTAssertTrue(orchestrator.suggestedFollowUps.isEmpty, "the setting toggle still disables suggestions")
     }
+
+    func testFinishChatKeepsThreadAndResumeChatRestoresResult() async {
+        let engine = ScriptedEngine(responsesPerCall: [["first answer"]])
+        let orchestrator = makeOrchestrator(engine)
+
+        orchestrator.beginCapture()
+        try? await Task.sleep(nanoseconds: 200_000_000)
+
+        orchestrator.finishChat()
+        guard case .idle = orchestrator.phase else {
+            return XCTFail("Expected idle after finishChat, got \(orchestrator.phase)")
+        }
+        XCTAssertEqual(orchestrator.conversation.count, 2)
+        XCTAssertTrue(orchestrator.hasConversation)
+
+        orchestrator.resumeChat()
+        guard case .result("first answer") = orchestrator.phase else {
+            return XCTFail("Expected resumed result, got \(orchestrator.phase)")
+        }
+    }
+
+    func testStartNewChatClearsThread() async {
+        let engine = ScriptedEngine(responsesPerCall: [["first answer"]])
+        let orchestrator = makeOrchestrator(engine)
+
+        orchestrator.beginCapture()
+        try? await Task.sleep(nanoseconds: 200_000_000)
+
+        orchestrator.startNewChat()
+        guard case .idle = orchestrator.phase else {
+            return XCTFail("Expected idle after startNewChat, got \(orchestrator.phase)")
+        }
+        XCTAssertTrue(orchestrator.conversation.isEmpty)
+        XCTAssertFalse(orchestrator.hasConversation)
+    }
 }

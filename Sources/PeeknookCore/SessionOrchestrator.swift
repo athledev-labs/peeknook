@@ -115,9 +115,32 @@ public final class SessionOrchestrator {
         startCapture(intent: .addToChat)
     }
 
+    /// Leave the result view for the calm home screen while keeping the thread for resume.
+    public func finishChat() {
+        guard case .result = phase else { return }
+        suggestionTask?.cancel()
+        streamedAnswer = ""
+        pendingPreview = nil
+        pendingCapture = nil
+        suggestedFollowUps = []
+        isFetchingSuggestions = false
+        phase = .idle
+    }
+
+    /// Return to the last answer when a finished chat is still in memory.
+    public func resumeChat() {
+        guard case .idle = phase, hasConversation else { return }
+        phase = .result(lastAssistantText ?? "")
+    }
+
+    /// Discard the current thread and return to idle.
+    public func startNewChat() {
+        dismissResult()
+    }
+
     /// Clear the chat and return to idle, ready for a fresh capture.
     public func restart() {
-        dismissResult()
+        startNewChat()
     }
 
     private func startCapture(intent: CaptureIntent) {

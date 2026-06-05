@@ -10,6 +10,7 @@ import SwiftUI
 struct PeekIdleHomeContent: View {
     @Environment(\.nookResolvedTheme) private var theme
     var orchestrator: SessionOrchestrator
+    var onResume: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -18,12 +19,18 @@ struct PeekIdleHomeContent: View {
                 .tracking(0.2)
                 .foregroundStyle(theme.primaryLabel.opacity(0.92))
 
-            if let resume = resumeSnippet {
-                Text(resume)
-                    .font(.system(size: 10, weight: .regular))
-                    .foregroundStyle(theme.secondaryLabel.opacity(0.85))
-                    .lineLimit(2)
-                    .padding(.top, 2)
+            if let resume = resumeSnippet, let onResume {
+                Button(action: onResume) {
+                    Text(resume)
+                        .font(.system(size: 10, weight: .regular))
+                        .foregroundStyle(theme.secondaryLabel.opacity(0.85))
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+                .help("Resume this chat")
+                .padding(.top, 2)
             }
         }
     }
@@ -73,6 +80,7 @@ struct PeekIdleCommandBar: View {
     var setup: SetupCoordinator
     var moduleDefaults: UserDefaults
     var onCapture: () -> Void
+    var onResume: (() -> Void)?
     var onOpenSetup: () -> Void
 
     @State private var pendingDownload: InferenceModelOption?
@@ -87,6 +95,15 @@ struct PeekIdleCommandBar: View {
                 }
             }
             Spacer(minLength: 4)
+            if let onResume {
+                NookToolbarButton(
+                    title: "Resume",
+                    symbol: "arrow.uturn.backward",
+                    help: "Return to your last answer"
+                ) {
+                    onResume()
+                }
+            }
             NookToolbarButton(
                 title: "Capture",
                 symbol: "camera.viewfinder",

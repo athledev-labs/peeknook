@@ -14,6 +14,7 @@ public struct PeekHomeView: View {
     @State private var followUpText = ""
     @State private var isFollowUpComposerVisible = false
     @State private var showsFullConversation = false
+    @State private var showsNewChatConfirmation = false
     @FocusState private var isFollowUpFieldFocused: Bool
 
     public init(
@@ -31,7 +32,7 @@ public struct PeekHomeView: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if case .idle = orchestrator.phase {
-                PeekIdleHomeContent(orchestrator: orchestrator)
+                PeekIdleHomeContent(orchestrator: orchestrator, onResume: resumeChat)
             }
             if !setup.isReady {
                 setupBanner
@@ -66,6 +67,19 @@ public struct PeekHomeView: View {
                 await setup.refresh()
                 orchestrator.prewarm()
             }
+        }
+        .confirmationDialog(
+            "Start a new chat?",
+            isPresented: $showsNewChatConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("New chat", role: .destructive) {
+                orchestrator.startNewChat()
+                setHistoryVisible(false)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This clears the current conversation. You can't undo it.")
         }
     }
 
@@ -126,6 +140,7 @@ public struct PeekHomeView: View {
                         setup: setup,
                         moduleDefaults: moduleDefaults,
                         onCapture: { orchestrator.beginCapture() },
+                        onResume: idleResumeAction,
                         onOpenSetup: onOpenSetup
                     )
                 } else {
@@ -302,11 +317,46 @@ public struct PeekHomeView: View {
                     ) {
                         toggleFollowUpComposer()
                     }
-                    NookToolbarButton(title: "New", symbol: "arrow.counterclockwise", prominent: true) {
-                        orchestrator.restart()
+                    NookToolbarButton(
+                        title: "Done",
+                        symbol: "house",
+                        help: "End this chat and return to the home screen",
+                        prominent: true
+                    ) {
+                        finishChat()
+                    }
+                    NookToolbarButton(
+                        title: "New chat",
+                        symbol: "arrow.counterclockwise",
+                        help: "Discard this thread and start fresh"
+                    ) {
+                        requestNewChat()
                     }
                 }
             }
+        }
+    }
+
+    private var idleResumeAction: (() -> Void)? {
+        guard orchestrator.hasConversation else { return nil }
+        return { orchestrator.resumeChat() }
+    }
+
+    private func finishChat() {
+        orchestrator.finishChat()
+        setHistoryVisible(false)
+    }
+
+    private func resumeChat() {
+        orchestrator.resumeChat()
+    }
+
+    private func requestNewChat() {
+        if orchestrator.hasConversationHistory {
+            showsNewChatConfirmation = true
+        } else {
+            orchestrator.startNewChat()
+            setHistoryVisible(false)
         }
     }
 
