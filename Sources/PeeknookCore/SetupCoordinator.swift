@@ -38,6 +38,12 @@ public final class SetupCoordinator {
     }
 
     public static let smokeTestKey = "peeknook.setup.smokeTest.v1"
+    public static let onboardingCompleteKey = "peeknook.setup.onboardingComplete.v1"
+
+    /// User finished or skipped past the first-run setup drill-in (persisted).
+    public var hasCompletedOnboarding: Bool {
+        defaults.bool(forKey: Self.onboardingCompleteKey)
+    }
 
     public var isReady: Bool {
         ollamaStep == .complete && modelStep == .complete && captureStep == .complete
@@ -142,6 +148,10 @@ public final class SetupCoordinator {
     public func markSmokeTestPassed() {
         smokeTestStep = .complete
         defaults.set(true, forKey: Self.smokeTestKey)
+    }
+
+    public func markOnboardingComplete() {
+        defaults.set(true, forKey: Self.onboardingCompleteKey)
     }
 
     public func applyRecommendedModelIfNeeded() {

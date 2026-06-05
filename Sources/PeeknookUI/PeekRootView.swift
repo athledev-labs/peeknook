@@ -34,7 +34,7 @@ public struct PeekRootView: View {
                 PeekSetupView(
                     setup: setup,
                     orchestrator: orchestrator,
-                    onContinue: dismissSetup
+                    onContinue: completeOnboarding
                 )
             } else {
                 PeekHomeView(
@@ -45,7 +45,12 @@ public struct PeekRootView: View {
                 )
             }
         }
-        .onAppear(perform: presentSetupIfNeeded)
+        .task { await resolveSetupPresentation() }
+        .onChange(of: setup.isReady) { _, ready in
+            if ready, showsSetup {
+                completeOnboarding()
+            }
+        }
         .onChange(of: orchestrator.phase) { _, newPhase in
             if case .result = newPhase, setup.isReady {
                 setup.markSmokeTestPassed()
@@ -53,14 +58,25 @@ public struct PeekRootView: View {
         }
     }
 
-    private func presentSetupIfNeeded() {
-        guard !setup.isReady else { return }
-        guard appState.moduleBreadcrumb == nil else { return }
-        openSetup()
+    /// Refresh real setup state before routing. Avoids opening setup on launch while steps
+    /// are still `.pending` before the first Ollama/permission probe completes.
+    private func resolveSetupPresentation() async {
+        await setup.refresh()
+        if setup.isReady {
+            setup.markOnboardingComplete()
+            dismissSetup()
+        } else if !setup.hasCompletedOnboarding {
+            openSetup()
+        }
     }
 
     private func openSetup() {
         appState.moduleBreadcrumb = Self.setupBreadcrumb
+    }
+
+    private func completeOnboarding() {
+        setup.markOnboardingComplete()
+        dismissSetup()
     }
 
     private func dismissSetup() {

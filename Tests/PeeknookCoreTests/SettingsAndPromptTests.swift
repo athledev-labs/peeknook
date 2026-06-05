@@ -103,4 +103,16 @@ final class SettingsAndPromptTests: XCTestCase {
         XCTAssertEqual(OllamaInferenceEngine.parseContextLength(from: body), 8192)
         XCTAssertNil(OllamaInferenceEngine.parseContextLength(from: Data("{}".utf8)))
     }
+
+    @MainActor
+    func testOnboardingCompletePersists() {
+        let defaults = UserDefaults(suiteName: "peeknook.tests.onboarding")!
+        defaults.removePersistentDomain(forName: "peeknook.tests.onboarding")
+        let setup = SetupCoordinator(settings: .default, defaults: defaults)
+        XCTAssertFalse(setup.hasCompletedOnboarding)
+        setup.markOnboardingComplete()
+        XCTAssertTrue(defaults.bool(forKey: SetupCoordinator.onboardingCompleteKey))
+        let reloaded = SetupCoordinator(settings: .default, defaults: defaults)
+        XCTAssertTrue(reloaded.hasCompletedOnboarding)
+    }
 }

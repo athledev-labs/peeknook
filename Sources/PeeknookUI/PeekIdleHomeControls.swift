@@ -168,7 +168,6 @@ struct PeekIdleCommandBar: View {
                         selected: isSelectedModel(option),
                         needsDownload: !setup.isModelInstalled(option.tag)
                     )
-                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.plain)
             }
@@ -191,7 +190,6 @@ struct PeekIdleCommandBar: View {
                         title: option.barLabel,
                         selected: depth == option
                     )
-                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.plain)
             }
@@ -214,7 +212,6 @@ struct PeekIdleCommandBar: View {
                         title: option.barLabel,
                         selected: scope == option
                     )
-                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.plain)
             }

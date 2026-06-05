@@ -111,7 +111,7 @@ struct ValueDropdownPill<MenuContent: View>: View {
                 menu { isOpen = false }
             }
             .padding(6)
-            .frame(minWidth: 140)
+            .fixedSize(horizontal: true, vertical: false)
         }
     }
 }
@@ -122,10 +122,9 @@ struct ValueMenuRow: View {
     var needsDownload = false
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             Text(title)
                 .font(.system(size: 11))
-            Spacer(minLength: 4)
             if selected {
                 Image(systemName: "checkmark")
                     .font(.system(size: 10, weight: .semibold))
@@ -136,6 +135,7 @@ struct ValueMenuRow: View {
             }
         }
         .padding(.vertical, 2)
+        .padding(.horizontal, 2)
         .contentShape(Rectangle())
     }
 }
