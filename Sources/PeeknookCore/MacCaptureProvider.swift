@@ -1,0 +1,210 @@
+// SPDX-License-Identifier: Apache-2.0
+
+import AppKit
+import ApplicationServices
+import Foundation
+import ScreenCaptureKit
+
+/// Capture: **screenshot for vision** (window under cursor or whole display) + optional
+/// selected text (Accessibility).
+public struct MacCaptureProvider: CaptureProviding, Sendable {
+    public init() {}
+
+    public func capture(scope: CaptureScope, quick: Bool) async throws -> CaptureResult {
+        guard CGPreflightScreenCaptureAccess() else {
+            throw CaptureError.permissionRequired("Screen Recording")
+        }
+
+        let target = try await Self.captureTarget(scope: scope)
+
+        // Image size drives vision-prefill latency (the dominant local cost). Quick mode
+        // trades legibility for speed with a smaller image; a full screen gets more pixels
+        // than a single window because its text is smaller.
+        let maxPixel: Int
+        switch (scope, quick) {
+        case (.display, false): maxPixel = 1600
+        case (.display, true): maxPixel = 1152
+        case (.window, false): maxPixel = 1280
+        case (.window, true): maxPixel = 896
+        }
+        // Vision is the product. Fail loud rather than silently shipping a text-only
+        // capture that the UI would still label "vision".
+        guard let screenshotBase64 = CaptureImageEncoder.jpegBase64(from: target.image, maxPixel: maxPixel),
+              !screenshotBase64.isEmpty else {
+            let noun = scope == .display ? "screen" : "window"
+            throw CaptureError.failed("Captured the \(noun) but couldn't encode the screenshot. Try again.")
+        }
+
+        // Gemma 4 reads the screenshot directly. The only text worth adding is the user's
+        // *exact* selection (Accessibility) — full-frame OCR just produced noisy fragments
+        // that cluttered the preview and misled the model, so it's gone.
+        let selected = await MainActor.run { Self.captureSelectedText() }
+
+        let base = scope == .display ? "Whole screen (vision)" : "Front window (vision)"
+        let label = selected != nil ? "Vision + selected text" : base
+
+        return CaptureResult(
+            text: selected,
+            sourceLabel: label,
+            appName: target.appName,
+            windowTitle: target.windowTitle,
+            screenshotBase64: screenshotBase64
+        )
+    }
+
+    // MARK: - Accessibility
+
+    @MainActor
+    private static func captureSelectedText() -> String? {
+        guard AXIsProcessTrusted() else { return nil }
+
+        let system = AXUIElementCreateSystemWide()
+        var focusedValue: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(
+            system,
+            kAXFocusedUIElementAttribute as CFString,
+            &focusedValue
+        ) == .success,
+            let focusedValue,
+            CFGetTypeID(focusedValue) == AXUIElementGetTypeID()
+        else { return nil }
+
+        let focused = focusedValue as! AXUIElement
+
+        if let selected = copyAttributeString(focused, kAXSelectedTextAttribute as CFString),
+           !selected.isEmpty {
+            return selected
+        }
+
+        if let value = copyAttributeString(focused, kAXValueAttribute as CFString),
+           !value.isEmpty,
+           value.count < 8_000 {
+            return value
+        }
+
+        return nil
+    }
+
+    @MainActor
+    private static func copyAttributeString(_ element: AXUIElement, _ attribute: CFString) -> String? {
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, attribute, &value) == .success,
+              let value,
+              let string = value as? String
+        else { return nil }
+        return string.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    // MARK: - ScreenCaptureKit
+
+    /// What the model will see, plus its identity for the preview trust line.
+    private struct CaptureTarget {
+        let image: CGImage
+        let appName: String?
+        let windowTitle: String?
+    }
+
+    private static func captureTarget(scope: CaptureScope) async throws -> CaptureTarget {
+        let content = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
+        let cursor = Self.cursorLocation()
+        switch scope {
+        case .window:
+            return try await Self.windowTarget(content: content, cursor: cursor)
+        case .display:
+            return try await Self.displayTarget(content: content, cursor: cursor)
+        }
+    }
+
+    /// Window to capture — multi-monitor aware, in priority order:
+    /// 1. the window directly **under the cursor** (what the user is pointing at — fixes
+    ///    "it grabbed the wrong screen" when the focused app lives on another display),
+    /// 2. else the frontmost app's largest window,
+    /// 3. else the largest window anywhere.
+    private static func windowTarget(content: SCShareableContent, cursor: CGPoint?) async throws -> CaptureTarget {
+        let ownPID = ProcessInfo.processInfo.processIdentifier
+
+        // Real, on-screen app window that isn't our own notch HUD.
+        func usable(_ window: SCWindow) -> Bool {
+            window.owningApplication?.processID != ownPID
+                && window.windowLayer == 0
+                && window.frame.width > 80 && window.frame.height > 80
+        }
+
+        // `content.windows` is ordered front-to-back, so the first hit under the cursor is
+        // the topmost window there. Cursor + frame share the global top-left coordinate space.
+        if let cursor,
+           let under = content.windows.first(where: { usable($0) && $0.frame.contains(cursor) }) {
+            return try await Self.screenshot(of: under)
+        }
+
+        let frontPID = await MainActor.run {
+            NSWorkspace.shared.frontmostApplication?.processIdentifier
+        }
+        if let frontPID,
+           let largestFront = content.windows
+               .filter({ usable($0) && $0.owningApplication?.processID == frontPID })
+               .max(by: { Self.area($0.frame) < Self.area($1.frame) }) {
+            return try await Self.screenshot(of: largestFront)
+        }
+
+        guard let anyWindow = content.windows
+            .filter(usable)
+            .max(by: { Self.area($0.frame) < Self.area($1.frame) }) else {
+            throw CaptureError.failed("No capturable window under the cursor or front app. Click the window you want, then try again.")
+        }
+        return try await Self.screenshot(of: anyWindow)
+    }
+
+    /// The whole display the cursor is on (else the first/main display).
+    private static func displayTarget(content: SCShareableContent, cursor: CGPoint?) async throws -> CaptureTarget {
+        let displays = content.displays
+        let display: SCDisplay
+        if let cursor, let hit = displays.first(where: { $0.frame.contains(cursor) }) {
+            display = hit
+        } else if let first = displays.first {
+            display = first
+        } else {
+            throw CaptureError.failed("No display available to capture.")
+        }
+
+        // Capture everything on the display (windows + desktop) EXCEPT our own notch HUD,
+        // which is on screen during capture and must not appear in the shot.
+        let ownPID = ProcessInfo.processInfo.processIdentifier
+        let ownWindows = content.windows.filter { $0.owningApplication?.processID == ownPID }
+        let filter = SCContentFilter(display: display, excludingWindows: ownWindows)
+        let config = SCStreamConfiguration()
+        config.width = min(display.width * 2, 3200)
+        config.height = min(display.height * 2, 2000)
+        config.scalesToFit = true
+        config.showsCursor = false
+
+        let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+        let label = displays.count > 1
+            ? "Display \((displays.firstIndex(where: { $0.displayID == display.displayID }) ?? 0) + 1)"
+            : nil
+        return CaptureTarget(image: image, appName: "Whole screen", windowTitle: label)
+    }
+
+    /// Cursor position in the same global display space `SCWindow.frame` uses (top-left origin).
+    private static func cursorLocation() -> CGPoint? {
+        CGEvent(source: nil)?.location
+    }
+
+    private static func screenshot(of window: SCWindow) async throws -> CaptureTarget {
+        let filter = SCContentFilter(desktopIndependentWindow: window)
+        let config = SCStreamConfiguration()
+        config.width = min(Int(window.frame.width) * 2, 1920)
+        config.height = min(Int(window.frame.height) * 2, 1200)
+        config.scalesToFit = true
+        config.showsCursor = false
+
+        let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+        return CaptureTarget(
+            image: image,
+            appName: window.owningApplication?.applicationName,
+            windowTitle: window.title
+        )
+    }
+
+    private static func area(_ rect: CGRect) -> CGFloat { rect.width * rect.height }
+}

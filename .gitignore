@@ -1,0 +1,12 @@
+.DS_Store
+
+# Solo-maintainer notes (product/integration decisions — not for the public repo)
+internal/
+
+.build/
+.swiftpm/
+*.xcodeproj
+xcuserdata/
+DerivedData/
+*.dmg
+*.zip
