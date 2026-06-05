@@ -78,7 +78,7 @@ enum PeekPersonalGreeting {
 struct PeekIdleCommandBar: View {
     var orchestrator: SessionOrchestrator
     var setup: SetupCoordinator
-    var moduleDefaults: UserDefaults
+    var settings: PeekSettingsController
     var onCapture: () -> Void
     var onResume: (() -> Void)?
 
@@ -113,37 +113,9 @@ struct PeekIdleCommandBar: View {
             )
             .disabled(!setup.isReady)
         }
-        .confirmationDialog(
-            downloadConfirmationTitle,
-            isPresented: downloadConfirmationPresented,
-            titleVisibility: .visible
-        ) {
-            Button("Download") {
-                if let pendingDownload {
-                    beginModelDownload(pendingDownload)
-                }
-                pendingDownload = nil
-            }
-            Button("Cancel", role: .cancel) {
-                pendingDownload = nil
-            }
-        } message: {
-            if let pendingDownload {
-                Text(pendingDownload.downloadConfirmationMessage)
-            }
+        .peekModelDownloadConfirmation(pending: $pendingDownload) { option in
+            settings.beginModelDownload(option)
         }
-    }
-
-    private var downloadConfirmationPresented: Binding<Bool> {
-        Binding(
-            get: { pendingDownload != nil },
-            set: { if !$0 { pendingDownload = nil } }
-        )
-    }
-
-    private var downloadConfirmationTitle: String {
-        guard let pendingDownload else { return "Download model?" }
-        return "Download \(pendingDownload.displayName)?"
     }
 
     private var modelMenu: some View {
@@ -152,20 +124,12 @@ struct PeekIdleCommandBar: View {
             title: TextModelCatalog.displayName(for: orchestrator.settings.textModel),
             help: "Vision model for the next capture"
         ) { close in
-            ForEach(TextModelCatalog.offered) { option in
-                Button {
-                    selectModel(option)
-                    close()
-                } label: {
-                    ValueMenuRow(
-                        title: option.displayName,
-                        subtitle: option.downloadHint,
-                        selected: isSelectedModel(option),
-                        needsDownload: !setup.isModelInstalled(option.tag)
-                    )
-                }
-                .buttonStyle(.plain)
-            }
+            PeekPreflightMenuContent.visionModelHomeMenu(
+                currentTag: orchestrator.settings.textModel,
+                isInstalled: { setup.isModelInstalled($0) },
+                onSelect: selectModel,
+                close: close
+            )
         }
     }
 
@@ -176,19 +140,11 @@ struct PeekIdleCommandBar: View {
             title: depth.barLabel,
             help: "Answer depth for the next capture"
         ) { close in
-            ForEach(AnswerDepth.allCases, id: \.rawValue) { option in
-                Button {
-                    setQuickMode(option.quickMode)
-                    close()
-                } label: {
-                    ValueMenuRow(
-                        title: option.barLabel,
-                        subtitle: option.menuDetail,
-                        selected: depth == option
-                    )
-                }
-                .buttonStyle(.plain)
-            }
+            PeekPreflightMenuContent.answerDepthHomeMenu(
+                current: depth,
+                onSelect: { settings.setQuickMode($0) },
+                close: close
+            )
         }
     }
 
@@ -199,59 +155,20 @@ struct PeekIdleCommandBar: View {
             title: scope.barLabel,
             help: "Capture target for the next capture"
         ) { close in
-            ForEach(CaptureScope.allCases) { option in
-                Button {
-                    setCaptureScope(option)
-                    close()
-                } label: {
-                    ValueMenuRow(
-                        title: option.displayName,
-                        subtitle: option.menuDetail,
-                        selected: scope == option
-                    )
-                }
-                .buttonStyle(.plain)
-            }
+            PeekPreflightMenuContent.captureScopeHomeMenu(
+                current: scope,
+                onSelect: { settings.setCaptureScope($0) },
+                close: close
+            )
         }
-    }
-
-    private func isSelectedModel(_ option: InferenceModelOption) -> Bool {
-        OllamaSetupClient.matchesModel(
-            installedNames: [orchestrator.settings.textModel],
-            wanted: option.tag
-        )
     }
 
     private func selectModel(_ option: InferenceModelOption) {
-        if setup.isModelInstalled(option.tag) {
-            setup.selectTextModel(option.tag)
-            return
+        switch settings.pickModel(option) {
+        case .selected:
+            break
+        case .needsDownload(let pending):
+            pendingDownload = pending
         }
-        pendingDownload = option
-    }
-
-    private func beginModelDownload(_ option: InferenceModelOption) {
-        setup.settings.textModel = option.tag
-        setup.persistSettings()
-        orchestrator.settings.textModel = option.tag
-        orchestrator.persistSettings(to: moduleDefaults)
-        setup.pullRecommendedModel()
-    }
-
-    private func setQuickMode(_ quick: Bool) {
-        guard orchestrator.settings.quickMode != quick else { return }
-        updateSetting { $0.quickMode = quick }
-    }
-
-    private func setCaptureScope(_ scope: CaptureScope) {
-        guard orchestrator.settings.captureScope != scope else { return }
-        updateSetting { $0.captureScope = scope }
-    }
-
-    private func updateSetting(_ mutate: (inout PeeknookSettings) -> Void) {
-        mutate(&orchestrator.settings)
-        orchestrator.persistSettings(to: moduleDefaults)
-        setup.settings = orchestrator.settings
-        setup.persistSettings()
     }
 }

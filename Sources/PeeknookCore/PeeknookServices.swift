@@ -8,6 +8,7 @@ public enum PeeknookServices {
         public let orchestrator: SessionOrchestrator
         public let setup: SetupCoordinator
         public let usage: UsageStore
+        public let settings: PeekSettingsController
     }
 
     @MainActor
@@ -18,15 +19,27 @@ public enum PeeknookServices {
         settings = setup.settings
 
         let usage = UsageStore(defaults: defaults)
+        let inference = OllamaInferenceEngine()
         let orchestrator = SessionOrchestrator(
             settings: settings,
             capture: MacCaptureProvider(),
-            inference: OllamaInferenceEngine()
+            inference: inference
         )
         orchestrator.setup = setup
         orchestrator.usage = usage
         setup.orchestrator = orchestrator
-        return Stack(orchestrator: orchestrator, setup: setup, usage: usage)
+        let settingsController = PeekSettingsController(
+            orchestrator: orchestrator,
+            setup: setup,
+            defaults: defaults,
+            inference: inference
+        )
+        return Stack(
+            orchestrator: orchestrator,
+            setup: setup,
+            usage: usage,
+            settings: settingsController
+        )
     }
 
     @MainActor

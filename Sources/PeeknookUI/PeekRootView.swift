@@ -10,18 +10,18 @@ public struct PeekRootView: View {
 
     public var orchestrator: SessionOrchestrator
     public var setup: SetupCoordinator
-    public var moduleDefaults: UserDefaults
+    public var settings: PeekSettingsController
 
     @EnvironmentObject private var appState: AppState
 
     public init(
         orchestrator: SessionOrchestrator,
         setup: SetupCoordinator,
-        moduleDefaults: UserDefaults
+        settings: PeekSettingsController
     ) {
         self.orchestrator = orchestrator
         self.setup = setup
-        self.moduleDefaults = moduleDefaults
+        self.settings = settings
     }
 
     private var showsSetup: Bool {
@@ -40,7 +40,7 @@ public struct PeekRootView: View {
                 PeekHomeView(
                     orchestrator: orchestrator,
                     setup: setup,
-                    moduleDefaults: moduleDefaults,
+                    settings: settings,
                     onOpenSetup: openSetup
                 )
             }

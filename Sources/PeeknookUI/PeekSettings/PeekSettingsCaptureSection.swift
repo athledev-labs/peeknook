@@ -1,0 +1,82 @@
+// SPDX-License-Identifier: Apache-2.0
+
+import PeeknookCore
+import SwiftUI
+
+struct PeekSettingsCaptureSection: View {
+    var orchestrator: SessionOrchestrator
+    var settings: PeekSettingsController
+    var onCaptureHotkeyChange: ((CaptureHotkey) -> Void)?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            PeekCaptureShortcutRow(hotkey: orchestrator.settings.captureHotkey) { newHotkey in
+                settings.setCaptureHotkey(newHotkey)
+                onCaptureHotkeyChange?(newHotkey)
+            }
+
+            captureScopeRow
+            answerDepthRow
+
+            if PracticeMode.shipped.count > 1 {
+                // Reserved for a future distinct practice mode — not exposed while only General ships.
+            }
+
+            PeekSettingsToggleRow(
+                icon: orchestrator.settings.previewBeforeInfer ? "eye.fill" : "eye",
+                title: "Confirm before analyzing",
+                detail: "Preview capture target before sending",
+                isOn: previewBeforeInferBinding
+            )
+
+            PeekSettingsToggleRow(
+                icon: orchestrator.settings.suggestFollowUps ? "text.bubble.fill" : "text.bubble",
+                title: "Suggest follow-ups",
+                detail: "Propose next questions after each answer",
+                isOn: suggestFollowUpsBinding
+            )
+        }
+    }
+
+    private var captureScopeRow: some View {
+        let scope = orchestrator.settings.captureScope
+        return PeekSettingsMenuRow(
+            icon: scope.settingsIcon,
+            title: "Capture area",
+            detail: scope.displayName,
+            value: scope.barLabel
+        ) {
+            PeekPreflightMenuContent.captureScopeSettingsMenu(current: scope) { option in
+                settings.setCaptureScope(option)
+            }
+        }
+    }
+
+    private var answerDepthRow: some View {
+        let depth = AnswerDepth(quickMode: orchestrator.settings.quickMode)
+        return PeekSettingsMenuRow(
+            icon: depth.settingsIcon,
+            title: "Answer depth",
+            detail: depth.menuDetail,
+            value: depth.barLabel
+        ) {
+            PeekPreflightMenuContent.answerDepthSettingsMenu(current: depth) { quick in
+                settings.setQuickMode(quick)
+            }
+        }
+    }
+
+    private var previewBeforeInferBinding: Binding<Bool> {
+        Binding(
+            get: { orchestrator.settings.previewBeforeInfer },
+            set: { settings.setPreviewBeforeInfer($0) }
+        )
+    }
+
+    private var suggestFollowUpsBinding: Binding<Bool> {
+        Binding(
+            get: { orchestrator.settings.suggestFollowUps },
+            set: { settings.setSuggestFollowUps($0) }
+        )
+    }
+}

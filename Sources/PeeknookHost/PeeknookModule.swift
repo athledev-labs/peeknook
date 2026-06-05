@@ -32,15 +32,17 @@ public final class PeeknookModule: NookModule {
     private let orchestrator: SessionOrchestrator
     private let setup: SetupCoordinator
     private let usage: UsageStore
+    private let settings: PeekSettingsController
     private weak var appCoordinator: AppCoordinator?
 
     public init(context: NookModuleContext) {
         self.context = context
-        let settings = PeeknookSettings.load(from: context.defaults)
-        let stack = PeeknookServices.makeStack(settings: settings, defaults: context.defaults)
+        let loaded = PeeknookSettings.load(from: context.defaults)
+        let stack = PeeknookServices.makeStack(settings: loaded, defaults: context.defaults)
         self.orchestrator = stack.orchestrator
         self.setup = stack.setup
         self.usage = stack.usage
+        self.settings = stack.settings
     }
 
     public func makeConfiguration() -> NookConfiguration {
@@ -49,7 +51,7 @@ public final class PeeknookModule: NookModule {
             PeekRootView(
                 orchestrator: self.orchestrator,
                 setup: self.setup,
-                moduleDefaults: self.context.defaults
+                settings: self.settings
             )
         }
         configuration.setCompactTrailing {
@@ -59,15 +61,11 @@ public final class PeeknookModule: NookModule {
             PeekSettingsView(
                 orchestrator: self.orchestrator,
                 setup: self.setup,
+                settings: self.settings,
                 usage: self.usage,
-                moduleDefaults: self.context.defaults,
-                onCaptureHotkeyChange: { [weak self] hotkey in
-                    guard let self else { return }
-                    self.orchestrator.settings.captureHotkey = hotkey
-                    self.orchestrator.persistSettings(to: self.context.defaults)
-                    if let coordinator = self.appCoordinator {
-                        self.registerCaptureHotkey(on: coordinator)
-                    }
+                onCaptureHotkeyChange: { [weak self] _ in
+                    guard let self, let coordinator = self.appCoordinator else { return }
+                    self.registerCaptureHotkey(on: coordinator)
                 }
             )
         }
