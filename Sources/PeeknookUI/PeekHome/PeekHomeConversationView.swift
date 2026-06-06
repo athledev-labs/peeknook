@@ -70,11 +70,26 @@ struct PeekHomeConversationView: View {
         switch turn.kind {
         case .image(let capture):
             if showAllTurnTypes {
-                Label(capture.targetLabel, systemImage: "viewfinder")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(theme.tertiaryLabel)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                VStack(alignment: .leading, spacing: 4) {
+                    Label(capture.targetLabel, systemImage: "viewfinder")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(theme.tertiaryLabel)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    if let thumb = capture.screenshotBase64.flatMap(CapturePreviewImage.nsImage(from:)) {
+                        Image(nsImage: thumb)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .frame(maxHeight: 140)
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .strokeBorder(theme.tertiaryLabel.opacity(0.3), lineWidth: 1)
+                            )
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         case .user(let text):
             HStack(alignment: .top, spacing: 6) {

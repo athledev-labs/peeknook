@@ -31,6 +31,8 @@ public final class SessionOrchestrator {
     public var settings: PeeknookSettings
     public weak var setup: SetupCoordinator?
     public var usage: UsageStore?
+    /// Opt-in local persistence for the active chat (see `PeeknookSettings.persistConversation`).
+    public var conversationStore: ConversationStore?
 
     private let capture: any CaptureProviding
     private let inference: any InferenceEngine
@@ -95,6 +97,39 @@ public final class SessionOrchestrator {
     public func persistSettings(to defaults: UserDefaults) {
         settings.save(to: defaults)
         setup?.settings = settings
+    }
+
+    // MARK: - Conversation persistence (opt-in, local file)
+
+    /// Restore a saved chat at launch when the user has persistence enabled. Leaves the phase at
+    /// `.idle` so it surfaces as a resumable thread, not an auto-opened result.
+    public func loadPersistedConversationIfEnabled() {
+        guard settings.persistConversation,
+              let store = conversationStore,
+              let restored = store.load(),
+              !restored.turns.isEmpty
+        else { return }
+        conversation = restored.turns
+        contextWindow = restored.contextWindow
+        lastPromptTokens = restored.lastPromptTokens
+        turnCounter = max(restored.turnCounter, restored.turns.map(\.id).max() ?? 0)
+    }
+
+    /// Write the current chat to disk (off the main actor) when persistence is on; no-op otherwise.
+    public func persistConversationNow() {
+        guard settings.persistConversation, let store = conversationStore else { return }
+        let snapshot = PersistedConversation(
+            turns: conversation,
+            contextWindow: contextWindow,
+            turnCounter: turnCounter,
+            lastPromptTokens: lastPromptTokens
+        )
+        Task.detached { store.save(snapshot) }
+    }
+
+    /// Delete any saved chat — called when the user discards a thread or turns persistence off.
+    public func purgePersistedConversation() {
+        conversationStore?.clear()
     }
 
     /// Hotkey / compact affordance entry: capture → preview → infer (a fresh chat).
@@ -245,6 +280,7 @@ public final class SessionOrchestrator {
         pendingPreview = nil
         pendingCapture = nil
         resetConversation()
+        purgePersistedConversation()
         phase = .idle
     }
 
@@ -266,6 +302,27 @@ public final class SessionOrchestrator {
     public func copyAnswerToPasteboard() {
         let text = lastAssistantText ?? streamedAnswer
         copyToPasteboard(text)
+    }
+
+    /// The whole thread rendered as Markdown — screenshots become a captioned heading, questions
+    /// and answers become labeled blocks. For copy/export of a practice session.
+    public func conversationMarkdown() -> String {
+        var blocks: [String] = []
+        for turn in conversation {
+            switch turn.kind {
+            case .image(let capture):
+                blocks.append("### Screenshot — \(capture.targetLabel)")
+            case .user(let text):
+                blocks.append("**You:** \(text)")
+            case .assistant(let text):
+                blocks.append("**Peeknook:**\n\n\(text)")
+            }
+        }
+        return blocks.joined(separator: "\n\n")
+    }
+
+    public func copyConversationMarkdown() {
+        copyToPasteboard(conversationMarkdown())
     }
 
     public func copyToPasteboard(_ text: String) {
@@ -337,6 +394,7 @@ public final class SessionOrchestrator {
             let usage = finalStats.map { TurnUsage(stats: $0, contextWindow: contextWindow) }
             conversation.append(ChatTurn(id: turnCounter, kind: .assistant(answer), turnUsage: usage))
             phase = .result(answer)
+            persistConversationNow()
             // Suggestions are a separate, schema-constrained pass — kick it off without
             // blocking the answer; pills pop in a moment later.
             fetchSuggestions()

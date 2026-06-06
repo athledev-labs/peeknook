@@ -169,15 +169,6 @@ public final class SetupCoordinator {
         Self.matchesModel(installedNames: installedModelNames, wanted: model)
     }
 
-    public func selectTextModel(_ model: String) {
-        settings.textModel = model
-        persistSettings()
-        Task {
-            await refresh()
-            orchestrator?.prewarm()
-        }
-    }
-
     private static func matchesModel(installedNames: [String], wanted: String) -> Bool {
         OllamaSetupClient.matchesModel(installedNames: installedNames, wanted: wanted)
     }

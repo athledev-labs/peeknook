@@ -13,12 +13,7 @@ public struct PeekCompactView: View {
     }
 
     public var body: some View {
-        Button {
-            guard case .previewing = orchestrator.phase else {
-                orchestrator.beginCapture()
-                return
-            }
-        } label: {
+        Button(action: handleTap) {
             Image(systemName: glyphName)
                 .font(.system(size: 13, weight: .semibold))
                 .symbolEffect(.pulse, isActive: isBusy)
@@ -26,6 +21,19 @@ public struct PeekCompactView: View {
         .buttonStyle(.plain)
         .disabled(!setup.isReady && orchestrator.phase == .idle)
         .help(helpText)
+    }
+
+    /// idle → capture, failed → retry. Previewing auto-expands via the module; busy/result
+    /// phases no-op (capture stays a deliberate, expanded action).
+    private func handleTap() {
+        switch orchestrator.phase {
+        case .idle:
+            orchestrator.beginCapture()
+        case .failed:
+            orchestrator.retryAfterFailure()
+        default:
+            break
+        }
     }
 
     private var glyphName: String {

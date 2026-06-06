@@ -35,6 +35,13 @@ struct PeekSettingsCaptureSection: View {
                 detail: "Propose next questions after each answer",
                 isOn: suggestFollowUpsBinding
             )
+
+            PeekSettingsToggleRow(
+                icon: orchestrator.settings.persistConversation ? "tray.full.fill" : "tray",
+                title: "Save conversations",
+                detail: "Keep the chat and its screenshots on this Mac between launches",
+                isOn: persistConversationBinding
+            )
         }
     }
 
@@ -81,6 +88,13 @@ struct PeekSettingsCaptureSection: View {
         Binding(
             get: { orchestrator.settings.suggestFollowUps },
             set: { settings.setSuggestFollowUps($0) }
+        )
+    }
+
+    private var persistConversationBinding: Binding<Bool> {
+        Binding(
+            get: { orchestrator.settings.persistConversation },
+            set: { settings.setPersistConversation($0) }
         )
     }
 }

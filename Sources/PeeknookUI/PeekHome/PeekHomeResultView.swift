@@ -95,6 +95,15 @@ struct PeekHomeResultView: View {
                             onToggleHistory()
                         }
                     }
+                    if showsFullConversation {
+                        NookToolbarButton(
+                            title: "Export",
+                            symbol: "square.and.arrow.up",
+                            help: "Copy the whole thread as Markdown"
+                        ) {
+                            orchestrator.copyConversationMarkdown()
+                        }
+                    }
                     NookToolbarButton(
                         title: "Capture",
                         symbol: "camera.viewfinder",
@@ -151,7 +160,7 @@ struct PeekHomeResultView: View {
                 ProgressView(value: fraction)
                     .progressViewStyle(.linear)
                     .frame(width: 36)
-                    .tint(fraction > 0.85 ? .orange : theme.secondaryLabel)
+                    .tint(PeekContextTint.color(for: fraction))
                 Text("\(compactTokens(usage.used))/\(compactTokens(usage.total))")
                     .font(.system(size: 9))
                     .foregroundStyle(theme.tertiaryLabel)

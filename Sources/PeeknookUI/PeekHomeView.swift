@@ -212,8 +212,6 @@ public struct PeekHomeView: View {
             CapturePermissionStatus.requestScreenRecording()
         case .openAccessibilitySettings:
             CapturePermissionStatus.requestAccessibility()
-        case .newChat:
-            orchestrator.startNewChat()
         }
     }
 

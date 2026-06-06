@@ -7,8 +7,8 @@ import Foundation
 /// A chat is a sequence of these: an `.image` turn marks a screenshot the user captured (the
 /// first one, plus any added mid-chat), `.user` is a typed/pill follow-up, `.assistant` is an
 /// answer. Modeling images as their own turn is what lets a single chat span several screenshots.
-public struct ChatTurn: Identifiable, Equatable, Sendable {
-    public enum Kind: Equatable, Sendable {
+public struct ChatTurn: Identifiable, Equatable, Sendable, Codable {
+    public enum Kind: Equatable, Sendable, Codable {
         case image(CaptureResult)
         case user(String)
         case assistant(String)
@@ -33,7 +33,7 @@ public struct ChatTurn: Identifiable, Equatable, Sendable {
 }
 
 /// Per-turn inference footprint shown in History (and the thread usage chart).
-public struct TurnUsage: Equatable, Sendable {
+public struct TurnUsage: Equatable, Sendable, Codable {
     public var promptTokens: Int
     public var responseTokens: Int
     public var generationSeconds: Double

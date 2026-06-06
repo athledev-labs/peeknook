@@ -10,7 +10,6 @@ public enum RecoveryAction: Equatable, Sendable {
     case checkOllama
     case downloadModel(tag: String)
     case switchModel
-    case newChat
     case openScreenRecordingSettings
     case openAccessibilitySettings
 }

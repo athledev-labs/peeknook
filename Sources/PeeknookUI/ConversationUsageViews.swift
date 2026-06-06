@@ -17,7 +17,7 @@ struct TurnUsageChip: View {
                 ProgressView(value: fraction)
                     .progressViewStyle(.linear)
                     .frame(width: 44)
-                    .tint(fraction > 0.85 ? .orange : theme.tertiaryLabel)
+                    .tint(PeekContextTint.color(for: fraction))
             }
             Text(usageSummary)
                 .font(.system(size: 9))
@@ -113,7 +113,7 @@ struct ContextThreadChart: View {
 
     private func barColor(for point: TurnUsageTimeline.Point, selected: Bool) -> Color {
         if selected { return Color.accentColor.opacity(0.85) }
-        return point.fraction > 0.85 ? .orange.opacity(0.85) : theme.secondaryLabel.opacity(0.55)
+        return PeekContextTint.color(for: point.fraction)
     }
 }
 
@@ -191,5 +191,18 @@ enum TokenFormat {
         let k = Double(n) / 1024
         if k < 1 { return "\(n)" }
         return k >= 10 ? String(format: "%.0fK", k) : String(format: "%.1fK", k)
+    }
+}
+
+/// Context-usage bar color that warms as the prompt fills the model's window — plenty of room
+/// reads calm green, near-full reads red (Claude-style). One source of truth for every meter.
+enum PeekContextTint {
+    static func color(for fraction: Double) -> Color {
+        switch fraction {
+        case ..<0.6: Color.green.opacity(0.75)
+        case ..<0.8: Color.yellow.opacity(0.85)
+        case ..<0.9: Color.orange
+        default: Color.red.opacity(0.9)
+        }
     }
 }

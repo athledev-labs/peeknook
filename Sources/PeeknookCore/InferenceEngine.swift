@@ -27,7 +27,7 @@ public struct InferenceRequest: Sendable, Equatable {
 }
 
 /// Per-inference telemetry from the engine (Ollama reports these on the final chunk).
-public struct InferenceStats: Sendable, Equatable {
+public struct InferenceStats: Sendable, Equatable, Codable {
     public var promptTokens: Int
     public var responseTokens: Int
     public var generationSeconds: Double

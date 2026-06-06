@@ -57,7 +57,7 @@ Do not break the following without an explicit product decision and migration pl
 2. **Settings namespace is `peeknook.*` only.** Never read or write `opennook.*` keys. The module `UserDefaults` suite is `opennook.module.com.peeknook.app`.
 3. **Tolerant decoding.** `PeeknookSettings` and `UsageStats` decode with `decodeIfPresent` so adding a field does not reset saved state. Keep new fields optional or defaulted. Tests guard this behavior.
 4. **Host surfaces self-bound their height.** OpenNook sizes the notch panel to fit content. Any growable view (for example, a `ScrollView` in `PeekSettingsView`) must cap its own height against the notch screen `visibleFrame`, or it can push the host top bar off screen.
-5. **Local-only, user-triggered capture.** No cloud inference path. No ambient or background capture. The default flow skips the confirm step. Captures are stored in the conversation thread (`ChatTurn.image`), and History shows the full timeline. Opt-in `previewBeforeInfer` surfaces `appName` and `windowTitle` before analysis.
+5. **Local-only, user-triggered capture.** No cloud inference path. No ambient or background capture. The default flow skips the confirm step. Captures are stored in the conversation thread (`ChatTurn.image`), and History shows the full timeline. Opt-in `previewBeforeInfer` surfaces `appName` and `windowTitle` before analysis. Conversation persistence is **opt-in and off by default** (`PeeknookSettings.persistConversation`): when enabled, the active chat — screenshots included — is written to a local Application Support JSON via `ConversationStore`, and cleared when the user discards the thread or turns the setting off. Never persist captures without that opt-in.
 6. **Do not embed Noru.** Noruflow remains a separate product. A future `NoruCaptureProvider` would call it as a sidecar (CLI or HTTP). Do not link Noru Rust/Tauri code into Peeknook. Do not block work on Noru integration.
 7. **Privacy.** Treat captured frames as private user data. Delete temporary screenshots created during testing. Flag secrets (API keys, tokens) if they appear in a capture.
 
@@ -74,13 +74,15 @@ Do not break the following without an explicit product decision and migration pl
 | Concern | Path |
 |---------|------|
 | Capture | `Sources/PeeknookCore/{CaptureProviding,MacCaptureProvider,CaptureImageEncoder,CapturePermissions}.swift` |
-| Session | `Sources/PeeknookCore/{SessionOrchestrator,SessionPhase}.swift` |
+| Session | `Sources/PeeknookCore/{SessionOrchestrator,SessionPhase,Conversation}.swift` |
+| Persistence | `Sources/PeeknookCore/ConversationStore.swift` (opt-in local chat save/restore) |
+| Failures | `Sources/PeeknookCore/SessionFailure.swift` (structured `SessionFailure`/`RecoveryAction`); `Sources/PeeknookUI/PeekFailureView.swift` (glass recovery card) |
 | Inference | `Sources/PeeknookCore/{InferenceEngine,OllamaInferenceEngine}.swift` |
 | Prompts and modes | `Sources/PeeknookCore/{PromptBuilder,PracticeMode}.swift` |
 | Settings and usage | `Sources/PeeknookCore/{PeeknookSettings,Usage,SystemProfile}.swift` |
 | Setup | `Sources/PeeknookCore/{SetupCoordinator,OllamaSetupClient}.swift` |
 | Wiring | `Sources/PeeknookCore/PeeknookServices.swift` |
-| UI | `Sources/PeeknookUI/{PeekHomeView,PeekSettingsView,PeekSetupView,Shimmer,CapturePreviewImage}.swift` |
+| UI | `Sources/PeeknookUI/` — top-level `PeekHomeView`/`PeekSettingsView`/`PeekSetupView`/`PeekRootView`/`PeekCompactView`, design system in `PeekGlassStyle.swift` + `PeekToolbar.swift`, split sections under `PeekHome/`, `PeekSettings/`, `PeekSettingsComponents/` |
 | Host | `Sources/PeeknookHost/{PeeknookModule,PeeknookHostConfiguration,HostModuleRegistry}.swift` |
 | Tests | `Tests/PeeknookCoreTests/` |
 

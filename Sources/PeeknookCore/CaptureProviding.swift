@@ -2,7 +2,7 @@
 
 import Foundation
 
-public struct CaptureResult: Sendable, Equatable {
+public struct CaptureResult: Sendable, Equatable, Codable {
     /// Optional selected text (Accessibility) — supplements the screenshot for the model.
     public var text: String?
     /// Capture *modality* summary, e.g. "Vision + selected text".

@@ -103,6 +103,16 @@ public struct PeekSettingsView: View {
                 didApplyDefaultExpansion = true
             }
         }
+        .task {
+            // Light periodic refresh while the panel is open so a server dying — or coming back —
+            // mid-session updates the badge without waiting on a URL/model edit. Silent (no
+            // "Checking" flicker) since it's a background poll, not a user-triggered check.
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                if Task.isCancelled { break }
+                await refreshOllamaStatus(resetToChecking: false)
+            }
+        }
         .peekModelDownloadConfirmation(pending: $pendingDownload) { option in
             settings.beginModelDownload(option)
         }
@@ -167,10 +177,12 @@ public struct PeekSettingsView: View {
         }
     }
 
-    private func refreshOllamaStatus() async {
-        ollamaStatusLabel = "Checking"
-        ollamaStatusDetail = nil
-        ollamaStatusTone = .loading
+    private func refreshOllamaStatus(resetToChecking: Bool = true) async {
+        if resetToChecking {
+            ollamaStatusLabel = "Checking"
+            ollamaStatusDetail = nil
+            ollamaStatusTone = .loading
+        }
 
         let health = await settings.inferenceHealth()
         switch health {

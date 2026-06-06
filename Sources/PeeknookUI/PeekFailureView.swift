@@ -107,7 +107,6 @@ private extension RecoveryAction {
         case .checkOllama: "Open Ollama"
         case .downloadModel: "Download model"
         case .switchModel: "Switch model"
-        case .newChat: "New chat"
         case .openScreenRecordingSettings: "Open settings"
         case .openAccessibilitySettings: "Open settings"
         }
@@ -120,7 +119,6 @@ private extension RecoveryAction {
         case .checkOllama: "bolt.horizontal"
         case .downloadModel: "arrow.down.circle"
         case .switchModel: "cpu"
-        case .newChat: "plus.bubble"
         case .openScreenRecordingSettings, .openAccessibilitySettings: "gearshape"
         }
     }

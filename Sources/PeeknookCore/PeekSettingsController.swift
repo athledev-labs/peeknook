@@ -62,6 +62,17 @@ public final class PeekSettingsController {
         update { $0.suggestFollowUps = enabled }
     }
 
+    public func setPersistConversation(_ enabled: Bool) {
+        guard settings.persistConversation != enabled else { return }
+        update { $0.persistConversation = enabled }
+        // Start saving the current thread immediately, or wipe the file when opting out.
+        if enabled {
+            orchestrator.persistConversationNow()
+        } else {
+            orchestrator.purgePersistedConversation()
+        }
+    }
+
     public func setOllamaBaseURL(_ url: String) {
         guard settings.ollamaBaseURL != url else { return }
         update { $0.ollamaBaseURL = url }
