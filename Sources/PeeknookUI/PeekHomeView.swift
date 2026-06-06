@@ -16,7 +16,6 @@ public struct PeekHomeView: View {
     @State private var showsFullConversation = false
     @State private var showsNewChatConfirmation = false
     @State private var showsArchive = false
-    @State private var hasArchivedChats = false
     @State private var pendingDownload: InferenceModelOption?
     @State private var showAddModel = false
     /// Transient pin that bridges a panel resize when entering a History drill-in, then releases so
@@ -71,12 +70,17 @@ public struct PeekHomeView: View {
         .onChange(of: orchestrator.phase) { _, newPhase in
             isFollowUpComposerVisible = false
             followUpText = ""
-            refreshArchiveAvailability()
             if case .result = newPhase { return }
             setHistoryVisible(false)
         }
         .onChange(of: appState.moduleBreadcrumb) { _, breadcrumb in
-            if breadcrumb == nil {
+            if breadcrumb == Self.archiveBreadcrumb {
+                // "Past chats" is opened from the global top-bar item, which can't flip this
+                // view's local state directly — mirror it here so the archive surface appears.
+                if case .idle = orchestrator.phase, !showsArchive {
+                    withAnimation(.easeOut(duration: 0.2)) { showsArchive = true }
+                }
+            } else if breadcrumb == nil {
                 if showsFullConversation { showsFullConversation = false }
                 if showsArchive { showsArchive = false }
             }
@@ -86,9 +90,6 @@ public struct PeekHomeView: View {
                 || appState.moduleBreadcrumb == Self.archiveBreadcrumb {
                 appState.moduleBreadcrumb = nil
             }
-        }
-        .task {
-            refreshArchiveAvailability()
         }
         .task(id: setup.isReady) {
             if setup.isReady {
@@ -111,8 +112,8 @@ public struct PeekHomeView: View {
         }
     }
 
-    private static let historyBreadcrumb = "History"
-    private static let archiveBreadcrumb = "Past chats"
+    private static let historyBreadcrumb = PeekHomeBreadcrumb.history
+    private static let archiveBreadcrumb = PeekHomeBreadcrumb.pastChats
 
     private var homeColumn: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -167,8 +168,7 @@ public struct PeekHomeView: View {
                         settings: settings,
                         pendingDownload: $pendingDownload,
                         showAddModel: $showAddModel,
-                        onCapture: { orchestrator.beginCapture() },
-                        onShowArchive: idleArchiveAction
+                        onCapture: { orchestrator.beginCapture() }
                     )
                 } else {
                     PeekHomeActiveControls(
@@ -255,11 +255,6 @@ public struct PeekHomeView: View {
         }
     }
 
-    private var idleArchiveAction: (() -> Void)? {
-        guard hasArchivedChats else { return nil }
-        return openArchive
-    }
-
     private func finishChat() {
         orchestrator.finishChat()
         setHistoryVisible(false)
@@ -311,10 +306,6 @@ public struct PeekHomeView: View {
         }
     }
 
-    private func refreshArchiveAvailability() {
-        hasArchivedChats = !orchestrator.availableThreads().isEmpty
-    }
-
     /// Hold the surface open just long enough for the panel to resize and the cursor to settle, then
     /// release so hover-to-dismiss works normally again.
     private func armKeepOpenGrace() {
@@ -323,13 +314,6 @@ public struct PeekHomeView: View {
         keepOpenGraceTask = Task {
             try? await Task.sleep(nanoseconds: 1_000_000_000)
             if !Task.isCancelled { keepOpenGrace = false }
-        }
-    }
-
-    private func openArchive() {
-        withAnimation(.easeOut(duration: 0.2)) {
-            showsArchive = true
-            appState.moduleBreadcrumb = Self.archiveBreadcrumb
         }
     }
 

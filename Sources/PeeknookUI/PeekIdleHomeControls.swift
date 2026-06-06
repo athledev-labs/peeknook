@@ -127,28 +127,18 @@ struct PeekIdleCommandBar: View {
     /// Owned by `PeekHomeView` so the add-model overlay can cover the whole home column.
     @Binding var showAddModel: Bool
     var onCapture: () -> Void
-    /// Present when the conversation archive has past chats to browse (persistence on, non-empty).
-    var onShowArchive: (() -> Void)?
 
     var body: some View {
-        // Secondary controls (config + History) share one scroll; the primary Capture action stays
-        // pinned on the right so it (and its hotkey) is always visible. Resume lives in the greeting
-        // card above, so it isn't duplicated here.
+        // Bottom bar = contextual, per-next-capture config (model / depth / scope) in one scroll;
+        // the primary Capture action stays pinned on the right so it (and its hotkey) is always
+        // visible. Global actions like "Past chats" live in the top bar (PeekGlobalTopBarItems),
+        // not here. Resume lives in the greeting card above, so it isn't duplicated here.
         HStack(alignment: .center, spacing: 8) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
                     modelMenu
                     depthMenu
                     scopeMenu
-                    if let onShowArchive {
-                        NookToolbarButton(
-                            title: "History",
-                            symbol: "clock.arrow.circlepath",
-                            help: "Browse and resume past chats"
-                        ) {
-                            onShowArchive()
-                        }
-                    }
                 }
                 .padding(.trailing, 2)
             }

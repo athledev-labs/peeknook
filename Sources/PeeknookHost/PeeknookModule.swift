@@ -101,6 +101,12 @@ public final class PeeknookModule: NookModule {
             bottomCornerRadius: 24,
             expandedContentInsets: NookEdgeInsets(top: 0, bottom: 2, leading: 8, trailing: 8)
         )
+        // Global (always-available, app-level) actions live in the chrome's trailing top-bar
+        // cluster next to the lock/gear; phase- and thread-specific actions stay in the in-content
+        // bottom command bars. See PeekGlobalTopBarItems for the top/bottom placement rule.
+        configuration.setTopBarTrailingItems {
+            PeekGlobalTopBarItems(orchestrator: self.orchestrator)
+        }
         configuration.onReady = { [weak self] coordinator in
             self?.registerCaptureHotkey(on: coordinator)
             self?.startPreviewPhaseHandling(on: coordinator)
