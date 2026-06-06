@@ -42,7 +42,7 @@ struct PeekSettingsDisclosureSection<Content: View>: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .padding(.leading, (iconGutter - 1) / 2)
-                .transition(.opacity.combined(with: .move(edge: .top)))
+                .transition(.opacity)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

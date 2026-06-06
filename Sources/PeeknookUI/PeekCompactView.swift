@@ -14,7 +14,10 @@ public struct PeekCompactView: View {
 
     public var body: some View {
         Button {
-            orchestrator.beginCapture()
+            guard case .previewing = orchestrator.phase else {
+                orchestrator.beginCapture()
+                return
+            }
         } label: {
             Image(systemName: glyphName)
                 .font(.system(size: 13, weight: .semibold))
@@ -49,7 +52,7 @@ public struct PeekCompactView: View {
         case .capturing:
             "Capturing…"
         case .previewing:
-            "Confirm in expanded nook"
+            "Opening preview to confirm"
         case .inferring:
             "Thinking…"
         case .result:

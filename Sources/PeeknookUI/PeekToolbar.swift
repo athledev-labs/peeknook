@@ -113,6 +113,7 @@ struct ValueDropdownPill<MenuContent: View>: View {
             .padding(6)
             .fixedSize(horizontal: true, vertical: false)
         }
+        .nookKeepsExpanded(while: $isOpen)
     }
 }
 

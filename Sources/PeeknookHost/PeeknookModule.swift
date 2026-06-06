@@ -34,6 +34,8 @@ public final class PeeknookModule: NookModule {
     private let usage: UsageStore
     private let settings: PeekSettingsController
     private weak var appCoordinator: AppCoordinator?
+    private var previewPhaseTask: Task<Void, Never>?
+    private var previewPinHandle: NookPresentationPinHandle?
 
     public init(context: NookModuleContext) {
         self.context = context
@@ -83,6 +85,7 @@ public final class PeeknookModule: NookModule {
         configuration.expandedWidth = 480
         configuration.onReady = { [weak self] coordinator in
             self?.registerCaptureHotkey(on: coordinator)
+            self?.startPreviewPhaseHandling(on: coordinator)
             // Accessory apps have no main menu, so ⌘A/⌘C/⌘V/⌘X/⌘Z don't reach text fields.
             StandardEditMenu.installIfNeeded()
         }
@@ -100,10 +103,52 @@ public final class PeeknookModule: NookModule {
         ) { [weak self] in
             Task { @MainActor in
                 guard let self else { return }
+                coordinator.showHome()
                 coordinator.showNook()
                 if self.setup.isReady {
                     self.orchestrator.beginCapture()
                 }
+            }
+        }
+    }
+
+    /// When confirm-before-analyze is on, capture can finish while the nook is still
+    /// compact — expand to Home so the preview confirm UI is reachable, and pin the
+    /// surface until the user confirms or cancels.
+    private func startPreviewPhaseHandling(on coordinator: AppCoordinator) {
+        previewPhaseTask?.cancel()
+        previewPhaseTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            let pinning = context.services.resolve(NookPresentationPinningKey.self)
+            var wasPreviewing = false
+
+            while !Task.isCancelled {
+                await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                    withObservationTracking {
+                        _ = self.orchestrator.phase
+                    } onChange: {
+                        continuation.resume()
+                    }
+                }
+
+                let isPreviewing: Bool
+                if case .previewing = self.orchestrator.phase {
+                    isPreviewing = true
+                } else {
+                    isPreviewing = false
+                }
+
+                if isPreviewing, !wasPreviewing {
+                    coordinator.showHome()
+                    coordinator.showNook()
+                    previewPinHandle?.release()
+                    previewPinHandle = pinning.pin(reason: "capture-preview")
+                } else if !isPreviewing, wasPreviewing {
+                    previewPinHandle?.release()
+                    previewPinHandle = nil
+                }
+
+                wasPreviewing = isPreviewing
             }
         }
     }

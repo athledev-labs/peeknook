@@ -40,7 +40,7 @@ public struct PeekSettingsView: View {
     public var body: some View {
         let profile = SystemProfile.current()
         ScrollViewReader { proxy in
-            ScrollView(.vertical, showsIndicators: true) {
+            ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
                     section(PeekSettingsSectionTitle.setup) {
                         PeekSettingsSetupSection(setup: setup, onOpenSetup: openSetup)
@@ -80,12 +80,15 @@ public struct PeekSettingsView: View {
                 .padding(.trailing, contentInsets.trailing)
                 .padding(.bottom, 14)
             }
-            .scrollBounceBehavior(.basedOnSize, axes: .vertical)
             .onChange(of: scrollToSectionID) { _, sectionID in
                 guard let sectionID else { return }
                 Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 80_000_000)
-                    withAnimation(.easeOut(duration: 0.22)) {
+                    // Let the disclosure spring settle before scrolling — animating both
+                    // at once makes the scroll indicator flicker in the capped panel.
+                    try? await Task.sleep(nanoseconds: 320_000_000)
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) {
                         proxy.scrollTo(sectionID, anchor: .top)
                     }
                     scrollToSectionID = nil
