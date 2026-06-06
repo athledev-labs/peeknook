@@ -62,6 +62,10 @@ public protocol InferenceEngine: Sendable {
     /// The model's context window in tokens (for the chat's context-usage meter), or nil if
     /// unknown. Best-effort.
     func contextLength(model: String, baseURL: String) async -> Int?
+    /// The model's declared capabilities (e.g. "vision", "completion", "tools"), or nil if the
+    /// model isn't installed / can't be inspected. Best-effort; used to warn when a chosen model
+    /// can't see the captured screenshot.
+    func capabilities(model: String, baseURL: String) async -> [String]?
 }
 
 public extension InferenceEngine {
@@ -70,6 +74,14 @@ public extension InferenceEngine {
     }
     func warmUp(model: String, baseURL: String) async {}
     func contextLength(model: String, baseURL: String) async -> Int? { nil }
+    func capabilities(model: String, baseURL: String) async -> [String]? { nil }
+
+    /// Whether the model can read images. `nil` when unknown (not installed / older Ollama that
+    /// omits the capabilities list) so callers can stay silent instead of warning incorrectly.
+    func supportsVision(model: String, baseURL: String) async -> Bool? {
+        guard let caps = await capabilities(model: model, baseURL: baseURL) else { return nil }
+        return caps.contains { $0.caseInsensitiveCompare("vision") == .orderedSame }
+    }
 }
 
 // MARK: - Test-only mock (not used in the app target wiring)

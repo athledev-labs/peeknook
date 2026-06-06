@@ -124,6 +124,8 @@ struct PeekIdleCommandBar: View {
     /// Owned by `PeekHomeView` so the confirmation overlay can cover the whole home column,
     /// not just this short command row.
     @Binding var pendingDownload: InferenceModelOption?
+    /// Owned by `PeekHomeView` so the add-model overlay can cover the whole home column.
+    @Binding var showAddModel: Bool
     var onCapture: () -> Void
     /// Present when the conversation archive has past chats to browse (persistence on, non-empty).
     var onShowArchive: (() -> Void)?
@@ -166,13 +168,15 @@ struct PeekIdleCommandBar: View {
     private var modelMenu: some View {
         ValueDropdownPill(
             symbol: "cpu",
-            title: TextModelCatalog.displayName(for: orchestrator.settings.textModel),
+            title: TextModelCatalog.displayName(for: orchestrator.settings.textModel, custom: settings.customModels),
             help: "Vision model for the next capture"
         ) { close in
             PeekPreflightMenuContent.visionModelHomeMenu(
                 currentTag: orchestrator.settings.textModel,
+                models: settings.availableModels,
                 isInstalled: { setup.isModelInstalled($0) },
                 onSelect: selectModel,
+                onAddCustom: { showAddModel = true },
                 close: close
             )
         }

@@ -256,6 +256,29 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
         return Self.parseContextLength(from: data)
     }
 
+    // MARK: - Capabilities
+
+    public func capabilities(model: String, baseURL: String) async -> [String]? {
+        guard let base = try? await resolveBaseURL(baseURL) else { return nil }
+        let url = base.appendingPathComponent("api/show")
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.timeoutInterval = 10
+        req.httpBody = try? JSONSerialization.data(withJSONObject: ["model": model])
+        guard let (data, response) = try? await session.data(for: req),
+              (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
+        return Self.parseCapabilities(from: data)
+    }
+
+    /// `/api/show` returns a top-level `"capabilities": ["completion", "vision", ...]` array on
+    /// recent Ollama. Returns nil when absent so callers treat support as unknown, not "no vision".
+    static func parseCapabilities(from data: Data) -> [String]? {
+        guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let caps = root["capabilities"] as? [String] else { return nil }
+        return caps
+    }
+
     /// `/api/show` returns `{ "model_info": { "<arch>.context_length": N, ... } }`; the key is
     /// architecture-prefixed (e.g. `gemma3.context_length`), so match by suffix.
     static func parseContextLength(from data: Data) -> Int? {

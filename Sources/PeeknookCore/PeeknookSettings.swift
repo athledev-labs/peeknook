@@ -21,6 +21,8 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     /// Opt-in: keep the active chat (including its screenshots) in a local file so it survives a
     /// quit. Off by default — captures are private user data. Cleared when turned off.
     public var persistConversation: Bool
+    /// User-added models (any Ollama tag) shown alongside the curated catalog in the picker.
+    public var customModels: [CustomModelEntry]
 
     public init(
         mode: PracticeMode = .general,
@@ -31,7 +33,8 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         captureScope: CaptureScope = .window,
         suggestFollowUps: Bool = true,
         captureHotkey: CaptureHotkey = .default,
-        persistConversation: Bool = false
+        persistConversation: Bool = false,
+        customModels: [CustomModelEntry] = []
     ) {
         self.mode = mode
         self.previewBeforeInfer = previewBeforeInfer
@@ -42,10 +45,11 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.suggestFollowUps = suggestFollowUps
         self.captureHotkey = captureHotkey
         self.persistConversation = persistConversation
+        self.customModels = customModels
     }
 
     private enum CodingKeys: String, CodingKey {
-        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation
+        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, customModels
     }
 
     // Tolerant decode — a saved blob missing a newer key keeps the rest of the user's
@@ -62,6 +66,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.suggestFollowUps = try c.decodeIfPresent(Bool.self, forKey: .suggestFollowUps) ?? true
         self.captureHotkey = try c.decodeIfPresent(CaptureHotkey.self, forKey: .captureHotkey) ?? .default
         self.persistConversation = try c.decodeIfPresent(Bool.self, forKey: .persistConversation) ?? false
+        self.customModels = try c.decodeIfPresent([CustomModelEntry].self, forKey: .customModels) ?? []
     }
 
     public static let `default` = PeeknookSettings(

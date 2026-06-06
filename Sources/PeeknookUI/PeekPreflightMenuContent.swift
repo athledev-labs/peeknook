@@ -52,24 +52,46 @@ enum PeekPreflightMenuContent {
     @ViewBuilder
     static func visionModelHomeMenu(
         currentTag: String,
+        models: [InferenceModelOption],
         isInstalled: @escaping (String) -> Bool,
         onSelect: @escaping (InferenceModelOption) -> Void,
+        onAddCustom: (() -> Void)? = nil,
         close: @escaping () -> Void
     ) -> some View {
-        ForEach(PeekPreflightOptions.visionModels) { option in
+        ForEach(models) { option in
             Button {
                 onSelect(option)
                 close()
             } label: {
                 ValueMenuRow(
                     title: option.displayName,
-                    subtitle: option.downloadHint,
+                    subtitle: option.downloadHint ?? option.tag,
                     selected: OllamaSetupClient.matchesModel(
                         installedNames: [currentTag],
                         wanted: option.tag
                     ),
                     needsDownload: !isInstalled(option.tag)
                 )
+            }
+            .buttonStyle(.plain)
+        }
+
+        if let onAddCustom {
+            Divider().padding(.vertical, 2)
+            Button {
+                onAddCustom()
+                close()
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "plus.circle")
+                        .font(.system(size: 11, weight: .semibold))
+                    Text("Add a model…")
+                        .font(.system(size: 11))
+                    Spacer(minLength: 0)
+                }
+                .padding(.vertical, 2)
+                .padding(.horizontal, 2)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }

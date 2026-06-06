@@ -11,6 +11,7 @@ public struct PeekSetupView: View {
     public var onContinue: () -> Void
     @Environment(\.nookResolvedTheme) private var theme
     @State private var pendingDownload: InferenceModelOption?
+    @State private var showAddModel = false
 
     public init(
         setup: SetupCoordinator,
@@ -44,6 +45,11 @@ public struct PeekSetupView: View {
         .task { await setup.refresh() }
         .peekModelDownloadConfirmation(pending: $pendingDownload) { option in
             settings.beginModelDownload(option)
+        }
+        .peekAddModelOverlay(isPresented: $showAddModel) { tag in
+            if case .needsDownload(let pending) = settings.addAndPickModel(tag: tag) {
+                pendingDownload = pending
+            }
         }
     }
 
@@ -119,13 +125,15 @@ public struct PeekSetupView: View {
     private var modelPicker: some View {
         ValueDropdownPill(
             symbol: "cpu",
-            title: TextModelCatalog.displayName(for: setup.settings.textModel),
+            title: TextModelCatalog.displayName(for: setup.settings.textModel, custom: settings.customModels),
             help: "Vision model"
         ) { close in
             PeekPreflightMenuContent.visionModelHomeMenu(
                 currentTag: setup.settings.textModel,
+                models: settings.availableModels,
                 isInstalled: { setup.isModelInstalled($0) },
                 onSelect: selectModel,
+                onAddCustom: { showAddModel = true },
                 close: close
             )
         }

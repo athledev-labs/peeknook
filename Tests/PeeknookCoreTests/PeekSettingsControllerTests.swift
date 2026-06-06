@@ -66,6 +66,44 @@ final class PeekSettingsControllerTests: XCTestCase {
     }
 
     @MainActor
+    func testAddCustomModelPersistsAndJoinsAvailableList() {
+        let stack = PeeknookServices.makeStack(settings: .default, defaults: defaults)
+
+        let option = stack.settings.addCustomModel(tag: "qwen3-vl:8b")
+        XCTAssertEqual(option?.tag, "qwen3-vl:8b")
+        XCTAssertTrue(stack.settings.availableModels.contains { $0.tag == "qwen3-vl:8b" })
+        XCTAssertEqual(PeeknookSettings.load(from: defaults).customModels.map(\.tag), ["qwen3-vl:8b"])
+    }
+
+    @MainActor
+    func testAddCustomModelIsIdempotentAndIgnoresBlank() {
+        let stack = PeeknookServices.makeStack(settings: .default, defaults: defaults)
+
+        _ = stack.settings.addCustomModel(tag: "llava:13b")
+        _ = stack.settings.addCustomModel(tag: "llava:13b") // duplicate
+        XCTAssertEqual(stack.settings.customModels.count, 1)
+
+        XCTAssertNil(stack.settings.addCustomModel(tag: "   "))
+        XCTAssertEqual(stack.settings.customModels.count, 1)
+    }
+
+    @MainActor
+    func testRemoveCustomModelFallsBackWhenSelected() {
+        let stack = PeeknookServices.makeStack(settings: .default, defaults: defaults)
+
+        _ = stack.settings.addCustomModel(tag: "mymodel:latest")
+        stack.settings.selectInstalledModel("mymodel:latest")
+        XCTAssertEqual(stack.orchestrator.settings.textModel, "mymodel:latest")
+
+        stack.settings.removeCustomModel(tag: "mymodel:latest")
+        XCTAssertTrue(stack.settings.customModels.isEmpty)
+        XCTAssertEqual(
+            stack.orchestrator.settings.textModel,
+            SystemProfile.current().suggestedTextModel
+        )
+    }
+
+    @MainActor
     func testInferenceHealthUsesInjectedEngine() async {
         let stack = PeeknookServices.makeStack(settings: .default, defaults: defaults)
         let health = await stack.settings.inferenceHealth()

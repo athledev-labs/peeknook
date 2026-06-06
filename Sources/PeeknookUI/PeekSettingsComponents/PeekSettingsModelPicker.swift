@@ -8,13 +8,16 @@ import SwiftUI
 struct PeekSettingsModelPickerRow: View {
     let currentTag: String
     let recommendedTag: String
+    let models: [InferenceModelOption]
+    let customModels: [CustomModelEntry]
     let isInstalled: (String) -> Bool
     let onSelect: (InferenceModelOption) -> Void
+    let onAddCustom: () -> Void
 
     @Environment(\.nookResolvedTheme) private var theme
 
     private var displayName: String {
-        TextModelCatalog.displayName(for: currentTag)
+        TextModelCatalog.displayName(for: currentTag, custom: customModels)
     }
 
     private var detail: String {
@@ -53,8 +56,10 @@ struct PeekSettingsModelPickerRow: View {
             ValueDropdownPill(symbol: "cpu", title: displayName, help: "Vision model") { close in
                 PeekPreflightMenuContent.visionModelHomeMenu(
                     currentTag: currentTag,
+                    models: models,
                     isInstalled: isInstalled,
                     onSelect: onSelect,
+                    onAddCustom: onAddCustom,
                     close: close
                 )
             }

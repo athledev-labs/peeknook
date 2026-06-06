@@ -80,6 +80,12 @@ ollama pull gemma4:e4b           # or the tag Settings suggests
 
 > The `ollama` **formula** bottle has shipped without its `llama-server` runner (requests 500 with "llama-server binary not found"). Use the `ollama-app` **cask** above.
 
+### Bring your own model
+
+Gemma 4 is the default, but the picker is open: **Vision model → Add a model…** (in Home, Setup, or Settings) accepts any Ollama tag, pulls it if needed, and selects it — so you can try the latest open models in your notch without a code change. Custom models persist and can be removed from Settings.
+
+Because every capture sends a screenshot, **pick a model that supports image input**. Peeknook reads the model's `/api/show` capabilities and warns when a chosen model is text-only. Note: some otherwise-multimodal models (e.g. NVIDIA's Nemotron 3 family) currently run **text-only** under Ollama because Ollama doesn't load their separate vision projector (`mmproj`) files — those will ignore the screenshot until upstream support lands.
+
 Grant **Screen Recording** (required — the front-window screenshot the vision model reads) when macOS prompts. **Accessibility** is optional and only adds selected text alongside the screenshot. Model licenses belong in this README, not in `LICENSE`.
 
 ## License

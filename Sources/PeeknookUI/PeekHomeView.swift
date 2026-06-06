@@ -18,6 +18,7 @@ public struct PeekHomeView: View {
     @State private var showsArchive = false
     @State private var hasArchivedChats = false
     @State private var pendingDownload: InferenceModelOption?
+    @State private var showAddModel = false
     /// Transient pin that bridges a panel resize when entering a History drill-in, then releases so
     /// normal hover-to-dismiss resumes (no forced Close).
     @State private var keepOpenGrace = false
@@ -53,6 +54,11 @@ public struct PeekHomeView: View {
         }
         .peekModelDownloadConfirmation(pending: $pendingDownload) { option in
             settings.beginModelDownload(option)
+        }
+        .peekAddModelOverlay(isPresented: $showAddModel) { tag in
+            if case .needsDownload(let pending) = settings.addAndPickModel(tag: tag) {
+                pendingDownload = pending
+            }
         }
         // Bridge the panel resize when entering a History drill-in (the archive list or the full
         // thread can shrink the panel, dropping the cursor outside its new bounds and auto-dismissing
@@ -125,7 +131,10 @@ public struct PeekHomeView: View {
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        // Asymmetric: keep top breathing room, but trim the bottom so the command row sits
+        // close to the chrome's (now tightened) bottom inset instead of double-padding it.
+        .padding(.top, 8)
+        .padding(.bottom, 2)
     }
 
     @ViewBuilder
@@ -157,6 +166,7 @@ public struct PeekHomeView: View {
                         setup: setup,
                         settings: settings,
                         pendingDownload: $pendingDownload,
+                        showAddModel: $showAddModel,
                         onCapture: { orchestrator.beginCapture() },
                         onShowArchive: idleArchiveAction
                     )
@@ -213,14 +223,14 @@ public struct PeekHomeView: View {
                 .foregroundStyle(theme.secondaryLabel)
             Text("·")
                 .foregroundStyle(theme.quaternaryLabel)
-            Text(TextModelCatalog.displayName(for: orchestrator.settings.textModel))
+            Text(TextModelCatalog.displayName(for: orchestrator.settings.textModel, custom: settings.customModels))
                 .foregroundStyle(theme.tertiaryLabel)
                 .lineLimit(1)
                 .truncationMode(.middle)
         }
         .font(.system(size: 10, weight: .regular))
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Ready to capture with \(TextModelCatalog.displayName(for: orchestrator.settings.textModel))")
+        .accessibilityLabel("Ready to capture with \(TextModelCatalog.displayName(for: orchestrator.settings.textModel, custom: settings.customModels))")
     }
 
     private var modePicker: some View {

@@ -13,8 +13,10 @@ struct PeekSettingsVisionSection: View {
     var ollamaStatusTone: PeekSettingsStatusTone
     @Binding var advancedExpanded: Bool
     var onSelectModel: (InferenceModelOption) -> Void
+    var onAddCustomModel: () -> Void
 
     @Environment(\.nookResolvedTheme) private var theme
+    @State private var visionSupport: Bool?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -40,8 +42,38 @@ struct PeekSettingsVisionSection: View {
             PeekSettingsModelPickerRow(
                 currentTag: orchestrator.settings.textModel,
                 recommendedTag: SystemProfile.current().suggestedTextModel,
+                models: settings.availableModels,
+                customModels: settings.customModels,
                 isInstalled: { setup.isModelInstalled($0) },
-                onSelect: onSelectModel
+                onSelect: onSelectModel,
+                onAddCustom: onAddCustomModel
+            )
+
+            if visionSupport == false {
+                PeekSettingsNote(
+                    text: "⚠︎ This model can’t see your screen. Peeknook sends a screenshot with every capture, so a text-only model will ignore the image. Pick a vision model (like Gemma 4) for screen capture."
+                )
+            }
+
+            if !settings.customModels.isEmpty {
+                ForEach(settings.customModels) { entry in
+                    PeekSettingsCommandRow(
+                        icon: "cpu",
+                        title: entry.resolvedDisplayName,
+                        subtitle: "Custom · \(entry.tag)",
+                        style: .destructive,
+                        trailing: .button("Remove"),
+                        action: { settings.removeCustomModel(tag: entry.tag) }
+                    )
+                }
+            }
+
+            PeekSettingsCommandRow(
+                icon: "plus.circle",
+                title: "Add a model",
+                subtitle: "Test any Ollama tag in your notch",
+                trailing: .button("Add"),
+                action: onAddCustomModel
             )
 
             if setup.isPullingModel {
@@ -84,6 +116,14 @@ struct PeekSettingsVisionSection: View {
                 )
             }
         }
+        .task(id: visionCheckKey) {
+            visionSupport = await settings.currentModelSupportsVision()
+        }
+    }
+
+    /// Re-check vision support whenever the model or server changes.
+    private var visionCheckKey: String {
+        "\(orchestrator.settings.textModel)|\(orchestrator.settings.ollamaBaseURL)"
     }
 
     private var ollamaServerDetail: String? {
@@ -104,7 +144,7 @@ struct PeekSettingsVisionSection: View {
     }
 
     private var downloadRowTitle: String {
-        let name = TextModelCatalog.displayName(for: orchestrator.settings.textModel)
+        let name = TextModelCatalog.displayName(for: orchestrator.settings.textModel, custom: settings.customModels)
         return setup.isPullingModel ? "Downloading \(name)" : "Download \(name)"
     }
 

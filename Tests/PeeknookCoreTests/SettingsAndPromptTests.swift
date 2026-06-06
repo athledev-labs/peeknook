@@ -104,6 +104,44 @@ final class SettingsAndPromptTests: XCTestCase {
         XCTAssertNil(OllamaInferenceEngine.parseContextLength(from: Data("{}".utf8)))
     }
 
+    func testParseCapabilitiesReadsArrayAndNilWhenAbsent() {
+        let body = Data(#"{"capabilities":["completion","vision"]}"#.utf8)
+        XCTAssertEqual(OllamaInferenceEngine.parseCapabilities(from: body), ["completion", "vision"])
+        XCTAssertNil(OllamaInferenceEngine.parseCapabilities(from: Data("{}".utf8)))
+    }
+
+    func testCustomModelsDecodeTolerantlyAndRoundTrip() throws {
+        // Legacy blob (no key) keeps an empty list, not a decode failure.
+        let legacy = Data(#"{"mode":"general","textModel":"gemma4:e4b"}"#.utf8)
+        XCTAssertTrue(try JSONDecoder().decode(PeeknookSettings.self, from: legacy).customModels.isEmpty)
+
+        let withCustom = PeeknookSettings(
+            textModel: "gemma4:e4b",
+            customModels: [CustomModelEntry(tag: "qwen3-vl:8b", displayName: "Qwen3 VL")]
+        )
+        let back = try JSONDecoder().decode(PeeknookSettings.self, from: JSONEncoder().encode(withCustom))
+        XCTAssertEqual(back.customModels.map(\.tag), ["qwen3-vl:8b"])
+        XCTAssertEqual(back.customModels.first?.resolvedDisplayName, "Qwen3 VL")
+    }
+
+    func testCustomModelEntryTrimsAndFallsBackToTag() {
+        let entry = CustomModelEntry(tag: "  llava:13b  ", displayName: "   ")
+        XCTAssertEqual(entry.tag, "llava:13b")
+        XCTAssertNil(entry.displayName)
+        XCTAssertEqual(entry.resolvedDisplayName, "llava:13b")
+    }
+
+    func testMergedCatalogAppendsCustomAndDedupes() {
+        let custom = [
+            CustomModelEntry(tag: "qwen3-vl:8b"),
+            CustomModelEntry(tag: "gemma4:e2b"), // already curated — must not duplicate
+        ]
+        let merged = TextModelCatalog.merged(custom: custom)
+        XCTAssertEqual(merged.filter { $0.tag == "gemma4:e2b" }.count, 1)
+        XCTAssertTrue(merged.contains { $0.tag == "qwen3-vl:8b" })
+        XCTAssertEqual(TextModelCatalog.displayName(for: "qwen3-vl:8b", custom: custom), "qwen3-vl:8b")
+    }
+
     @MainActor
     func testOnboardingCompletePersists() {
         let defaults = UserDefaults(suiteName: "peeknook.tests.onboarding")!

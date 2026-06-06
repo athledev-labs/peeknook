@@ -91,6 +91,16 @@ public final class PeeknookModule: NookModule {
         }
         configuration.topBar.leadingIcon = nil
         configuration.expandedWidth = 480
+        // Seat the in-content command row close to the panel's rounded bottom. The chrome
+        // reserves an expanded-content safe-area strip (8pt on three edges by default) that
+        // stacks on top of the framework edge padding, leaving a dead band below our last
+        // row. Trim just the bottom inset — the command row is centered/leading, so it
+        // clears the bottom-corner curve. Radii pin the framework's default appearance.
+        configuration.style = NookStyle(
+            topCornerRadius: 19,
+            bottomCornerRadius: 24,
+            expandedContentInsets: NookEdgeInsets(top: 0, bottom: 2, leading: 8, trailing: 8)
+        )
         configuration.onReady = { [weak self] coordinator in
             self?.registerCaptureHotkey(on: coordinator)
             self?.startPreviewPhaseHandling(on: coordinator)

@@ -97,6 +97,57 @@ public final class PeekSettingsController {
         return .needsDownload(option)
     }
 
+    // MARK: - Custom (bring-your-own) models
+
+    /// Curated catalog plus the user's added models, deduped by tag.
+    public var availableModels: [InferenceModelOption] {
+        TextModelCatalog.merged(custom: settings.customModels)
+    }
+
+    public var customModels: [CustomModelEntry] {
+        settings.customModels
+    }
+
+    /// Register any Ollama tag the user typed so it joins the picker. Returns the option to act on
+    /// (select if already installed, otherwise prompt to download) or nil if the tag was blank.
+    @discardableResult
+    public func addCustomModel(tag rawTag: String, displayName: String? = nil) -> InferenceModelOption? {
+        let entry = CustomModelEntry(tag: rawTag, displayName: displayName)
+        guard !entry.tag.isEmpty else { return nil }
+
+        // Don't duplicate a curated tag or one already added — just surface the existing option.
+        if let existing = TextModelCatalog.option(for: entry.tag, custom: settings.customModels) {
+            return existing
+        }
+
+        update { $0.customModels.append(entry) }
+        return InferenceModelOption(custom: entry)
+    }
+
+    /// Add a typed tag and immediately act on it: select if installed, else report `.needsDownload`
+    /// so the caller can confirm the pull. Returns nil for a blank tag.
+    public func addAndPickModel(tag rawTag: String) -> ModelPickResult? {
+        guard let option = addCustomModel(tag: rawTag) else { return nil }
+        return pickModel(option)
+    }
+
+    public func removeCustomModel(tag: String) {
+        let key = OllamaSetupClient.normalizedTag(tag)
+        update { settings in
+            settings.customModels.removeAll { OllamaSetupClient.normalizedTag($0.tag) == key }
+        }
+        // If the deleted model was the active selection, fall back to the recommended tag.
+        if OllamaSetupClient.normalizedTag(settings.textModel) == key {
+            selectInstalledModel(SystemProfile.current().suggestedTextModel)
+        }
+    }
+
+    /// Whether the current model can read the captured screenshot. `nil` while unknown (model not
+    /// installed yet, or an older Ollama that omits capabilities) so the UI stays quiet.
+    public func currentModelSupportsVision() async -> Bool? {
+        await inference.supportsVision(model: settings.textModel, baseURL: settings.ollamaBaseURL)
+    }
+
     public func selectInstalledModel(_ tag: String) {
         update { $0.textModel = tag }
         Task {

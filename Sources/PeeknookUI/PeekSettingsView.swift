@@ -21,6 +21,7 @@ public struct PeekSettingsView: View {
     @State private var didApplyDefaultExpansion = false
     @State private var visionModelAdvancedExpanded = false
     @State private var pendingDownload: InferenceModelOption?
+    @State private var showAddModel = false
     @State private var scrollToSectionID: String?
 
     public init(
@@ -63,7 +64,8 @@ public struct PeekSettingsView: View {
                             ollamaStatusDetail: ollamaStatusDetail,
                             ollamaStatusTone: ollamaStatusTone,
                             advancedExpanded: $visionModelAdvancedExpanded,
-                            onSelectModel: selectModel
+                            onSelectModel: selectModel,
+                            onAddCustomModel: { showAddModel = true }
                         )
                     }
 
@@ -115,6 +117,11 @@ public struct PeekSettingsView: View {
         }
         .peekModelDownloadConfirmation(pending: $pendingDownload) { option in
             settings.beginModelDownload(option)
+        }
+        .peekAddModelOverlay(isPresented: $showAddModel) { tag in
+            if case .needsDownload(let pending) = settings.addAndPickModel(tag: tag) {
+                pendingDownload = pending
+            }
         }
     }
 
