@@ -31,8 +31,13 @@ public final class SessionOrchestrator {
     public var settings: PeeknookSettings
     public weak var setup: SetupCoordinator?
     public var usage: UsageStore?
-    /// Opt-in local persistence for the active chat (see `PeeknookSettings.persistConversation`).
-    public var conversationStore: ConversationStore?
+    /// Opt-in local conversation archive (see `PeeknookSettings.persistConversation`). Stores every
+    /// answered chat as its own thread so the user can list, resume, and delete past chats.
+    public var conversationArchive: ConversationArchiveStore?
+    /// Identity of the chat currently on screen within the archive. Assigned on first save, carried
+    /// across follow-ups, cleared when a fresh chat begins. Nil means "not yet archived".
+    private var activeThreadID: UUID?
+    private var activeThreadCreatedAt: Date?
 
     private let capture: any CaptureProviding
     private let inference: any InferenceEngine
@@ -53,6 +58,30 @@ public final class SessionOrchestrator {
     public var contextUsage: (used: Int, total: Int)? {
         guard let used = lastPromptTokens, let total = contextWindow, total > 0 else { return nil }
         return (used, total)
+    }
+
+    /// Share of the model context window the current chat already fills (0…1), or nil if unknown.
+    public var contextFraction: Double? {
+        guard let usage = contextUsage else { return nil }
+        return min(1, Double(usage.used) / Double(usage.total))
+    }
+
+    /// Pre-capture pressure on the model's context window. Drives a proactive nudge to start a new
+    /// chat *before* the next capture or follow-up pushes the thread past the limit. Thresholds line
+    /// up with `PeekContextTint` (calm < 0.8, high ≥ 0.8 orange, critical ≥ 0.9 red).
+    public enum ContextPressure: Sendable, Equatable {
+        case normal
+        case high
+        case critical
+    }
+
+    public var contextPressure: ContextPressure {
+        guard let fraction = contextFraction else { return .normal }
+        switch fraction {
+        case ..<0.8: return .normal
+        case ..<0.9: return .high
+        default: return .critical
+        }
     }
 
     /// True once there's an answered chat the user can extend or restart.
@@ -99,37 +128,87 @@ public final class SessionOrchestrator {
         setup?.settings = settings
     }
 
-    // MARK: - Conversation persistence (opt-in, local file)
+    // MARK: - Conversation archive (opt-in, local files)
 
-    /// Restore a saved chat at launch when the user has persistence enabled. Leaves the phase at
-    /// `.idle` so it surfaces as a resumable thread, not an auto-opened result.
+    /// Restore the most recent saved chat at launch when the user has persistence enabled (migrating
+    /// the legacy single-file store first). Leaves the phase at `.idle` so it surfaces as a resumable
+    /// thread, not an auto-opened result.
     public func loadPersistedConversationIfEnabled() {
-        guard settings.persistConversation,
-              let store = conversationStore,
-              let restored = store.load(),
-              !restored.turns.isEmpty
-        else { return }
-        conversation = restored.turns
-        contextWindow = restored.contextWindow
-        lastPromptTokens = restored.lastPromptTokens
-        turnCounter = max(restored.turnCounter, restored.turns.map(\.id).max() ?? 0)
+        guard settings.persistConversation, let archive = conversationArchive else { return }
+        archive.migrateLegacyIfNeeded()
+        guard let restored = archive.mostRecent(), !restored.turns.isEmpty else { return }
+        adopt(restored)
     }
 
-    /// Write the current chat to disk (off the main actor) when persistence is on; no-op otherwise.
+    /// Summaries of every archived chat (newest first) for the History switcher. Empty when
+    /// persistence is off or nothing is saved.
+    public func availableThreads() -> [ConversationSummary] {
+        guard settings.persistConversation else { return [] }
+        return conversationArchive?.summaries() ?? []
+    }
+
+    /// Open an archived chat by id: load it into memory and surface its last answer as a result.
+    public func openThread(id: UUID) {
+        guard let archive = conversationArchive, let thread = archive.load(id: id), !thread.turns.isEmpty else { return }
+        inferenceTask?.cancel()
+        suggestionTask?.cancel()
+        suggestedFollowUps = []
+        isFetchingSuggestions = false
+        streamedAnswer = ""
+        adopt(thread)
+        phase = .result(lastAssistantText ?? "")
+    }
+
+    /// Delete one archived chat. If it's the one on screen, also clear it from memory and return idle.
+    public func deleteThread(id: UUID) {
+        conversationArchive?.delete(id: id)
+        if id == activeThreadID {
+            resetConversation()
+            phase = .idle
+        }
+    }
+
+    private func adopt(_ thread: ConversationThread) {
+        conversation = thread.turns
+        contextWindow = thread.contextWindow
+        lastPromptTokens = thread.lastPromptTokens
+        turnCounter = max(thread.turnCounter, thread.turns.map(\.id).max() ?? 0)
+        activeThreadID = thread.id
+        activeThreadCreatedAt = thread.createdAt
+    }
+
+    /// Write the current chat to the archive (off the main actor) when persistence is on; no-op
+    /// otherwise. The first save mints the thread's stable id and creation date.
     public func persistConversationNow() {
-        guard settings.persistConversation, let store = conversationStore else { return }
-        let snapshot = PersistedConversation(
+        guard settings.persistConversation, let archive = conversationArchive, !conversation.isEmpty else { return }
+        if activeThreadID == nil {
+            activeThreadID = UUID()
+            activeThreadCreatedAt = Date()
+        }
+        let thread = ConversationThread(
+            id: activeThreadID ?? UUID(),
+            createdAt: activeThreadCreatedAt ?? Date(),
+            updatedAt: Date(),
             turns: conversation,
             contextWindow: contextWindow,
             turnCounter: turnCounter,
             lastPromptTokens: lastPromptTokens
         )
-        Task.detached { store.save(snapshot) }
+        Task.detached { archive.save(thread) }
     }
 
-    /// Delete any saved chat — called when the user discards a thread or turns persistence off.
-    public func purgePersistedConversation() {
-        conversationStore?.clear()
+    /// Delete just the chat on screen from the archive — called when the user discards a thread.
+    public func discardActiveThread() {
+        if let id = activeThreadID { conversationArchive?.delete(id: id) }
+        activeThreadID = nil
+        activeThreadCreatedAt = nil
+    }
+
+    /// Wipe the whole archive — called when the user turns persistence off or taps Clear all.
+    public func purgeAllConversations() {
+        conversationArchive?.deleteAll()
+        activeThreadID = nil
+        activeThreadCreatedAt = nil
     }
 
     /// Hotkey / compact affordance entry: capture → preview → infer (a fresh chat).
@@ -279,17 +358,21 @@ public final class SessionOrchestrator {
         streamedAnswer = ""
         pendingPreview = nil
         pendingCapture = nil
+        discardActiveThread()
         resetConversation()
-        purgePersistedConversation()
         phase = .idle
     }
 
+    /// Clears the in-memory chat and forgets its archive identity (without deleting the archived
+    /// thread) so the next answered chat is filed as a new entry.
     private func resetConversation() {
         conversation = []
         suggestedFollowUps = []
         isFetchingSuggestions = false
         turnCounter = 0
         lastPromptTokens = nil
+        activeThreadID = nil
+        activeThreadCreatedAt = nil
     }
 
     private var lastAssistantText: String? {

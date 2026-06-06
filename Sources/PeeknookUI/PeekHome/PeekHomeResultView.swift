@@ -9,7 +9,6 @@ struct PeekHomeResultView: View {
     var setup: SetupCoordinator
     @Binding var showsFullConversation: Bool
     @Binding var followUpText: String
-    @Binding var isFollowUpComposerVisible: Bool
     var focusFollowUpField: FocusState<Bool>.Binding
     var onToggleHistory: () -> Void
     var onFinishChat: () -> Void
@@ -49,25 +48,36 @@ struct PeekHomeResultView: View {
 
     private var resultFooter: some View {
         VStack(alignment: .leading, spacing: 8) {
-            if isFollowUpComposerVisible {
+            if !showsFullConversation, orchestrator.contextPressure != .normal {
+                PeekContextWarningBanner(
+                    pressure: orchestrator.contextPressure,
+                    fraction: orchestrator.contextFraction ?? 0,
+                    onStartNewChat: onRequestNewChat
+                )
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
+            }
+            if !showsFullConversation {
                 followUpComposer
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
             resultCommandBar
         }
-        .animation(.spring(response: 0.34, dampingFraction: 0.86), value: isFollowUpComposerVisible)
+        .animation(.easeOut(duration: 0.2), value: orchestrator.contextPressure)
     }
 
+    /// Always-visible follow-up field — one tap into the field, Enter (or the send button) asks.
+    /// No toggle, no hidden shortcut.
     private var followUpComposer: some View {
         HStack(spacing: 8) {
+            Image(systemName: "bubble.left.and.bubble.right")
+                .font(.system(size: 11))
+                .foregroundStyle(theme.tertiaryLabel)
+                .peekDecorative()
             TextField("Ask a follow-up…", text: $followUpText)
                 .textFieldStyle(.plain)
                 .font(.system(size: 12))
                 .focused(focusFollowUpField)
                 .onSubmit(submitFollowUp)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 7)
-                .background(theme.tertiaryLabel.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+                .accessibilityLabel(Text("Ask a follow-up"))
             Button(action: submitFollowUp) {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.system(size: 18))
@@ -75,7 +85,11 @@ struct PeekHomeResultView: View {
             }
             .buttonStyle(.plain)
             .disabled(followUpIsEmpty)
+            .peekAction(label: "Send follow-up")
         }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(theme.tertiaryLabel.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
     }
 
     private var resultCommandBar: some View {
@@ -121,14 +135,6 @@ struct PeekHomeResultView: View {
                         orchestrator.addImage()
                     }
                     .disabled(!setup.isReady)
-                    NookToolbarButton(
-                        title: "Follow",
-                        symbol: "bubble.left.and.bubble.right",
-                        help: "Ask a follow-up about this answer",
-                        prominent: isFollowUpComposerVisible
-                    ) {
-                        toggleFollowUpComposer()
-                    }
                     NookToolbarButton(
                         title: "Done",
                         symbol: "house",
@@ -176,26 +182,11 @@ struct PeekHomeResultView: View {
     }
 
     private func submitFollowUp() {
+        guard !followUpIsEmpty else { return }
         let text = followUpText
         followUpText = ""
-        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
-            isFollowUpComposerVisible = false
-        }
         focusFollowUpField.wrappedValue = false
         orchestrator.sendFollowUp(text)
-    }
-
-    private func toggleFollowUpComposer() {
-        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
-            isFollowUpComposerVisible.toggle()
-        }
-        if isFollowUpComposerVisible {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                focusFollowUpField.wrappedValue = true
-            }
-        } else {
-            focusFollowUpField.wrappedValue = false
-        }
     }
 
     private func compactTokens(_ n: Int) -> String {

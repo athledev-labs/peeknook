@@ -77,5 +77,6 @@ struct AnalyzingSkeleton: View {
         // 3 bars (10pt) + 2 gaps (8pt) = 46pt.
         .frame(height: 46)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .peekLoading("Analyzing the capture")
     }
 }

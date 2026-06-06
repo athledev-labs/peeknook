@@ -6,10 +6,18 @@ import SwiftUI
 public struct PeekCompactView: View {
     public var orchestrator: SessionOrchestrator
     public var setup: SetupCoordinator
+    /// Expand the nook to Home so the user can read the answer / continue the chat. Wired by the
+    /// module to the `AppCoordinator`. Safe: expanding never discards the thread.
+    public var onExpand: (() -> Void)?
 
-    public init(orchestrator: SessionOrchestrator, setup: SetupCoordinator) {
+    public init(
+        orchestrator: SessionOrchestrator,
+        setup: SetupCoordinator,
+        onExpand: (() -> Void)? = nil
+    ) {
         self.orchestrator = orchestrator
         self.setup = setup
+        self.onExpand = onExpand
     }
 
     public var body: some View {
@@ -23,14 +31,16 @@ public struct PeekCompactView: View {
         .help(helpText)
     }
 
-    /// idle → capture, failed → retry. Previewing auto-expands via the module; busy/result
-    /// phases no-op (capture stays a deliberate, expanded action).
+    /// idle → capture, failed → retry, result → expand to read/continue (no thread loss).
+    /// Previewing auto-expands via the module; capturing/inferring no-op (busy).
     private func handleTap() {
         switch orchestrator.phase {
         case .idle:
             orchestrator.beginCapture()
         case .failed:
             orchestrator.retryAfterFailure()
+        case .result:
+            onExpand?()
         default:
             break
         }
@@ -64,7 +74,7 @@ public struct PeekCompactView: View {
         case .inferring:
             "Thinking…"
         case .result:
-            "Answer ready"
+            "Answer ready — tap to expand"
         case .failed(let failure):
             failure.title
         }

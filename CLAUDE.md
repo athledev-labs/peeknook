@@ -57,7 +57,7 @@ Do not break the following without an explicit product decision and migration pl
 2. **Settings namespace is `peeknook.*` only.** Never read or write `opennook.*` keys. The module `UserDefaults` suite is `opennook.module.com.peeknook.app`.
 3. **Tolerant decoding.** `PeeknookSettings` and `UsageStats` decode with `decodeIfPresent` so adding a field does not reset saved state. Keep new fields optional or defaulted. Tests guard this behavior.
 4. **Host surfaces self-bound their height.** OpenNook sizes the notch panel to fit content. Any growable view (for example, a `ScrollView` in `PeekSettingsView`) must cap its own height against the notch screen `visibleFrame`, or it can push the host top bar off screen.
-5. **Local-only, user-triggered capture.** No cloud inference path. No ambient or background capture. The default flow skips the confirm step. Captures are stored in the conversation thread (`ChatTurn.image`), and History shows the full timeline. Opt-in `previewBeforeInfer` surfaces `appName` and `windowTitle` before analysis. Conversation persistence is **opt-in and off by default** (`PeeknookSettings.persistConversation`): when enabled, the active chat — screenshots included — is written to a local Application Support JSON via `ConversationStore`, and cleared when the user discards the thread or turns the setting off. Never persist captures without that opt-in.
+5. **Local-only, user-triggered capture.** No cloud inference path. No ambient or background capture. The default flow skips the confirm step. Captures are stored in the conversation thread (`ChatTurn.image`), and History shows the full timeline. Opt-in `previewBeforeInfer` surfaces `appName` and `windowTitle` before analysis. Conversation persistence is **opt-in and off by default** (`PeeknookSettings.persistConversation`): when enabled, every answered chat — screenshots included — is filed as its own thread in a local **conversation archive** (`ConversationArchiveStore`: one `<uuid>.json` per thread plus an `index.v2.json`, under `Application Support/Peeknook/Conversations/`, capped at 25 threads / ~250 MB, oldest pruned first). Past chats are listable/resumable/deletable via the History switcher; discarding a chat (**New chat**) deletes just that thread, **Done** keeps it archived, and turning the setting off purges the whole archive. A one-time migration upgrades the legacy single-file `conversation.v1.json` (`ConversationStore`, kept only as the legacy reader). Never persist captures without that opt-in.
 6. **Do not embed Noru.** Noruflow remains a separate product. A future `NoruCaptureProvider` would call it as a sidecar (CLI or HTTP). Do not link Noru Rust/Tauri code into Peeknook. Do not block work on Noru integration.
 7. **Privacy.** Treat captured frames as private user data. Delete temporary screenshots created during testing. Flag secrets (API keys, tokens) if they appear in a capture.
 
@@ -75,7 +75,9 @@ Do not break the following without an explicit product decision and migration pl
 |---------|------|
 | Capture | `Sources/PeeknookCore/{CaptureProviding,MacCaptureProvider,CaptureImageEncoder,CapturePermissions}.swift` |
 | Session | `Sources/PeeknookCore/{SessionOrchestrator,SessionPhase,Conversation}.swift` |
-| Persistence | `Sources/PeeknookCore/ConversationStore.swift` (opt-in local chat save/restore) |
+| Persistence | `Sources/PeeknookCore/ConversationArchive.swift` (multi-thread archive: `ConversationThread`/`ConversationSummary`/`ConversationArchiveStore`); `ConversationStore.swift` (legacy single-file reader, migration only) |
+| History switcher | `Sources/PeeknookUI/PeekConversationArchiveView.swift` (glass list of past chats) |
+| a11y / localization | `Sources/PeeknookUI/{PeekAccessibility,PeekLocalization}.swift` + `Resources/Localizable.xcstrings` (route shared-component strings through `Text(peek:)`/`peekAction`) |
 | Failures | `Sources/PeeknookCore/SessionFailure.swift` (structured `SessionFailure`/`RecoveryAction`); `Sources/PeeknookUI/PeekFailureView.swift` (glass recovery card) |
 | Inference | `Sources/PeeknookCore/{InferenceEngine,OllamaInferenceEngine}.swift` |
 | Prompts and modes | `Sources/PeeknookCore/{PromptBuilder,PracticeMode}.swift` |
@@ -90,4 +92,6 @@ Do not break the following without an explicit product decision and migration pl
 
 - macOS 15+, SwiftUI, Swift Observation (`@Observable`), `@MainActor` on UI and orchestration types, strict concurrency.
 - Every source file starts with `// SPDX-License-Identifier: Apache-2.0`.
-- Keep diffs focused and match surrounding style. Run `swift test` before declaring a change complete.
+- **Accessibility**: use the shared helpers in `PeekAccessibility.swift` — `peekAction(label:hint:)` for icon+text controls, `peekDecorative()` for glyphs that duplicate a label, `peekLoading(_:)` for skeletons. Don't hand-roll `accessibility*` on new shared components.
+- **Localization**: `PeeknookUI` strings live in `Resources/Localizable.xcstrings`. Route visible copy through `Text(peek:)` / `PeekLocalized(_:)` (resolves against `Bundle.module`, not `Bundle.main`). Keys are human-readable English and double as the fallback; add translations in the catalog, not in code.
+- Keep diffs focused and match surrounding style. Run `swift test` before declaring a change complete (currently 71 core tests). A SwiftUI **XCUITest** target still needs the generated `.xcodeproj` (`./Scripts/regenerate-xcodeproj.sh`); phase/settings/archive flows are covered today by core logic tests.

@@ -5,22 +5,22 @@ import XCTest
 
 @MainActor
 final class ConversationPersistenceTests: XCTestCase {
-    private func tempStore() -> (ConversationStore, URL) {
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("peeknook-test-\(UUID().uuidString).json")
-        return (ConversationStore(fileURL: url), url)
+    private func tempArchive() -> (ConversationArchiveStore, URL) {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("peeknook-archive-\(UUID().uuidString)", isDirectory: true)
+        return (ConversationArchiveStore(directory: dir), dir)
     }
 
     func testEnabledPersistenceSavesAndReloadsAcrossOrchestrators() async throws {
-        let (store, url) = tempStore()
-        defer { try? FileManager.default.removeItem(at: url) }
+        let (store, dir) = tempArchive()
+        defer { try? FileManager.default.removeItem(at: dir) }
 
         let first = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b", persistConversation: true),
             capture: StubCaptureProvider(sampleText: "hello"),
             inference: MockInferenceEngine(tokens: ["ans", "wer"])
         )
-        first.conversationStore = store
+        first.conversationArchive = store
         first.beginCapture()
         try await Task.sleep(nanoseconds: 200_000_000)
 
@@ -36,7 +36,7 @@ final class ConversationPersistenceTests: XCTestCase {
             capture: StubCaptureProvider(sampleText: "x"),
             inference: MockInferenceEngine(tokens: ["y"])
         )
-        second.conversationStore = store
+        second.conversationArchive = store
         second.loadPersistedConversationIfEnabled()
 
         XCTAssertTrue(second.hasConversation)
@@ -48,30 +48,37 @@ final class ConversationPersistenceTests: XCTestCase {
     }
 
     func testDisabledPersistenceWritesNothing() async throws {
-        let (store, url) = tempStore()
-        defer { try? FileManager.default.removeItem(at: url) }
+        let (store, dir) = tempArchive()
+        defer { try? FileManager.default.removeItem(at: dir) }
 
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b", persistConversation: false),
             capture: StubCaptureProvider(sampleText: "hello"),
             inference: MockInferenceEngine(tokens: ["ok"])
         )
-        orchestrator.conversationStore = store
+        orchestrator.conversationArchive = store
         orchestrator.beginCapture()
         try await Task.sleep(nanoseconds: 200_000_000)
 
-        XCTAssertNil(store.load(), "Persistence off should never write a file")
+        XCTAssertTrue(store.summaries().isEmpty, "Persistence off should never write a thread")
     }
 
-    func testPurgeClearsSavedConversation() async throws {
-        let (store, url) = tempStore()
-        defer { try? FileManager.default.removeItem(at: url) }
+    func testDiscardActiveThreadRemovesItFromArchive() async throws {
+        let (store, dir) = tempArchive()
+        defer { try? FileManager.default.removeItem(at: dir) }
 
-        store.save(PersistedConversation(turns: [ChatTurn(id: 1, kind: .assistant("hi"))], contextWindow: nil, turnCounter: 1, lastPromptTokens: nil))
-        XCTAssertNotNil(store.load())
+        let orchestrator = SessionOrchestrator(
+            settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b", persistConversation: true),
+            capture: StubCaptureProvider(sampleText: "hello"),
+            inference: MockInferenceEngine(tokens: ["hi"])
+        )
+        orchestrator.conversationArchive = store
+        orchestrator.beginCapture()
+        try await Task.sleep(nanoseconds: 350_000_000)
+        XCTAssertEqual(store.summaries().count, 1)
 
-        store.clear()
-        XCTAssertNil(store.load())
+        orchestrator.startNewChat() // discards the active thread
+        XCTAssertTrue(store.summaries().isEmpty, "Discarding the active chat should remove it from the archive")
     }
 
     func testConversationMarkdownRendersTurns() async {

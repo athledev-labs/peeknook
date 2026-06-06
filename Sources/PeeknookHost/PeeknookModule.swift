@@ -57,7 +57,15 @@ public final class PeeknookModule: NookModule {
             )
         }
         configuration.setCompactTrailing {
-            PeekCompactView(orchestrator: self.orchestrator, setup: self.setup)
+            PeekCompactView(
+                orchestrator: self.orchestrator,
+                setup: self.setup,
+                onExpand: { [weak self] in
+                    guard let coordinator = self?.appCoordinator else { return }
+                    coordinator.showHome()
+                    coordinator.showNook()
+                }
+            )
         }
         configuration.setSettings {
             PeekSettingsView(

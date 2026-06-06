@@ -27,7 +27,7 @@ public enum PeeknookServices {
         )
         orchestrator.setup = setup
         orchestrator.usage = usage
-        orchestrator.conversationStore = ConversationStore.makeDefault()
+        orchestrator.conversationArchive = ConversationArchiveStore.makeDefault()
         orchestrator.loadPersistedConversationIfEnabled()
         setup.orchestrator = orchestrator
         let settingsController = PeekSettingsController(

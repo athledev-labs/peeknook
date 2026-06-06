@@ -6,6 +6,7 @@ let strictConcurrency: [SwiftSetting] = [.enableUpcomingFeature("StrictConcurren
 
 let package = Package(
     name: "Peeknook",
+    defaultLocalization: "en",
     platforms: [
         .macOS("15.0")
     ],
@@ -33,6 +34,7 @@ let package = Package(
                 .product(name: "NookApp", package: "opennook")
             ],
             path: "Sources/PeeknookUI",
+            resources: [.process("Resources")],
             swiftSettings: strictConcurrency
         ),
         .target(

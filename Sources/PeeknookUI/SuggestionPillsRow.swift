@@ -41,7 +41,9 @@ struct SuggestionPillsRow: View {
                     }
                 }
             }
+            .peekDecorative()
         }
+        .peekLoading("Suggesting follow-up questions")
     }
 
     private var pillsRow: some View {
@@ -93,5 +95,6 @@ private struct SuggestionPillButton: View {
         .animation(.easeOut(duration: 0.14), value: isHovered)
         .onHover { isHovered = $0 }
         .help(title)
+        .peekAction(label: title, hint: "Suggested follow-up — sends immediately")
     }
 }

@@ -21,7 +21,7 @@ struct NookToolbarButton: View {
             HStack(spacing: 4) {
                 Image(systemName: symbol)
                     .font(.system(size: 9, weight: .regular))
-                Text(title)
+                Text(LocalizedStringKey(title), bundle: .module)
                     .font(.system(size: 9, weight: .regular))
                     .lineLimit(1)
                 if let hotkey {
@@ -38,10 +38,16 @@ struct NookToolbarButton: View {
         .animation(.easeOut(duration: 0.12), value: isHovered)
         .onHover { isHovered = $0 }
         .help(help ?? defaultHelp(hotkey: hotkey))
+        .peekAction(label: accessibilityLabel, hint: help)
     }
 
     private func defaultHelp(hotkey: CaptureHotkey?) -> String {
         if let hotkey { return "\(title) (\(hotkey.spokenLabel))" }
+        return title
+    }
+
+    private var accessibilityLabel: String {
+        if let hotkey { return "\(title), \(hotkey.spokenLabel)" }
         return title
     }
 
@@ -106,6 +112,9 @@ struct ValueDropdownPill<MenuContent: View>: View {
         .fixedSize()
         .onHover { isHovered = $0 }
         .help(help ?? title)
+        .accessibilityLabel(Text(help ?? title))
+        .accessibilityValue(Text(title))
+        .accessibilityHint(Text("Shows options"))
         .popover(isPresented: $isOpen, arrowEdge: .bottom) {
             VStack(alignment: .leading, spacing: 2) {
                 menu { isOpen = false }

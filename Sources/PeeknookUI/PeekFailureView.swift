@@ -22,6 +22,7 @@ struct PeekFailureView: View {
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(iconTint)
                     .frame(width: 18)
+                    .peekDecorative()
                 VStack(alignment: .leading, spacing: 3) {
                     Text(failure.title)
                         .font(.system(size: 12, weight: .semibold))
@@ -41,6 +42,9 @@ struct PeekFailureView: View {
                     }
                 }
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isStaticText)
+            .accessibilityLabel(Text("\(failure.title). \(failure.message)"))
 
             HStack(spacing: 4) {
                 action(failure.primaryRecovery, prominent: true)

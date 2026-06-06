@@ -1,0 +1,34 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Capture" : {
+      "comment" : "Command-bar action: take a screenshot and answer.",
+      "extractionState" : "manual"
+    },
+    "Close" : {
+      "comment" : "Dismiss the current overlay or list.",
+      "extractionState" : "manual"
+    },
+    "Done" : {
+      "comment" : "End the current chat and return home.",
+      "extractionState" : "manual"
+    },
+    "History" : {
+      "comment" : "Open the list of past chats.",
+      "extractionState" : "manual"
+    },
+    "New chat" : {
+      "comment" : "Discard the current thread and start fresh.",
+      "extractionState" : "manual"
+    },
+    "Past chats" : {
+      "comment" : "Header for the conversation archive.",
+      "extractionState" : "manual"
+    },
+    "Clear all" : {
+      "comment" : "Delete every saved chat in the archive.",
+      "extractionState" : "manual"
+    }
+  },
+  "version" : "1.0"
+}

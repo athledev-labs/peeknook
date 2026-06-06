@@ -39,7 +39,7 @@ struct PeekSettingsCaptureSection: View {
             PeekSettingsToggleRow(
                 icon: orchestrator.settings.persistConversation ? "tray.full.fill" : "tray",
                 title: "Save conversations",
-                detail: "Keep the chat and its screenshots on this Mac between launches",
+                detail: "Archive past chats and their screenshots on this Mac. Turning this off deletes the archive.",
                 isOn: persistConversationBinding
             )
         }

@@ -12,9 +12,10 @@ public struct PeekHomeView: View {
     @Environment(\.nookResolvedTheme) private var theme
     @EnvironmentObject private var appState: AppState
     @State private var followUpText = ""
-    @State private var isFollowUpComposerVisible = false
     @State private var showsFullConversation = false
     @State private var showsNewChatConfirmation = false
+    @State private var showsArchive = false
+    @State private var hasArchivedChats = false
     @State private var pendingDownload: InferenceModelOption?
     @FocusState private var isFollowUpFieldFocused: Bool
 
@@ -31,39 +32,43 @@ public struct PeekHomeView: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if case .idle = orchestrator.phase {
-                PeekIdleHomeContent(orchestrator: orchestrator, onResume: resumeChat)
+        Group {
+            if showsArchive, case .idle = orchestrator.phase {
+                PeekConversationArchiveView(
+                    orchestrator: orchestrator,
+                    onOpen: openArchivedThread,
+                    onClose: closeArchive
+                )
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+            } else {
+                homeColumn
             }
-            if !setup.isReady {
-                setupBanner
-            }
-            if PracticeMode.shipped.count > 1 {
-                modePicker
-            }
-            mainColumn
         }
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
         .peekModelDownloadConfirmation(pending: $pendingDownload) { option in
             settings.beginModelDownload(option)
         }
         .onChange(of: orchestrator.phase) { _, newPhase in
-            isFollowUpComposerVisible = false
             followUpText = ""
+            refreshArchiveAvailability()
             if case .result = newPhase { return }
             setHistoryVisible(false)
         }
         .onChange(of: appState.moduleBreadcrumb) { _, breadcrumb in
-            if breadcrumb == nil, showsFullConversation {
-                showsFullConversation = false
+            if breadcrumb == nil {
+                if showsFullConversation { showsFullConversation = false }
+                if showsArchive { showsArchive = false }
             }
         }
         .onDisappear {
-            if appState.moduleBreadcrumb == Self.historyBreadcrumb {
+            if appState.moduleBreadcrumb == Self.historyBreadcrumb
+                || appState.moduleBreadcrumb == Self.archiveBreadcrumb {
                 appState.moduleBreadcrumb = nil
             }
+        }
+        .task {
+            refreshArchiveAvailability()
         }
         .task(id: setup.isReady) {
             if setup.isReady {
@@ -87,6 +92,27 @@ public struct PeekHomeView: View {
     }
 
     private static let historyBreadcrumb = "History"
+    private static let archiveBreadcrumb = "Past chats"
+
+    private var homeColumn: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if case .idle = orchestrator.phase {
+                PeekIdleHomeContent(orchestrator: orchestrator, onResume: resumeChat)
+            }
+            if !setup.isReady {
+                setupBanner
+            } else if case .idle = orchestrator.phase {
+                readyChip
+            }
+            if PracticeMode.shipped.count > 1 {
+                modePicker
+            }
+            mainColumn
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+    }
 
     @ViewBuilder
     private var mainColumn: some View {
@@ -96,7 +122,6 @@ public struct PeekHomeView: View {
                 setup: setup,
                 showsFullConversation: $showsFullConversation,
                 followUpText: $followUpText,
-                isFollowUpComposerVisible: $isFollowUpComposerVisible,
                 focusFollowUpField: $isFollowUpFieldFocused,
                 onToggleHistory: { setHistoryVisible(!showsFullConversation) },
                 onFinishChat: finishChat,
@@ -118,7 +143,8 @@ public struct PeekHomeView: View {
                         settings: settings,
                         pendingDownload: $pendingDownload,
                         onCapture: { orchestrator.beginCapture() },
-                        onResume: idleResumeAction
+                        onResume: idleResumeAction,
+                        onShowArchive: idleArchiveAction
                     )
                 } else {
                     PeekHomeActiveControls(
@@ -138,7 +164,7 @@ public struct PeekHomeView: View {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 8))
                     .foregroundStyle(.orange.opacity(0.9))
-                Text("Setup incomplete —")
+                Text("\(setupStatusDetail) —")
                     .foregroundStyle(theme.tertiaryLabel)
                 Text("Get ready")
                     .foregroundStyle(.orange)
@@ -151,6 +177,36 @@ public struct PeekHomeView: View {
         }
         .buttonStyle(.plain)
         .help("Open setup to finish before capturing")
+        .accessibilityLabel("\(setupStatusDetail). Open setup to finish before capturing.")
+    }
+
+    /// The most pressing missing prerequisite, surfaced inline so the user knows *what's* incomplete
+    /// without drilling into Get ready.
+    private var setupStatusDetail: String {
+        if case .failed = setup.ollamaStep { return "Ollama offline" }
+        if setup.modelStep != .complete { return "Model not installed" }
+        if case .failed = setup.captureStep { return "Screen Recording off" }
+        return "Setup incomplete"
+    }
+
+    /// Calm confirmation that capture is ready, with the active model — no drill-in required.
+    private var readyChip: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 8))
+                .foregroundStyle(.green.opacity(0.85))
+            Text("Ready")
+                .foregroundStyle(theme.secondaryLabel)
+            Text("·")
+                .foregroundStyle(theme.quaternaryLabel)
+            Text(TextModelCatalog.displayName(for: orchestrator.settings.textModel))
+                .foregroundStyle(theme.tertiaryLabel)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
+        .font(.system(size: 10, weight: .regular))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Ready to capture with \(TextModelCatalog.displayName(for: orchestrator.settings.textModel))")
     }
 
     private var modePicker: some View {
@@ -178,6 +234,11 @@ public struct PeekHomeView: View {
     private var idleResumeAction: (() -> Void)? {
         guard orchestrator.hasConversation else { return nil }
         return { orchestrator.resumeChat() }
+    }
+
+    private var idleArchiveAction: (() -> Void)? {
+        guard hasArchivedChats else { return nil }
+        return openArchive
     }
 
     private func finishChat() {
@@ -229,5 +290,29 @@ public struct PeekHomeView: View {
             showsFullConversation = visible
             appState.moduleBreadcrumb = visible ? Self.historyBreadcrumb : nil
         }
+    }
+
+    private func refreshArchiveAvailability() {
+        hasArchivedChats = !orchestrator.availableThreads().isEmpty
+    }
+
+    private func openArchive() {
+        withAnimation(.easeOut(duration: 0.2)) {
+            showsArchive = true
+            appState.moduleBreadcrumb = Self.archiveBreadcrumb
+        }
+    }
+
+    private func closeArchive() {
+        withAnimation(.easeOut(duration: 0.2)) {
+            showsArchive = false
+            appState.moduleBreadcrumb = nil
+        }
+    }
+
+    private func openArchivedThread(_ summary: ConversationSummary) {
+        orchestrator.openThread(id: summary.id)
+        showsArchive = false
+        appState.moduleBreadcrumb = nil
     }
 }

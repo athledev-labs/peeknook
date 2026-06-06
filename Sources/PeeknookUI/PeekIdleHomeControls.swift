@@ -84,6 +84,8 @@ struct PeekIdleCommandBar: View {
     @Binding var pendingDownload: InferenceModelOption?
     var onCapture: () -> Void
     var onResume: (() -> Void)?
+    /// Present when the conversation archive has past chats to browse (persistence on, non-empty).
+    var onShowArchive: (() -> Void)?
 
     var body: some View {
         HStack(alignment: .center, spacing: 8) {
@@ -95,6 +97,15 @@ struct PeekIdleCommandBar: View {
                 }
             }
             Spacer(minLength: 4)
+            if let onShowArchive {
+                NookToolbarButton(
+                    title: "History",
+                    symbol: "clock.arrow.circlepath",
+                    help: "Browse and resume past chats"
+                ) {
+                    onShowArchive()
+                }
+            }
             if let onResume {
                 NookToolbarButton(
                     title: "Resume",

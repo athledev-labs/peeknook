@@ -194,6 +194,69 @@ enum TokenFormat {
     }
 }
 
+/// Proactive nudge shown *before* the next capture/follow-up when the chat is near the model's
+/// context window. Reuses `PeekContextTint` for color and a `SessionFailure`-style recovery layout,
+/// steering the user toward a new chat (the only reliable reset). Hidden while pressure is `.normal`.
+struct PeekContextWarningBanner: View {
+    @Environment(\.nookResolvedTheme) private var theme
+    let pressure: SessionOrchestrator.ContextPressure
+    let fraction: Double
+    let onStartNewChat: () -> Void
+
+    var body: some View {
+        if pressure == .normal {
+            EmptyView()
+        } else {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "gauge.with.dots.needle.100percent")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(tint)
+                    .frame(width: 16)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(theme.primaryLabel)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(message)
+                        .font(.system(size: 10))
+                        .foregroundStyle(theme.secondaryLabel)
+                        .fixedSize(horizontal: false, vertical: true)
+                    NookToolbarButton(
+                        title: "New chat",
+                        symbol: "arrow.counterclockwise",
+                        help: "Start a fresh chat to reset the context window",
+                        prominent: true,
+                        action: onStartNewChat
+                    )
+                    .padding(.top, 1)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(theme.subtleFill.opacity(0.28), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(tint.opacity(0.3), lineWidth: 1)
+            )
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(title). \(message)")
+        }
+    }
+
+    private var tint: Color { PeekContextTint.color(for: fraction) }
+
+    private var title: String {
+        pressure == .critical ? "Context window nearly full" : "Context window filling up"
+    }
+
+    private var message: String {
+        pressure == .critical
+            ? "Another capture or follow-up may drop earlier detail from this chat. Start fresh for best results."
+            : "This chat is getting long. Answers stay sharpest in a fresh chat once the window fills."
+    }
+}
+
 /// Context-usage bar color that warms as the prompt fills the model's window — plenty of room
 /// reads calm green, near-full reads red (Claude-style). One source of truth for every meter.
 enum PeekContextTint {

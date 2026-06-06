@@ -65,11 +65,11 @@ public final class PeekSettingsController {
     public func setPersistConversation(_ enabled: Bool) {
         guard settings.persistConversation != enabled else { return }
         update { $0.persistConversation = enabled }
-        // Start saving the current thread immediately, or wipe the file when opting out.
+        // Start saving the current thread immediately, or wipe the whole archive when opting out.
         if enabled {
             orchestrator.persistConversationNow()
         } else {
-            orchestrator.purgePersistedConversation()
+            orchestrator.purgeAllConversations()
         }
     }
 
