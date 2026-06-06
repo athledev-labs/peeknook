@@ -20,6 +20,14 @@ enum PeekPanelLayout {
         return min(300, max(160, visibleHeight * 0.28))
     }
 
+    /// Full History view (turns + usage chart in one scroll) — a bit taller than the collapsed
+    /// answer, still capped against the notch screen so it never pushes the host top bar off.
+    static var historyMaxHeight: CGFloat {
+        guard let screen = notchScreen else { return 360 }
+        let visibleHeight = screen.visibleFrame.height
+        return min(420, max(220, visibleHeight * 0.4))
+    }
+
     private static var notchScreen: NSScreen? {
         NSScreen.screens.first(where: { $0.safeAreaInsets.top > 0 })
             ?? NSScreen.main

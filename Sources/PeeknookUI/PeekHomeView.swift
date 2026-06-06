@@ -12,11 +12,16 @@ public struct PeekHomeView: View {
     @Environment(\.nookResolvedTheme) private var theme
     @EnvironmentObject private var appState: AppState
     @State private var followUpText = ""
+    @State private var isFollowUpComposerVisible = false
     @State private var showsFullConversation = false
     @State private var showsNewChatConfirmation = false
     @State private var showsArchive = false
     @State private var hasArchivedChats = false
     @State private var pendingDownload: InferenceModelOption?
+    /// Transient pin that bridges a panel resize when entering a History drill-in, then releases so
+    /// normal hover-to-dismiss resumes (no forced Close).
+    @State private var keepOpenGrace = false
+    @State private var keepOpenGraceTask: Task<Void, Never>?
     @FocusState private var isFollowUpFieldFocused: Bool
 
     public init(
@@ -49,7 +54,16 @@ public struct PeekHomeView: View {
         .peekModelDownloadConfirmation(pending: $pendingDownload) { option in
             settings.beginModelDownload(option)
         }
+        // Bridge the panel resize when entering a History drill-in (the archive list or the full
+        // thread can shrink the panel, dropping the cursor outside its new bounds and auto-dismissing
+        // the surface). This is a short grace pin, not a hold-open — once it expires, normal
+        // hover-to-dismiss resumes so you don't have to press Close.
+        .nookKeepsExpanded(while: $keepOpenGrace)
+        .onChange(of: showsArchive) { _, shown in if shown { armKeepOpenGrace() } }
+        .onChange(of: showsFullConversation) { _, shown in if shown { armKeepOpenGrace() } }
+        .onDisappear { keepOpenGraceTask?.cancel() }
         .onChange(of: orchestrator.phase) { _, newPhase in
+            isFollowUpComposerVisible = false
             followUpText = ""
             refreshArchiveAvailability()
             if case .result = newPhase { return }
@@ -122,6 +136,7 @@ public struct PeekHomeView: View {
                 setup: setup,
                 showsFullConversation: $showsFullConversation,
                 followUpText: $followUpText,
+                isFollowUpComposerVisible: $isFollowUpComposerVisible,
                 focusFollowUpField: $isFollowUpFieldFocused,
                 onToggleHistory: { setHistoryVisible(!showsFullConversation) },
                 onFinishChat: finishChat,
@@ -143,7 +158,6 @@ public struct PeekHomeView: View {
                         settings: settings,
                         pendingDownload: $pendingDownload,
                         onCapture: { orchestrator.beginCapture() },
-                        onResume: idleResumeAction,
                         onShowArchive: idleArchiveAction
                     )
                 } else {
@@ -231,11 +245,6 @@ public struct PeekHomeView: View {
         }
     }
 
-    private var idleResumeAction: (() -> Void)? {
-        guard orchestrator.hasConversation else { return nil }
-        return { orchestrator.resumeChat() }
-    }
-
     private var idleArchiveAction: (() -> Void)? {
         guard hasArchivedChats else { return nil }
         return openArchive
@@ -294,6 +303,17 @@ public struct PeekHomeView: View {
 
     private func refreshArchiveAvailability() {
         hasArchivedChats = !orchestrator.availableThreads().isEmpty
+    }
+
+    /// Hold the surface open just long enough for the panel to resize and the cursor to settle, then
+    /// release so hover-to-dismiss works normally again.
+    private func armKeepOpenGrace() {
+        keepOpenGraceTask?.cancel()
+        keepOpenGrace = true
+        keepOpenGraceTask = Task {
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            if !Task.isCancelled { keepOpenGrace = false }
+        }
     }
 
     private func openArchive() {

@@ -9,6 +9,7 @@ struct PeekHomeResultView: View {
     var setup: SetupCoordinator
     @Binding var showsFullConversation: Bool
     @Binding var followUpText: String
+    @Binding var isFollowUpComposerVisible: Bool
     var focusFollowUpField: FocusState<Bool>.Binding
     var onToggleHistory: () -> Void
     var onFinishChat: () -> Void
@@ -18,19 +19,37 @@ struct PeekHomeResultView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            PeekHomeConversationView(
-                orchestrator: orchestrator,
-                showsFullConversation: showsFullConversation,
-                streaming: false
-            )
             if showsFullConversation {
-                ContextThreadChart(points: TurnUsageTimeline.points(from: orchestrator.conversation))
-            }
-            if !showsFullConversation {
+                fullConversationScroll
+            } else {
+                PeekHomeConversationView(
+                    orchestrator: orchestrator,
+                    showsFullConversation: false,
+                    streaming: false
+                )
                 suggestionPillRow
             }
             resultFooter
         }
+    }
+
+    /// History view: turns and the usage chart scroll together as one region (capped), so the
+    /// chart and per-answer breakdown are always reachable. The command bar stays fixed below.
+    private var fullConversationScroll: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 8) {
+                PeekHomeConversationView(
+                    orchestrator: orchestrator,
+                    showsFullConversation: true,
+                    streaming: false,
+                    scrolls: false
+                )
+                ContextThreadChart(points: TurnUsageTimeline.points(from: orchestrator.conversation))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .scrollBounceBehavior(.basedOnSize, axes: .vertical)
+        .frame(maxHeight: PeekPanelLayout.historyMaxHeight)
     }
 
     @ViewBuilder
@@ -56,28 +75,28 @@ struct PeekHomeResultView: View {
                 )
                 .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
-            if !showsFullConversation {
+            if isFollowUpComposerVisible {
                 followUpComposer
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
             resultCommandBar
         }
+        .animation(.spring(response: 0.34, dampingFraction: 0.86), value: isFollowUpComposerVisible)
         .animation(.easeOut(duration: 0.2), value: orchestrator.contextPressure)
     }
 
-    /// Always-visible follow-up field — one tap into the field, Enter (or the send button) asks.
-    /// No toggle, no hidden shortcut.
+    /// Revealed by the Follow command pill, then auto-focused. Enter (or the send button) asks.
     private var followUpComposer: some View {
         HStack(spacing: 8) {
-            Image(systemName: "bubble.left.and.bubble.right")
-                .font(.system(size: 11))
-                .foregroundStyle(theme.tertiaryLabel)
-                .peekDecorative()
             TextField("Ask a follow-up…", text: $followUpText)
                 .textFieldStyle(.plain)
                 .font(.system(size: 12))
                 .focused(focusFollowUpField)
                 .onSubmit(submitFollowUp)
                 .accessibilityLabel(Text("Ask a follow-up"))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(theme.tertiaryLabel.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
             Button(action: submitFollowUp) {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.system(size: 18))
@@ -87,9 +106,6 @@ struct PeekHomeResultView: View {
             .disabled(followUpIsEmpty)
             .peekAction(label: "Send follow-up")
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(theme.tertiaryLabel.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
     }
 
     private var resultCommandBar: some View {
@@ -135,6 +151,14 @@ struct PeekHomeResultView: View {
                         orchestrator.addImage()
                     }
                     .disabled(!setup.isReady)
+                    NookToolbarButton(
+                        title: "Follow",
+                        symbol: "bubble.left.and.bubble.right",
+                        help: "Ask a follow-up about this answer",
+                        prominent: isFollowUpComposerVisible
+                    ) {
+                        toggleFollowUpComposer()
+                    }
                     NookToolbarButton(
                         title: "Done",
                         symbol: "house",
@@ -185,8 +209,24 @@ struct PeekHomeResultView: View {
         guard !followUpIsEmpty else { return }
         let text = followUpText
         followUpText = ""
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+            isFollowUpComposerVisible = false
+        }
         focusFollowUpField.wrappedValue = false
         orchestrator.sendFollowUp(text)
+    }
+
+    private func toggleFollowUpComposer() {
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+            isFollowUpComposerVisible.toggle()
+        }
+        if isFollowUpComposerVisible {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                focusFollowUpField.wrappedValue = true
+            }
+        } else {
+            focusFollowUpField.wrappedValue = false
+        }
     }
 
     private func compactTokens(_ n: Int) -> String {
