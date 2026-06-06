@@ -3,8 +3,8 @@
 import PeeknookCore
 import SwiftUI
 
-/// Shared menu content for capture preflight controls — Home pills and Settings rows
-/// use the same options and actions; only presentation differs.
+/// Shared menu content for capture preflight controls — Home command bar and Settings
+/// rows use the same options, actions, and popover rows.
 @MainActor
 enum PeekPreflightMenuContent {
     @ViewBuilder
@@ -29,26 +29,6 @@ enum PeekPreflightMenuContent {
     }
 
     @ViewBuilder
-    static func captureScopeSettingsMenu(
-        current: CaptureScope,
-        onSelect: @escaping (CaptureScope) -> Void
-    ) -> some View {
-        ForEach(PeekPreflightOptions.captureScopes) { option in
-            Button {
-                onSelect(option)
-            } label: {
-                Label {
-                    Text(option.displayName)
-                } icon: {
-                    if option == current {
-                        Image(systemName: "checkmark")
-                    }
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
     static func answerDepthHomeMenu(
         current: AnswerDepth,
         onSelect: @escaping (Bool) -> Void,
@@ -66,26 +46,6 @@ enum PeekPreflightMenuContent {
                 )
             }
             .buttonStyle(.plain)
-        }
-    }
-
-    @ViewBuilder
-    static func answerDepthSettingsMenu(
-        current: AnswerDepth,
-        onSelect: @escaping (Bool) -> Void
-    ) -> some View {
-        ForEach(PeekPreflightOptions.answerDepths, id: \.rawValue) { option in
-            Button {
-                onSelect(option.quickMode)
-            } label: {
-                Label {
-                    Text("\(option.barLabel) — \(option.menuDetail)")
-                } icon: {
-                    if option == current {
-                        Image(systemName: "checkmark")
-                    }
-                }
-            }
         }
     }
 

@@ -45,10 +45,12 @@ struct PeekSettingsCaptureSection: View {
             title: "Capture area",
             detail: scope.displayName,
             value: scope.barLabel
-        ) {
-            PeekPreflightMenuContent.captureScopeSettingsMenu(current: scope) { option in
-                settings.setCaptureScope(option)
-            }
+        ) { close in
+            PeekPreflightMenuContent.captureScopeHomeMenu(
+                current: scope,
+                onSelect: { settings.setCaptureScope($0) },
+                close: close
+            )
         }
     }
 
@@ -59,10 +61,12 @@ struct PeekSettingsCaptureSection: View {
             title: "Answer depth",
             detail: depth.menuDetail,
             value: depth.barLabel
-        ) {
-            PeekPreflightMenuContent.answerDepthSettingsMenu(current: depth) { quick in
-                settings.setQuickMode(quick)
-            }
+        ) { close in
+            PeekPreflightMenuContent.answerDepthHomeMenu(
+                current: depth,
+                onSelect: { settings.setQuickMode($0) },
+                close: close
+            )
         }
     }
 
