@@ -116,17 +116,17 @@ public struct PeekHomeView: View {
     private static let archiveBreadcrumb = PeekHomeBreadcrumb.pastChats
 
     private var homeColumn: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 0) {
             if case .idle = orchestrator.phase {
-                PeekIdleHomeContent(orchestrator: orchestrator, onResume: resumeChat)
+                PeekIdleHomeContent()
             }
             if !setup.isReady {
                 setupBanner
-            } else if case .idle = orchestrator.phase {
-                readyChip
+                    .padding(.top, 8)
             }
             if PracticeMode.shipped.count > 1 {
                 modePicker
+                    .padding(.top, 8)
             }
             mainColumn
         }
@@ -168,8 +168,10 @@ public struct PeekHomeView: View {
                         settings: settings,
                         pendingDownload: $pendingDownload,
                         showAddModel: $showAddModel,
-                        onCapture: { orchestrator.beginCapture() }
+                        onCapture: { orchestrator.beginCapture() },
+                        onResume: resumeChat
                     )
+                    .padding(.top, 12)
                 } else {
                     PeekHomeActiveControls(
                         orchestrator: orchestrator,
@@ -211,26 +213,6 @@ public struct PeekHomeView: View {
         if setup.modelStep != .complete { return "Model not installed" }
         if case .failed = setup.captureStep { return "Screen Recording off" }
         return "Setup incomplete"
-    }
-
-    /// Calm confirmation that capture is ready, with the active model — no drill-in required.
-    private var readyChip: some View {
-        HStack(spacing: 5) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 8))
-                .foregroundStyle(.green.opacity(0.85))
-            Text("Ready")
-                .foregroundStyle(theme.secondaryLabel)
-            Text("·")
-                .foregroundStyle(theme.quaternaryLabel)
-            Text(TextModelCatalog.displayName(for: orchestrator.settings.textModel, custom: settings.customModels))
-                .foregroundStyle(theme.tertiaryLabel)
-                .lineLimit(1)
-                .truncationMode(.middle)
-        }
-        .font(.system(size: 10, weight: .regular))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Ready to capture with \(TextModelCatalog.displayName(for: orchestrator.settings.textModel, custom: settings.customModels))")
     }
 
     private var modePicker: some View {

@@ -12,6 +12,7 @@ struct NookToolbarButton: View {
     let symbol: String
     var hotkey: CaptureHotkey?
     var help: String?
+    var onHoverChange: ((Bool) -> Void)?
     var prominent = false
     let action: () -> Void
     @State private var isHovered = false
@@ -36,7 +37,10 @@ struct NookToolbarButton: View {
         .buttonStyle(.plain)
         .fixedSize(horizontal: true, vertical: false)
         .animation(.easeOut(duration: 0.12), value: isHovered)
-        .onHover { isHovered = $0 }
+        .onHover {
+            isHovered = $0
+            onHoverChange?($0)
+        }
         .help(help ?? defaultHelp(hotkey: hotkey))
         .peekAction(label: accessibilityLabel, hint: help)
     }

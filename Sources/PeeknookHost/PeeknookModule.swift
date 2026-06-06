@@ -89,7 +89,8 @@ public final class PeeknookModule: NookModule {
             }
             return PeekTopBarDate.label()
         }
-        configuration.topBar.leadingIcon = nil
+        // Peeknook's module glyph — not the default OpenNook notch mark (see NookMarkView).
+        configuration.topBar.leadingIcon = Self.moduleDescriptor.icon
         configuration.expandedWidth = 480
         // Seat the in-content command row close to the panel's rounded bottom. The chrome
         // reserves an expanded-content safe-area strip (8pt on three edges by default) that

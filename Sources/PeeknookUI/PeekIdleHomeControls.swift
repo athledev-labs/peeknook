@@ -5,89 +5,16 @@ import NookApp
 import PeeknookCore
 import SwiftUI
 
-// MARK: - Idle home (greeting only — config lives in the command bar)
+// MARK: - Idle home — greeting only. Thread actions live in the command bar.
 
 struct PeekIdleHomeContent: View {
     @Environment(\.nookResolvedTheme) private var theme
-    var orchestrator: SessionOrchestrator
-    var onResume: (() -> Void)?
-    @State private var isResumeHovered = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(PeekPersonalGreeting.headline)
-                .font(.system(size: 15, weight: .light))
-                .tracking(0.2)
-                .foregroundStyle(theme.primaryLabel.opacity(0.92))
-
-            if let resume = resumeSnippet, let onResume {
-                resumeCard(resume, action: onResume)
-            }
-        }
-    }
-
-    private func resumeCard(_ snippet: ResumeSnippet, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: "arrow.uturn.backward.circle.fill")
-                    .font(.system(size: 16))
-                    .foregroundStyle(theme.accent)
-                    .peekDecorative()
-                VStack(alignment: .leading, spacing: 1) {
-                    HStack(spacing: 4) {
-                        Text("Resume last chat")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(theme.secondaryLabel)
-                        Text("·")
-                            .foregroundStyle(theme.quaternaryLabel)
-                        Text(snippet.source)
-                            .font(.system(size: 10, weight: .regular))
-                            .foregroundStyle(theme.tertiaryLabel)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                    }
-                    Text(snippet.preview)
-                        .font(.system(size: 10, weight: .regular))
-                        .foregroundStyle(theme.tertiaryLabel.opacity(0.9))
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                }
-                Spacer(minLength: 4)
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(theme.tertiaryLabel)
-                    .peekDecorative()
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .peekGlass(cornerRadius: 9, isHovered: isResumeHovered)
-        }
-        .buttonStyle(.plain)
-        .onHover { isResumeHovered = $0 }
-        .animation(.easeOut(duration: 0.12), value: isResumeHovered)
-        .help("Resume your last chat")
-        .peekAction(label: "Resume last chat from \(snippet.source)", hint: snippet.preview)
-    }
-
-    private struct ResumeSnippet {
-        var source: String
-        var preview: String
-    }
-
-    private var resumeSnippet: ResumeSnippet? {
-        guard orchestrator.hasConversation else { return nil }
-        guard let capture = orchestrator.latestAnswerCapture else { return nil }
-        guard let answer = orchestrator.conversation.last(where: \.isAssistant),
-              case .assistant(let text) = answer.kind else { return nil }
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        let preview = trimmed
-            .replacingOccurrences(of: "\n", with: " ")
-            .prefix(80)
-        return ResumeSnippet(
-            source: capture.targetLabel,
-            preview: "“\(preview)\(trimmed.count > 80 ? "…" : "")”"
-        )
+        Text(PeekPersonalGreeting.headline)
+            .font(.system(size: 15, weight: .light))
+            .tracking(0.2)
+            .foregroundStyle(theme.primaryLabel.opacity(0.92))
     }
 }
 
@@ -115,25 +42,22 @@ enum PeekPersonalGreeting {
     }
 }
 
-// MARK: - Idle command bar — preflight (left) + action (right)
+// MARK: - Idle command bar — thread actions + preflight (left) · Capture (right)
 
 struct PeekIdleCommandBar: View {
     var orchestrator: SessionOrchestrator
     var setup: SetupCoordinator
     var settings: PeekSettingsController
-    /// Owned by `PeekHomeView` so the confirmation overlay can cover the whole home column,
-    /// not just this short command row.
     @Binding var pendingDownload: InferenceModelOption?
-    /// Owned by `PeekHomeView` so the add-model overlay can cover the whole home column.
     @Binding var showAddModel: Bool
     var onCapture: () -> Void
+    var onResume: () -> Void
 
     var body: some View {
-        // Bottom bar = contextual, per-next-capture config (model / depth / scope) in one scroll;
-        // the primary Capture action stays pinned on the right so it (and its hotkey) is always
-        // visible. Global actions like "Past chats" live in the top bar (PeekGlobalTopBarItems),
-        // not here. Resume lives in the greeting card above, so it isn't duplicated here.
         HStack(alignment: .center, spacing: 8) {
+            if let preview = IdleResumePreview.from(orchestrator) {
+                PeekResumeButton(preview: preview, onResume: onResume)
+            }
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
                     modelMenu
@@ -209,5 +133,94 @@ struct PeekIdleCommandBar: View {
         case .needsDownload(let pending):
             pendingDownload = pending
         }
+    }
+}
+
+/// Resume control — preview on hover via popover so the main panel never resizes (in-flow
+/// expansion fights OpenNook's hover dismiss and causes a stutter loop).
+private struct PeekResumeButton: View {
+    @Environment(\.nookResolvedTheme) private var theme
+    let preview: IdleResumePreview.Content
+    let onResume: () -> Void
+
+    @State private var isButtonHovered = false
+    @State private var isPreviewHovered = false
+    @State private var showsPreview = false
+    @State private var hideTask: Task<Void, Never>?
+
+    private var isPreviewVisible: Bool {
+        isButtonHovered || isPreviewHovered
+    }
+
+    var body: some View {
+        NookToolbarButton(
+            title: "Resume",
+            symbol: "arrow.uturn.backward",
+            help: "\(preview.source). \(preview.answer)",
+            onHoverChange: { hovering in
+                isButtonHovered = hovering
+                syncPreviewVisibility()
+            },
+            action: onResume
+        )
+        .popover(isPresented: $showsPreview, arrowEdge: .top) {
+            previewBody
+                .onHover { isPreviewHovered = $0; syncPreviewVisibility() }
+        }
+        .nookKeepsExpanded(while: $showsPreview)
+        .onDisappear { hideTask?.cancel() }
+    }
+
+    private var previewBody: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(preview.source)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(theme.secondaryLabel)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(preview.answer)
+                .font(.system(size: 11, weight: .regular))
+                .foregroundStyle(theme.primaryLabel.opacity(0.92))
+                .lineLimit(6)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(10)
+        .frame(width: 340, alignment: .leading)
+    }
+
+    private func syncPreviewVisibility() {
+        hideTask?.cancel()
+        if isPreviewVisible {
+            showsPreview = true
+        } else {
+            hideTask = Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(120))
+                guard !Task.isCancelled, !isPreviewVisible else { return }
+                showsPreview = false
+            }
+        }
+    }
+}
+
+enum IdleResumePreview {
+    struct Content: Equatable {
+        var source: String
+        var answer: String
+    }
+
+    @MainActor
+    static func from(_ orchestrator: SessionOrchestrator) -> Content? {
+        guard orchestrator.hasConversation else { return nil }
+        guard let answer = orchestrator.conversation.last(where: \.isAssistant),
+              case .assistant(let text) = answer.kind else { return nil }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let source = orchestrator.latestAnswerCapture?.targetLabel
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return Content(
+            source: source.flatMap { $0.isEmpty ? nil : $0 } ?? "Last chat",
+            answer: trimmed
+        )
     }
 }
