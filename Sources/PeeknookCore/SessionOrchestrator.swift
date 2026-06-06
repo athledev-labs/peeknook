@@ -143,9 +143,15 @@ public final class SessionOrchestrator {
         startNewChat()
     }
 
+    /// Retry after a failure — re-runs a fresh capture (which re-checks setup readiness).
+    public func retryAfterFailure() {
+        guard case .failed = phase else { return }
+        startCapture(intent: .fresh)
+    }
+
     private func startCapture(intent: CaptureIntent) {
         if let setup, !setup.isReady {
-            phase = .failed(setupBlockedMessage)
+            phase = .failed(.setupIncomplete)
             return
         }
         inferenceTask?.cancel()
@@ -165,9 +171,9 @@ public final class SessionOrchestrator {
                     commitCapture(result, intent: intent)
                 }
             } catch let error as CaptureError {
-                phase = .failed(failureMessage(for: error))
+                phase = .failed(.from(captureError: error))
             } catch {
-                phase = .failed(error.localizedDescription)
+                phase = .failed(.generic(message: error.localizedDescription))
             }
         }
     }
@@ -317,7 +323,7 @@ public final class SessionOrchestrator {
             // Defensive: a misconfigured/reasoning model can stream only hidden thinking and no
             // content. Surface that honestly instead of committing a blank answer bubble.
             guard !answer.isEmpty else {
-                phase = .failed("The model returned an empty answer. Try again, or switch models in Settings.")
+                phase = .failed(.emptyAnswer)
                 return
             }
             // A new screenshot is a capture (image bytes); a text follow-up reuses it (tokens only).
@@ -337,8 +343,7 @@ public final class SessionOrchestrator {
             ensureContextWindowLoaded()
         } catch {
             if !Task.isCancelled {
-                let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-                phase = .failed(message)
+                phase = .failed(.from(error: error))
             }
         }
     }
@@ -420,18 +425,4 @@ public final class SessionOrchestrator {
         }
     }
 
-    private var setupBlockedMessage: String {
-        "Finish setup first — Ollama, model, and screen permissions."
-    }
-
-    private func failureMessage(for error: CaptureError) -> String {
-        switch error {
-        case .noContent:
-            "Could not capture the screen. Grant Screen Recording in System Settings."
-        case .permissionRequired(let name):
-            "Allow \(name) in System Settings → Privacy & Security."
-        case .failed(let message):
-            message
-        }
-    }
 }

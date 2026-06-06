@@ -15,6 +15,7 @@ public struct PeekHomeView: View {
     @State private var isFollowUpComposerVisible = false
     @State private var showsFullConversation = false
     @State private var showsNewChatConfirmation = false
+    @State private var pendingDownload: InferenceModelOption?
     @FocusState private var isFollowUpFieldFocused: Bool
 
     public init(
@@ -45,6 +46,9 @@ public struct PeekHomeView: View {
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+        .peekModelDownloadConfirmation(pending: $pendingDownload) { option in
+            settings.beginModelDownload(option)
+        }
         .onChange(of: orchestrator.phase) { _, newPhase in
             isFollowUpComposerVisible = false
             followUpText = ""
@@ -102,7 +106,9 @@ public struct PeekHomeView: View {
             VStack(alignment: .leading, spacing: 10) {
                 PeekHomePhaseContent(
                     orchestrator: orchestrator,
-                    showsFullConversation: showsFullConversation
+                    showsFullConversation: showsFullConversation,
+                    canRetry: setup.isReady,
+                    onRecover: handleRecovery
                 )
                 .frame(maxWidth: .infinity, alignment: .topLeading)
                 if case .idle = orchestrator.phase {
@@ -110,6 +116,7 @@ public struct PeekHomeView: View {
                         orchestrator: orchestrator,
                         setup: setup,
                         settings: settings,
+                        pendingDownload: $pendingDownload,
                         onCapture: { orchestrator.beginCapture() },
                         onResume: idleResumeAction
                     )
@@ -118,8 +125,7 @@ public struct PeekHomeView: View {
                         orchestrator: orchestrator,
                         setup: setup,
                         onConfirmPreview: { orchestrator.confirmPreview() },
-                        onCancel: { orchestrator.cancel() },
-                        onRetryCapture: { orchestrator.beginCapture() }
+                        onCancel: { orchestrator.cancel() }
                     )
                 }
             }
@@ -181,6 +187,34 @@ public struct PeekHomeView: View {
 
     private func resumeChat() {
         orchestrator.resumeChat()
+    }
+
+    private func handleRecovery(_ action: RecoveryAction) {
+        switch action {
+        case .tryAgain:
+            orchestrator.retryAfterFailure()
+        case .openSetup, .switchModel:
+            // Setup hosts the model picker and the full readiness checklist.
+            onOpenSetup()
+        case .checkOllama:
+            SetupCoordinator.openOllamaApp()
+        case .downloadModel(let tag):
+            let option = TextModelCatalog.option(for: tag)
+                ?? InferenceModelOption(
+                    tag: tag,
+                    displayName: TextModelCatalog.displayName(for: tag),
+                    provider: "Ollama"
+                )
+            settings.beginModelDownload(option)
+            // Surface pull progress where it lives.
+            onOpenSetup()
+        case .openScreenRecordingSettings:
+            CapturePermissionStatus.requestScreenRecording()
+        case .openAccessibilitySettings:
+            CapturePermissionStatus.requestAccessibility()
+        case .newChat:
+            orchestrator.startNewChat()
+        }
     }
 
     private func requestNewChat() {

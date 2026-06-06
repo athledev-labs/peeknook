@@ -22,13 +22,13 @@ struct PeekSettingsExpandableRow: View {
             HStack(alignment: .center, spacing: PeekSettingsRowMetrics.rowSpacing) {
                 Image(systemName: icon)
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(isHovering || isExpanded ? theme.accent : theme.headerInactiveIcon)
+                    .foregroundStyle(theme.headerInactiveIcon)
                     .frame(width: PeekSettingsRowMetrics.iconWidth)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(isHovering || isExpanded ? theme.accent : theme.primaryLabel.opacity(0.95))
+                        .foregroundStyle(theme.primaryLabel.opacity(0.95))
                     Text(subtitle)
                         .font(.system(size: 9, weight: .regular))
                         .foregroundStyle(theme.tertiaryLabel)
@@ -40,39 +40,25 @@ struct PeekSettingsExpandableRow: View {
                 HStack(spacing: 4) {
                     Text(isExpanded ? "Hide" : "Show")
                         .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(isHovering || isExpanded ? theme.accent : theme.secondaryLabel)
+                        .foregroundStyle(theme.secondaryLabel)
                     Image(systemName: "chevron.right")
                         .font(.system(size: 8, weight: .bold))
-                        .foregroundStyle(isHovering || isExpanded ? theme.accent : theme.secondaryLabel)
+                        .foregroundStyle(theme.tertiaryLabel)
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
-                .background(theme.subtleFill.opacity(isHovering || isExpanded ? 0.72 : 0.5), in: Capsule(style: .continuous))
-                .overlay(
-                    Capsule(style: .continuous)
-                        .stroke(
-                            isHovering || isExpanded
-                                ? theme.accent.opacity(0.55)
-                                : theme.subtleStroke.opacity(0.4),
-                            lineWidth: 1
-                        )
-                )
+                .peekGlass(cornerRadius: 7, isHovered: isHovering || isExpanded)
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
             .background(
-                theme.subtleFill.opacity(isHovering || isExpanded ? 0.35 : 0.2),
+                theme.subtleFill.opacity(isHovering || isExpanded ? 0.32 : 0.2),
                 in: RoundedRectangle(cornerRadius: 8, style: .continuous)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(
-                        isHovering || isExpanded
-                            ? theme.accent.opacity(0.35)
-                            : theme.subtleStroke.opacity(0.35),
-                        lineWidth: 1
-                    )
+                    .stroke(theme.subtleStroke.opacity(0.35), lineWidth: 1)
             )
             .contentShape(Rectangle())
         }

@@ -7,16 +7,20 @@ import SwiftUI
 public struct PeekSetupView: View {
     public var setup: SetupCoordinator
     public var orchestrator: SessionOrchestrator
+    public var settings: PeekSettingsController
     public var onContinue: () -> Void
     @Environment(\.nookResolvedTheme) private var theme
+    @State private var pendingDownload: InferenceModelOption?
 
     public init(
         setup: SetupCoordinator,
         orchestrator: SessionOrchestrator,
+        settings: PeekSettingsController,
         onContinue: @escaping () -> Void = {}
     ) {
         self.setup = setup
         self.orchestrator = orchestrator
+        self.settings = settings
         self.onContinue = onContinue
     }
 
@@ -38,6 +42,9 @@ public struct PeekSetupView: View {
         .onAppear { setup.startAutoRefresh() }
         .onDisappear { setup.stopAutoRefresh() }
         .task { await setup.refresh() }
+        .peekModelDownloadConfirmation(pending: $pendingDownload) { option in
+            settings.beginModelDownload(option)
+        }
     }
 
     private var header: some View {
@@ -67,7 +74,8 @@ public struct PeekSetupView: View {
                 primaryEnabled: !setup.isPullingModel,
                 primaryAction: { setup.pullRecommendedModel() },
                 secondaryAction: setup.isPullingModel ? { setup.cancelPull() } : nil,
-                secondaryLabel: setup.isPullingModel ? "Cancel" : nil
+                secondaryLabel: setup.isPullingModel ? "Cancel" : nil,
+                accessory: setup.isPullingModel ? nil : AnyView(modelPicker)
             )
 
             SetupStepRow(
@@ -107,6 +115,31 @@ public struct PeekSetupView: View {
         return "\(setup.suggestedModelDiskHint) · once via Ollama."
     }
 
+    /// Same picker as Home/Settings — choose a tag, then Download pulls the selection.
+    private var modelPicker: some View {
+        ValueDropdownPill(
+            symbol: "cpu",
+            title: TextModelCatalog.displayName(for: setup.settings.textModel),
+            help: "Vision model"
+        ) { close in
+            PeekPreflightMenuContent.visionModelHomeMenu(
+                currentTag: setup.settings.textModel,
+                isInstalled: { setup.isModelInstalled($0) },
+                onSelect: selectModel,
+                close: close
+            )
+        }
+    }
+
+    private func selectModel(_ option: InferenceModelOption) {
+        switch settings.pickModel(option) {
+        case .selected:
+            break
+        case .needsDownload(let pending):
+            pendingDownload = pending
+        }
+    }
+
     @ViewBuilder
     private var footerActions: some View {
         HStack(spacing: 10) {
@@ -140,6 +173,7 @@ private struct SetupStepRow: View {
     let primaryAction: () -> Void
     let secondaryAction: (() -> Void)?
     let secondaryLabel: String?
+    var accessory: AnyView? = nil
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -168,6 +202,9 @@ private struct SetupStepRow: View {
                         Button(secondaryLabel, action: secondaryAction)
                             .buttonStyle(.bordered)
                             .controlSize(.mini)
+                    }
+                    if let accessory {
+                        accessory
                     }
                 }
             }

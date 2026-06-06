@@ -44,24 +44,24 @@ struct PeekSettingsVisionSection: View {
                 onSelect: onSelectModel
             )
 
-            if selectedModelNeedsDownload || setup.isPullingModel {
+            if setup.isPullingModel {
+                // Same pull task as Setup — expose Cancel here for symmetric UX.
                 PeekSettingsCommandRow(
                     icon: "arrow.down.circle",
                     title: downloadRowTitle,
                     subtitle: downloadRowSubtitle,
-                    trailing: .button(setup.isPullingModel ? "Downloading…" : "Download"),
+                    style: .destructive,
+                    trailing: .button("Cancel"),
+                    action: { setup.cancelPull() }
+                )
+            } else if selectedModelNeedsDownload {
+                PeekSettingsCommandRow(
+                    icon: "arrow.down.circle",
+                    title: downloadRowTitle,
+                    subtitle: downloadRowSubtitle,
+                    trailing: .button("Download"),
                     action: { settings.beginModelDownloadForCurrentSelection() }
                 )
-                .disabled(setup.isPullingModel)
-                .opacity(setup.isPullingModel ? 0.55 : 1)
-            }
-
-            if let pullStatusLine = setup.pullStatusLine, setup.isPullingModel {
-                Text(pullStatusLine)
-                    .font(.system(size: 9, weight: .regular))
-                    .foregroundStyle(theme.tertiaryLabel)
-                    .lineLimit(2)
-                    .padding(.leading, PeekSettingsRowMetrics.iconWidth + PeekSettingsRowMetrics.rowSpacing)
             }
 
             PeekSettingsExpandableRow(
@@ -104,7 +104,8 @@ struct PeekSettingsVisionSection: View {
     }
 
     private var downloadRowTitle: String {
-        "Download \(TextModelCatalog.displayName(for: orchestrator.settings.textModel))"
+        let name = TextModelCatalog.displayName(for: orchestrator.settings.textModel)
+        return setup.isPullingModel ? "Downloading \(name)" : "Download \(name)"
     }
 
     private var downloadRowSubtitle: String {

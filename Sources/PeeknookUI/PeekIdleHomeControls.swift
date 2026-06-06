@@ -79,10 +79,11 @@ struct PeekIdleCommandBar: View {
     var orchestrator: SessionOrchestrator
     var setup: SetupCoordinator
     var settings: PeekSettingsController
+    /// Owned by `PeekHomeView` so the confirmation overlay can cover the whole home column,
+    /// not just this short command row.
+    @Binding var pendingDownload: InferenceModelOption?
     var onCapture: () -> Void
     var onResume: (() -> Void)?
-
-    @State private var pendingDownload: InferenceModelOption?
 
     var body: some View {
         HStack(alignment: .center, spacing: 8) {
@@ -112,9 +113,6 @@ struct PeekIdleCommandBar: View {
                 action: onCapture
             )
             .disabled(!setup.isReady)
-        }
-        .peekModelDownloadConfirmation(pending: $pendingDownload) { option in
-            settings.beginModelDownload(option)
         }
     }
 

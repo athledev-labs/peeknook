@@ -34,6 +34,7 @@ public struct PeekRootView: View {
                 PeekSetupView(
                     setup: setup,
                     orchestrator: orchestrator,
+                    settings: settings,
                     onContinue: completeOnboarding
                 )
             } else {

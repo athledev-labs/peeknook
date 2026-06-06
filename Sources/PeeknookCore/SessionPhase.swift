@@ -8,7 +8,7 @@ public enum SessionPhase: Equatable, Sendable {
     case previewing(CapturePreview)
     case inferring
     case result(String)
-    case failed(String)
+    case failed(SessionFailure)
 }
 
 public struct CapturePreview: Equatable, Sendable {

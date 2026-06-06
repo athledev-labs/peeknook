@@ -7,6 +7,8 @@ import SwiftUI
 struct PeekHomePhaseContent: View {
     var orchestrator: SessionOrchestrator
     var showsFullConversation: Bool
+    var canRetry: Bool = true
+    var onRecover: (RecoveryAction) -> Void = { _ in }
 
     @Environment(\.nookResolvedTheme) private var theme
 
@@ -25,10 +27,8 @@ struct PeekHomePhaseContent: View {
             inferringContent
         case .result:
             EmptyView()
-        case .failed(let message):
-            Text(message)
-                .font(.system(size: 12))
-                .foregroundStyle(.red.opacity(0.85))
+        case .failed(let failure):
+            PeekFailureView(failure: failure, canRetry: canRetry, onRecover: onRecover)
         }
     }
 

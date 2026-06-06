@@ -58,9 +58,9 @@ Expanded home shows **Get ready** until:
 
 1. Ollama is running  
 2. Gemma 4 model is downloaded (in-app **Download model** via Ollama API)  
-3. Accessibility **or** Screen Recording is granted  
+3. **Screen Recording** is granted (required — the vision model sees a screenshot)  
 
-Capture (⌘⇧P) stays disabled until then. Optional **Test capture** step unlocks the normal home screen.
+Capture (⌘⇧P) stays disabled until then. **Accessibility** is optional and only supplements the screenshot with selected text. Optional **Test capture** step unlocks the normal home screen.
 
 ## Models (Gemma 4 via Ollama)
 
@@ -80,7 +80,7 @@ ollama pull gemma4:e4b           # or the tag Settings suggests
 
 > The `ollama` **formula** bottle has shipped without its `llama-server` runner (requests 500 with "llama-server binary not found"). Use the `ollama-app` **cask** above.
 
-Grant **Accessibility** (selected text) and **Screen Recording** (front-window screenshot to the vision model) when macOS prompts. Model licenses belong in this README, not in `LICENSE`.
+Grant **Screen Recording** (required — the front-window screenshot the vision model reads) when macOS prompts. **Accessibility** is optional and only adds selected text alongside the screenshot. Model licenses belong in this README, not in `LICENSE`.
 
 ## License
 

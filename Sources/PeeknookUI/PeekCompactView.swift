@@ -57,8 +57,8 @@ public struct PeekCompactView: View {
             "Thinking…"
         case .result:
             "Answer ready"
-        case .failed:
-            "Capture failed"
+        case .failed(let failure):
+            failure.title
         }
     }
 }

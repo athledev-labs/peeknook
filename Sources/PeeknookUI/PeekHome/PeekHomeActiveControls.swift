@@ -9,7 +9,6 @@ struct PeekHomeActiveControls: View {
     var setup: SetupCoordinator
     var onConfirmPreview: () -> Void
     var onCancel: () -> Void
-    var onRetryCapture: () -> Void
 
     var body: some View {
         HStack(spacing: 4) {
@@ -20,8 +19,8 @@ struct PeekHomeActiveControls: View {
                 NookToolbarButton(title: "Use this", symbol: "checkmark.circle", prominent: true, action: onConfirmPreview)
                 NookToolbarButton(title: "Cancel", symbol: "xmark", action: onCancel)
             case .failed:
-                NookToolbarButton(title: "Try again", symbol: "arrow.clockwise", prominent: true, action: onRetryCapture)
-                    .disabled(!setup.isReady)
+                // Recovery actions live in the PeekFailureView card.
+                EmptyView()
             default:
                 NookToolbarButton(title: "Cancel", symbol: "xmark", action: onCancel)
             }
