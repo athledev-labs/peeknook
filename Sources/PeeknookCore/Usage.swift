@@ -59,16 +59,7 @@ public enum UsageDateRange: String, CaseIterable, Sendable {
     case last7Days
     case last30Days
 
-    public var label: String {
-        switch self {
-        case .allTime: "All time"
-        case .today: "Today"
-        case .last7Days: "7 days"
-        case .last30Days: "30 days"
-        }
-    }
-
-    /// Title-case labels for the stats command-bar date filter.
+    /// Title-case labels for the stats command-bar date filter (also used for localization keys).
     public var filterLabel: String {
         switch self {
         case .allTime: "All Time"
@@ -77,6 +68,9 @@ public enum UsageDateRange: String, CaseIterable, Sendable {
         case .last30Days: "30 Days"
         }
     }
+
+    /// Sentence-case alias for filter labels (same strings, one catalog key each).
+    public var label: String { filterLabel }
 
     public func contains(_ date: Date, now: Date = Date(), calendar: Calendar = .current) -> Bool {
         switch self {

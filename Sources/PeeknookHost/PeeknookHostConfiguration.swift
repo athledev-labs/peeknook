@@ -26,4 +26,12 @@ public enum PeeknookHostConfiguration {
 
         return host
     }
+
+    /// Process entry for the Xcode app target and `Peeknook` executable.
+    /// Assumes the main thread (true for `main.swift`); avoids `@MainActor` drift in Release.
+    public static func launch() {
+        MainActor.assumeIsolated {
+            NookApp.main(make())
+        }
+    }
 }

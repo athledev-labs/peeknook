@@ -33,10 +33,6 @@
       "comment" : "Header for the usage analytics drill-in.",
       "extractionState" : "manual"
     },
-    "All time" : {
-      "comment" : "Date filter pill for unbounded usage stats.",
-      "extractionState" : "manual"
-    },
     "All Time" : {
       "comment" : "Title-case date filter pill in the stats command bar.",
       "extractionState" : "manual"
@@ -55,14 +51,6 @@
     },
     "Token Mix" : {
       "comment" : "Collapsible stats section for prompt vs output tokens.",
-      "extractionState" : "manual"
-    },
-    "Activity Profile" : {
-      "comment" : "Collapsible stats section for captures, data, speed, and time.",
-      "extractionState" : "manual"
-    },
-    "Usage Growth" : {
-      "comment" : "Legacy stats section title (replaced by Usage Over Time).",
       "extractionState" : "manual"
     },
     "Usage Over Time" : {
@@ -113,14 +101,6 @@
       "comment" : "Date filter pill for today's usage stats.",
       "extractionState" : "manual"
     },
-    "7 days" : {
-      "comment" : "Date filter pill for the last week's usage stats.",
-      "extractionState" : "manual"
-    },
-    "30 days" : {
-      "comment" : "Date filter pill for the last month's usage stats.",
-      "extractionState" : "manual"
-    },
     "All time on this Mac" : {
       "comment" : "Section title for lifetime usage counters.",
       "extractionState" : "manual"
@@ -139,14 +119,6 @@
     },
     "Tap a bar · height = tokens generated that answer" : {
       "comment" : "Hint below the per-answer activity chart.",
-      "extractionState" : "manual"
-    },
-    "Token mix" : {
-      "comment" : "Chart title for prompt vs generated token split.",
-      "extractionState" : "manual"
-    },
-    "Activity profile" : {
-      "comment" : "Chart title for captures, screen data, speed, and time bars.",
       "extractionState" : "manual"
     },
     "Growth to now" : {
@@ -191,10 +163,6 @@
     },
     "Per-turn detail also lives in History on the result command bar." : {
       "comment" : "Hint linking Stats per-thread chart to the History drill-in.",
-      "extractionState" : "manual"
-    },
-    "All on this Mac, nothing is sent anywhere." : {
-      "comment" : "Privacy note on the Stats screen.",
       "extractionState" : "manual"
     },
     "Over time" : {

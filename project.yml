@@ -26,20 +26,16 @@ settings:
       CODE_SIGN_IDENTITY: "-"
       DEVELOPMENT_TEAM: ""
     Release:
-      # Export/signing: set PEEKNOOK_DEVELOPMENT_TEAM and PEEKNOOK_CODE_SIGN_IDENTITY
-      # (default "Developer ID Application") before ./Scripts/release.sh
-      CODE_SIGN_IDENTITY: ${PEEKNOOK_CODE_SIGN_IDENTITY:--}
+      # Automatic signing + DEVELOPMENT_TEAM; export uses developer-id (see release.sh).
       DEVELOPMENT_TEAM: ${PEEKNOOK_DEVELOPMENT_TEAM:}
 
 packages:
   Peeknook:
     path: "."
-  # Local dev: sibling ../opennook checkout (mirrors Package.swift path pin).
-  # CI checks out opennook beside peeknook; override with OPENNOOK_PACKAGE_PATH if needed.
-  # Unlike Package.swift, XcodeGen cannot auto-fallback to the git URL — regenerate only
-  # when ../opennook/Package.swift exists or set OPENNOOK_PACKAGE_PATH to a local clone.
+  # Set OPENNOOK_PACKAGE_PATH before generate (see Scripts/regenerate-xcodeproj.sh).
+  # XcodeGen does not support ${VAR:-default} bash syntax in paths.
   Nook:
-    path: ${OPENNOOK_PACKAGE_PATH:-../opennook}
+    path: ${OPENNOOK_PACKAGE_PATH}
 
 targets:
   PeeknookHostApp:
@@ -65,7 +61,6 @@ targets:
           CODE_SIGN_IDENTITY: "-"
           DEVELOPMENT_TEAM: ""
         Release:
-          CODE_SIGN_IDENTITY: ${PEEKNOOK_CODE_SIGN_IDENTITY:--}
           DEVELOPMENT_TEAM: ${PEEKNOOK_DEVELOPMENT_TEAM:}
     dependencies:
       - package: Peeknook

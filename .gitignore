@@ -4,6 +4,7 @@
 internal/
 
 .build/
+build/
 .swiftpm/
 *.xcodeproj
 xcuserdata/
