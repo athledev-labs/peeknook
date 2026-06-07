@@ -106,6 +106,12 @@ public final class PeekSettingsController {
         if !enabled { orchestrator.stopSpeaking() }
     }
 
+    public func setHighlightSpeechWhileReading(_ enabled: Bool) {
+        guard settings.highlightSpeechWhileReading != enabled else { return }
+        update { $0.highlightSpeechWhileReading = enabled }
+        if !enabled { orchestrator.clearSpeechReadAlongHighlight() }
+    }
+
     public func setSpeechVoiceIdentifier(_ identifier: String) {
         let trimmed = identifier.trimmingCharacters(in: .whitespacesAndNewlines)
         guard settings.speechVoiceIdentifier != trimmed else { return }

@@ -22,17 +22,20 @@ public enum PeeknookServices {
         let inference = OllamaInferenceEngine()
         #if canImport(Speech) && canImport(AVFoundation)
         let speechRecognizer: any SpeechRecognizing = AppleSpeechRecognizer()
-        let speechSynthesizer: any SpeechSynthesizing = AppleSpeechSynthesizer()
+        let answerSpeechSynthesizer: any SpeechSynthesizing = AppleSpeechSynthesizer()
+        let previewSpeechSynthesizer: any SpeechSynthesizing = AppleSpeechSynthesizer()
         #else
         let speechRecognizer: any SpeechRecognizing = StubSpeechRecognizer()
-        let speechSynthesizer: any SpeechSynthesizing = StubSpeechSynthesizer()
+        let answerSpeechSynthesizer: any SpeechSynthesizing = StubSpeechSynthesizer()
+        let previewSpeechSynthesizer: any SpeechSynthesizing = StubSpeechSynthesizer()
         #endif
         let orchestrator = SessionOrchestrator(
             settings: settings,
             capture: MacCaptureProvider(),
             inference: inference,
             speechRecognizer: speechRecognizer,
-            speechSynthesizer: speechSynthesizer
+            speechSynthesizer: answerSpeechSynthesizer,
+            previewSpeechSynthesizer: previewSpeechSynthesizer
         )
         orchestrator.setup = setup
         orchestrator.usage = usage

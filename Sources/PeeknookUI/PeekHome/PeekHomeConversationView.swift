@@ -77,6 +77,14 @@ struct PeekHomeConversationView: View {
         return orchestrator.conversation.last(where: \.isAssistant)?.id == turn.id
     }
 
+    private func readAlongRange(isLatestAssistant: Bool) -> NSRange? {
+        guard isLatestAssistant,
+              orchestrator.settings.highlightSpeechWhileReading,
+              orchestrator.isSpeakingLastAnswer
+        else { return nil }
+        return orchestrator.speechSpokenRange
+    }
+
     @ViewBuilder
     private func turnView(_ turn: ChatTurn, isLatestAssistant: Bool, showAllTurnTypes: Bool) -> some View {
         switch turn.kind {
@@ -122,6 +130,8 @@ struct PeekHomeConversationView: View {
                 PeekHomeAnswerCard(
                     text: text,
                     renderMarkdown: orchestrator.settings.renderAnswerMarkdown,
+                    spokenRange: readAlongRange(isLatestAssistant: isLatestAssistant),
+                    isReadingAloud: isLatestAssistant && orchestrator.isSpeakingLastAnswer,
                     showCopy: isLatestAssistant,
                     onCopy: { orchestrator.copyToPasteboard(text) }
                 )

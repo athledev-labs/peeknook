@@ -189,11 +189,13 @@ struct PeekHomeResultView: View {
                     }
                     if orchestrator.settings.speakAnswersEnabled {
                         NookToolbarButton(
-                            title: orchestrator.isSpeakingAnswer ? "Stop" : "Speak",
-                            symbol: orchestrator.isSpeakingAnswer ? "stop.fill" : "speaker.wave.2",
-                            help: "Read the answer aloud"
+                            title: orchestrator.isSpeakingLastAnswer ? "Stop" : "Speak",
+                            symbol: orchestrator.isSpeakingLastAnswer ? "stop.fill" : "speaker.wave.2",
+                            help: orchestrator.isSpeakingLastAnswer
+                                ? "Stop reading the answer aloud"
+                                : "Read the answer aloud"
                         ) {
-                            if orchestrator.isSpeakingAnswer {
+                            if orchestrator.isSpeakingLastAnswer {
                                 orchestrator.stopSpeaking()
                             } else {
                                 orchestrator.speakLastAnswer()

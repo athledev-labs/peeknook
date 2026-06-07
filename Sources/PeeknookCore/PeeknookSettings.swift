@@ -36,6 +36,8 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     public var voiceInputEnabled: Bool
     /// Opt-in: read assistant answers aloud with on-device text-to-speech.
     public var speakAnswersEnabled: Bool
+    /// Highlight the spoken words in the answer while TTS is active.
+    public var highlightSpeechWhileReading: Bool
     /// AVSpeechSynthesisVoice identifier, or empty for the system default voice.
     public var speechVoiceIdentifier: String
     /// Global shortcut to focus the session-brief composer (default ⌘⇧B).
@@ -58,6 +60,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         renderAnswerMarkdown: Bool = true,
         voiceInputEnabled: Bool = false,
         speakAnswersEnabled: Bool = false,
+        highlightSpeechWhileReading: Bool = true,
         speechVoiceIdentifier: String = "",
         briefHotkey: CaptureHotkey = .defaultBrief
     ) {
@@ -77,6 +80,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.renderAnswerMarkdown = renderAnswerMarkdown
         self.voiceInputEnabled = voiceInputEnabled
         self.speakAnswersEnabled = speakAnswersEnabled
+        self.highlightSpeechWhileReading = highlightSpeechWhileReading
         self.speechVoiceIdentifier = speechVoiceIdentifier
         self.briefHotkey = briefHotkey
     }
@@ -92,7 +96,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, customModels, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, speechVoiceIdentifier, briefHotkey
+        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, customModels, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, highlightSpeechWhileReading, speechVoiceIdentifier, briefHotkey
     }
 
     // Tolerant decode, a saved blob missing a newer key keeps the rest of the user's
@@ -116,6 +120,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.renderAnswerMarkdown = try c.decodeIfPresent(Bool.self, forKey: .renderAnswerMarkdown) ?? true
         self.voiceInputEnabled = try c.decodeIfPresent(Bool.self, forKey: .voiceInputEnabled) ?? false
         self.speakAnswersEnabled = try c.decodeIfPresent(Bool.self, forKey: .speakAnswersEnabled) ?? false
+        self.highlightSpeechWhileReading = try c.decodeIfPresent(Bool.self, forKey: .highlightSpeechWhileReading) ?? true
         self.speechVoiceIdentifier = try c.decodeIfPresent(String.self, forKey: .speechVoiceIdentifier) ?? ""
         self.briefHotkey = try c.decodeIfPresent(CaptureHotkey.self, forKey: .briefHotkey) ?? .defaultBrief
     }

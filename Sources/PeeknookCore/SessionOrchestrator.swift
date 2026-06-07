@@ -37,6 +37,12 @@ public final class SessionOrchestrator {
     /// Partial transcript while voice input is active.
     public private(set) var voicePartialTranscript: String = ""
     public private(set) var isListeningForVoice = false
+    /// True while the answer synthesizer is reading an assistant reply aloud.
+    public private(set) var isSpeakingLastAnswer = false
+    /// True while the settings voice preview sample is playing.
+    public private(set) var isSpeakingVoicePreview = false
+    /// Character range currently spoken for read-along highlighting (utterance plain text).
+    public private(set) var speechSpokenRange: NSRange?
     /// Bumped when the brief hotkey (or another host action) should open the idle brief composer.
     public private(set) var briefComposerFocusToken = 0
 
@@ -54,7 +60,8 @@ public final class SessionOrchestrator {
     private let capture: any CaptureProviding
     private let inference: any InferenceEngine
     private let speechRecognizer: any SpeechRecognizing
-    private let speechSynthesizer: any SpeechSynthesizing
+    private let answerSpeechSynthesizer: any SpeechSynthesizing
+    private let previewSpeechSynthesizer: any SpeechSynthesizing
     private let webSearch = WebSearchClient()
     private var inferenceTask: Task<Void, Never>?
     private var suggestionTask: Task<Void, Never>?
@@ -132,13 +139,76 @@ public final class SessionOrchestrator {
         capture: any CaptureProviding,
         inference: any InferenceEngine,
         speechRecognizer: any SpeechRecognizing = StubSpeechRecognizer(),
-        speechSynthesizer: any SpeechSynthesizing = StubSpeechSynthesizer()
+        speechSynthesizer: any SpeechSynthesizing = StubSpeechSynthesizer(),
+        previewSpeechSynthesizer: (any SpeechSynthesizing)? = nil
     ) {
         self.settings = settings
         self.capture = capture
         self.inference = inference
         self.speechRecognizer = speechRecognizer
-        self.speechSynthesizer = speechSynthesizer
+        self.answerSpeechSynthesizer = speechSynthesizer
+        self.previewSpeechSynthesizer = previewSpeechSynthesizer ?? speechSynthesizer
+        wireSpeechCallbacks()
+    }
+
+    private func wireSpeechCallbacks() {
+        wireSpeechCallbacks(on: answerSpeechSynthesizer, tracksAnswer: true)
+        if previewSpeechSynthesizer as AnyObject !== answerSpeechSynthesizer as AnyObject {
+            wireSpeechCallbacks(on: previewSpeechSynthesizer, tracksAnswer: false)
+        }
+    }
+
+    private func wireSpeechCallbacks(on synthesizer: any SpeechSynthesizing, tracksAnswer: Bool) {
+        if let stub = synthesizer as? StubSpeechSynthesizer {
+            attachSpeechCallbacks(to: stub, tracksAnswer: tracksAnswer)
+        }
+        #if canImport(AVFoundation)
+        if let apple = synthesizer as? AppleSpeechSynthesizer {
+            attachSpeechCallbacks(to: apple, tracksAnswer: tracksAnswer)
+        }
+        #endif
+    }
+
+    private func attachSpeechCallbacks(to synthesizer: StubSpeechSynthesizer, tracksAnswer: Bool) {
+        synthesizer.onSpeakingChanged = { [weak self] in
+            self?.syncAllSpeechUIState()
+        }
+        if tracksAnswer {
+            synthesizer.onSpeakRange = { [weak self] range in
+                guard let self, self.settings.highlightSpeechWhileReading else { return }
+                self.speechSpokenRange = range
+            }
+        }
+    }
+
+    #if canImport(AVFoundation)
+    private func attachSpeechCallbacks(to synthesizer: AppleSpeechSynthesizer, tracksAnswer: Bool) {
+        synthesizer.onSpeakingChanged = { [weak self] in
+            self?.syncAllSpeechUIState()
+        }
+        if tracksAnswer {
+            synthesizer.onSpeakRange = { [weak self] range in
+                guard let self, self.settings.highlightSpeechWhileReading else { return }
+                self.speechSpokenRange = range
+            }
+        }
+    }
+    #endif
+
+    private func syncAllSpeechUIState() {
+        isSpeakingVoicePreview = previewSpeechSynthesizer.isSpeaking
+        isSpeakingLastAnswer = answerSpeechSynthesizer.isSpeaking
+        if !isSpeakingLastAnswer {
+            speechSpokenRange = nil
+        }
+    }
+
+    private func clearSpeechHighlight() {
+        speechSpokenRange = nil
+    }
+
+    public func clearSpeechReadAlongHighlight() {
+        clearSpeechHighlight()
     }
 
     public func setSessionBrief(_ text: String) {
@@ -184,22 +254,51 @@ public final class SessionOrchestrator {
 
     public func speakLastAnswer() {
         guard settings.speakAnswersEnabled else { return }
-        let text = lastAssistantText ?? streamedAnswer
-        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        let text = AnswerDisplayText.plainForSpeech(lastAssistantText ?? streamedAnswer)
+        guard !text.isEmpty else { return }
+        stopPreviewSpeech()
+        clearSpeechHighlight()
+        answerSpeechSynthesizer.stopSpeaking()
         let voice = settings.speechVoiceIdentifier.nilIfEmpty
-        speechSynthesizer.speak(text, voiceIdentifier: voice)
+        answerSpeechSynthesizer.speak(text, voiceIdentifier: voice)
+    }
+
+    /// Short on-device sample for the Reading voice picker in Settings.
+    public static let readingVoicePreviewSample =
+        "This is how I'll read your answers aloud."
+
+    /// Speaks a fixed preview line with the chosen voice (or the current setting when nil).
+    public func previewReadingVoice(voiceIdentifier: String? = nil) {
+        stopVoiceInput()
+        answerSpeechSynthesizer.stopSpeaking()
+        stopPreviewSpeech()
+        let voice = voiceIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+            ?? settings.speechVoiceIdentifier.nilIfEmpty
+        previewSpeechSynthesizer.speak(Self.readingVoicePreviewSample, voiceIdentifier: voice)
     }
 
     public func stopSpeaking() {
-        speechSynthesizer.stopSpeaking()
+        stopPreviewSpeech()
+        answerSpeechSynthesizer.stopSpeaking()
+        clearSpeechHighlight()
     }
 
+    /// Stops the settings voice sample without interrupting an in-progress answer read-aloud.
+    public func stopVoicePreview() {
+        stopPreviewSpeech()
+    }
+
+    /// Settings preview only — result UI should use ``isSpeakingLastAnswer``.
     public var isSpeakingAnswer: Bool {
-        speechSynthesizer.isSpeaking
+        isSpeakingVoicePreview || isSpeakingLastAnswer
+    }
+
+    private func stopPreviewSpeech() {
+        previewSpeechSynthesizer.stopSpeaking()
     }
 
     private func stopSpeechOutput() {
-        speechSynthesizer.stopSpeaking()
+        stopSpeaking()
     }
 
     public func reloadSettings(from defaults: UserDefaults) {

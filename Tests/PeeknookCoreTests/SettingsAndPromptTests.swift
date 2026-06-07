@@ -251,6 +251,7 @@ final class SettingsAndPromptTests: XCTestCase {
         let decoded = try JSONDecoder().decode(PeeknookSettings.self, from: legacy)
         XCTAssertFalse(decoded.voiceInputEnabled)
         XCTAssertFalse(decoded.speakAnswersEnabled)
+        XCTAssertTrue(decoded.highlightSpeechWhileReading)
         XCTAssertEqual(decoded.speechVoiceIdentifier, "")
         XCTAssertEqual(decoded.briefHotkey, .defaultBrief)
 
@@ -258,12 +259,14 @@ final class SettingsAndPromptTests: XCTestCase {
             textModel: "gemma4:e4b",
             voiceInputEnabled: true,
             speakAnswersEnabled: true,
+            highlightSpeechWhileReading: false,
             speechVoiceIdentifier: "com.apple.voice.enhanced.en-US.Ava",
             briefHotkey: CaptureHotkey(keyCode: 9, carbonModifiers: 256, keySymbol: "V")
         )
         let back = try JSONDecoder().decode(PeeknookSettings.self, from: JSONEncoder().encode(on))
         XCTAssertTrue(back.voiceInputEnabled)
         XCTAssertTrue(back.speakAnswersEnabled)
+        XCTAssertFalse(back.highlightSpeechWhileReading)
         XCTAssertEqual(back.speechVoiceIdentifier, "com.apple.voice.enhanced.en-US.Ava")
         XCTAssertEqual(back.briefHotkey.keySymbol, "V")
     }
@@ -272,5 +275,65 @@ final class SettingsAndPromptTests: XCTestCase {
         let enhanced = SpeechVoiceOption(identifier: "x", displayName: "Ava", qualityLabel: "Enhanced")
         XCTAssertEqual(enhanced.menuLabel, "Ava · Enhanced")
         XCTAssertEqual(SpeechVoiceOption(identifier: "", displayName: "Automatic").menuLabel, "Automatic")
+    }
+
+    @MainActor
+    func testPreviewReadingVoiceSpeaksSampleWithChosenVoice() {
+        let previewSynth = StubSpeechSynthesizer()
+        let answerSynth = StubSpeechSynthesizer()
+        let orchestrator = SessionOrchestrator(
+            settings: PeeknookSettings(textModel: "x", speakAnswersEnabled: true),
+            capture: StubCaptureProvider(sampleText: "x"),
+            inference: ScriptedEngine(responsesPerCall: []),
+            speechSynthesizer: answerSynth,
+            previewSpeechSynthesizer: previewSynth
+        )
+        orchestrator.previewReadingVoice(voiceIdentifier: "com.apple.voice.en-US.test")
+        XCTAssertEqual(previewSynth.lastSpoken, SessionOrchestrator.readingVoicePreviewSample)
+        XCTAssertEqual(previewSynth.lastVoiceIdentifier, "com.apple.voice.en-US.test")
+        XCTAssertNil(answerSynth.lastSpoken)
+    }
+
+    @MainActor
+    func testSpeakingLastAnswerStateUpdatesWhenSpeechEnds() async {
+        let answerSynth = StubSpeechSynthesizer()
+        let orchestrator = SessionOrchestrator(
+            settings: PeeknookSettings(textModel: "x", speakAnswersEnabled: true),
+            capture: StubCaptureProvider(sampleText: "x"),
+            inference: MockInferenceEngine(tokens: ["hello"]),
+            speechSynthesizer: answerSynth
+        )
+        orchestrator.beginCapture()
+        _ = await orchestrator.waitForResult("hello")
+        XCTAssertTrue(orchestrator.isSpeakingLastAnswer)
+        orchestrator.stopSpeaking()
+        XCTAssertFalse(orchestrator.isSpeakingLastAnswer)
+    }
+
+    @MainActor
+    func testSpeakLastAnswerAfterPreviewUsesAnswerTextNotSample() async {
+        let previewSynth = StubSpeechSynthesizer()
+        let answerSynth = StubSpeechSynthesizer()
+        let orchestrator = SessionOrchestrator(
+            settings: PeeknookSettings(textModel: "x", speakAnswersEnabled: true),
+            capture: StubCaptureProvider(sampleText: "x"),
+            inference: MockInferenceEngine(tokens: ["Knight ", "takes ", "e5"]),
+            speechSynthesizer: answerSynth,
+            previewSpeechSynthesizer: previewSynth
+        )
+
+        orchestrator.previewReadingVoice(voiceIdentifier: "com.apple.voice.en-US.test")
+        XCTAssertEqual(previewSynth.lastSpoken, SessionOrchestrator.readingVoicePreviewSample)
+
+        orchestrator.beginCapture()
+        let phase = await orchestrator.waitForResult("Knight takes e5")
+        guard case .result("Knight takes e5") = phase else {
+            XCTFail("Expected completed answer, got \(phase)")
+            return
+        }
+
+        XCTAssertEqual(answerSynth.lastSpoken, "Knight takes e5")
+        XCTAssertEqual(previewSynth.lastSpoken, SessionOrchestrator.readingVoicePreviewSample)
+        XCTAssertNil(answerSynth.lastVoiceIdentifier)
     }
 }

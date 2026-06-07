@@ -8,6 +8,8 @@ struct PeekHomeAnswerCard: View {
     @Environment(\.nookResolvedTheme) private var theme
     let text: String
     var renderMarkdown: Bool = true
+    var spokenRange: NSRange?
+    var isReadingAloud: Bool = false
     let showCopy: Bool
     let onCopy: () -> Void
     @State private var isHovered = false
@@ -15,8 +17,21 @@ struct PeekHomeAnswerCard: View {
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            AnswerMarkdownText(text: text, renderMarkdown: renderMarkdown)
-                .padding(.trailing, showCopy ? 22 : 0)
+            HStack(alignment: .top, spacing: 6) {
+                if isReadingAloud {
+                    Image(systemName: "speaker.wave.2.fill")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(theme.accent)
+                        .symbolEffect(.variableColor.iterative, isActive: isReadingAloud)
+                        .peekDecorative()
+                }
+                AnswerMarkdownText(
+                    text: text,
+                    renderMarkdown: renderMarkdown,
+                    spokenRange: spokenRange
+                )
+            }
+            .padding(.trailing, showCopy ? 22 : 0)
 
             if showCopy {
                 Button {

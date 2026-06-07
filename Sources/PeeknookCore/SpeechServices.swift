@@ -13,6 +13,13 @@ public protocol SpeechSynthesizing: Sendable {
     @MainActor var isSpeaking: Bool { get }
 }
 
+/// Optional UI callbacks for synthesizers that report lifecycle and read-along ranges.
+@MainActor
+public protocol SpeechSynthesizingStateful: SpeechSynthesizing {
+    var onSpeakingChanged: (() -> Void)? { get set }
+    var onSpeakRange: ((NSRange) -> Void)? { get set }
+}
+
 /// On-device speech recognition for briefs and follow-ups.
 public protocol SpeechRecognizing: Sendable {
     @MainActor func requestAuthorization() async -> Bool
@@ -23,12 +30,27 @@ public protocol SpeechRecognizing: Sendable {
 
 #if canImport(AVFoundation)
 @MainActor
-public final class AppleSpeechSynthesizer: SpeechSynthesizing {
+public final class AppleSpeechSynthesizer: SpeechSynthesizingStateful {
     private let synthesizer = AVSpeechSynthesizer()
+    private let delegateBridge = SynthesizerDelegateBridge()
+    private var trackSpeaking = false
 
-    public init() {}
+    public var onSpeakingChanged: (() -> Void)?
+    public var onSpeakRange: ((NSRange) -> Void)?
 
-    public var isSpeaking: Bool { synthesizer.isSpeaking }
+    public init() {
+        synthesizer.delegate = delegateBridge
+        delegateBridge.onUtteranceEnded = { [weak self] in
+            guard let self else { return }
+            self.trackSpeaking = false
+            self.onSpeakingChanged?()
+        }
+        delegateBridge.onSpeakRange = { [weak self] range in
+            self?.onSpeakRange?(range)
+        }
+    }
+
+    public var isSpeaking: Bool { trackSpeaking || synthesizer.isSpeaking }
 
     public func speak(_ text: String, voiceIdentifier: String? = nil) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -42,13 +64,37 @@ public final class AppleSpeechSynthesizer: SpeechSynthesizing {
             utterance.voice = AVSpeechSynthesisVoice(language: Locale.preferredLanguages.first ?? "en-US")
         }
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate
+        trackSpeaking = true
         synthesizer.speak(utterance)
+        onSpeakingChanged?()
     }
 
     public func stopSpeaking() {
-        if synthesizer.isSpeaking {
-            synthesizer.stopSpeaking(at: .immediate)
-        }
+        synthesizer.stopSpeaking(at: .immediate)
+        trackSpeaking = false
+        onSpeakingChanged?()
+    }
+}
+
+@MainActor
+private final class SynthesizerDelegateBridge: NSObject, @preconcurrency AVSpeechSynthesizerDelegate {
+    var onUtteranceEnded: (() -> Void)?
+    var onSpeakRange: ((NSRange) -> Void)?
+
+    func speechSynthesizer(
+        _ synthesizer: AVSpeechSynthesizer,
+        willSpeakRangeOfSpeechString characterRange: NSRange,
+        utterance: AVSpeechUtterance
+    ) {
+        onSpeakRange?(characterRange)
+    }
+
+    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+        onUtteranceEnded?()
+    }
+
+    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
+        onUtteranceEnded?()
     }
 }
 #endif
@@ -133,10 +179,12 @@ public enum SpeechRecognitionError: Error, Sendable, Equatable {
 
 /// Test double — records speak calls without audio output.
 @MainActor
-public final class StubSpeechSynthesizer: SpeechSynthesizing {
+public final class StubSpeechSynthesizer: SpeechSynthesizingStateful {
     public private(set) var lastSpoken: String?
     public private(set) var lastVoiceIdentifier: String?
     public var isSpeaking = false
+    public var onSpeakingChanged: (() -> Void)?
+    public var onSpeakRange: ((NSRange) -> Void)?
 
     public init() {}
 
@@ -144,10 +192,12 @@ public final class StubSpeechSynthesizer: SpeechSynthesizing {
         lastSpoken = text
         lastVoiceIdentifier = voiceIdentifier
         isSpeaking = true
+        onSpeakingChanged?()
     }
 
     public func stopSpeaking() {
         isSpeaking = false
+        onSpeakingChanged?()
     }
 }
 
