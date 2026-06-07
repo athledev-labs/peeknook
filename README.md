@@ -86,8 +86,24 @@ Gemma 4 is the default, but the picker is open: **Vision model â†’ Add a modelâ€
 
 Because every capture sends a screenshot, **pick a model that supports image input**. Peeknook reads the model's `/api/show` capabilities and warns when a chosen model is text-only. Note: some otherwise-multimodal models (e.g. NVIDIA's Nemotron 3 family) currently run **text-only** under Ollama because Ollama doesn't load their separate vision projector (`mmproj`) files, those will ignore the screenshot until upstream support lands.
 
-Grant **Screen Recording** (required, the front-window screenshot the vision model reads) when macOS prompts. **Accessibility** is optional and only adds selected text alongside the screenshot. Model licenses belong in this README, not in `LICENSE`.
+Grant **Screen Recording** (required, the front-window screenshot the vision model reads) when macOS prompts. **Accessibility** is optional and only adds selected text alongside the screenshot.
+
+### Third-party model licenses
+
+Peeknook does not ship model weights. You download them through Ollama. Applicable terms:
+
+| Component | License / terms |
+|-----------|-----------------|
+| Peeknook app source | [Apache 2.0](LICENSE) |
+| OpenNook host | [Apache 2.0](https://github.com/glendonC/opennook/blob/main/LICENSE) |
+| Ollama (runtime, user-installed) | [MIT](https://github.com/ollama/ollama/blob/main/LICENSE) |
+| Gemma 4 weights (default recommendation) | [Gemma Terms of Use](https://ai.google.dev/gemma/terms) |
+| Other models you add | Each publisher's license |
+
+## Privacy
+
+Peeknook is local-first by default: capture runs only when you trigger it, inference goes to your Ollama instance, and conversation archive is off unless you turn it on. Opt-in web lookup sends queries to DuckDuckGo. A full privacy policy ships with the downloadable app and website.
 
 ## License
 
-Apache 2.0, see [LICENSE](LICENSE).
+Apache 2.0, see [LICENSE](LICENSE). Model weights are governed by their respective publishers, not this license.

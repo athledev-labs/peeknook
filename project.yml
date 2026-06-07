@@ -10,21 +10,36 @@ options:
   generateEmptyDirectories: true
   groupSortPosition: top
 
+configs:
+  Debug: debug
+  Release: release
+
 settings:
   base:
     SWIFT_VERSION: "5.9"
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
-    DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Automatic
-    CODE_SIGN_IDENTITY: "-"
     ENABLE_HARDENED_RUNTIME: YES
+  configs:
+    Debug:
+      CODE_SIGN_IDENTITY: "-"
+      DEVELOPMENT_TEAM: ""
+    Release:
+      # Export/signing: set PEEKNOOK_DEVELOPMENT_TEAM and PEEKNOOK_CODE_SIGN_IDENTITY
+      # (default "Developer ID Application") before ./Scripts/release.sh
+      CODE_SIGN_IDENTITY: ${PEEKNOOK_CODE_SIGN_IDENTITY:--}
+      DEVELOPMENT_TEAM: ${PEEKNOOK_DEVELOPMENT_TEAM:}
 
 packages:
   Peeknook:
     path: "."
+  # Local dev: sibling ../opennook checkout (mirrors Package.swift path pin).
+  # CI checks out opennook beside peeknook; override with OPENNOOK_PACKAGE_PATH if needed.
+  # Unlike Package.swift, XcodeGen cannot auto-fallback to the git URL — regenerate only
+  # when ../opennook/Package.swift exists or set OPENNOOK_PACKAGE_PATH to a local clone.
   Nook:
-    path: "../opennook"
+    path: ${OPENNOOK_PACKAGE_PATH:-../opennook}
 
 targets:
   PeeknookHostApp:
@@ -44,6 +59,14 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         ENABLE_HARDENED_RUNTIME: YES
         SWIFT_EMIT_LOC_STRINGS: YES
+        CODE_SIGN_ENTITLEMENTS: App/Peeknook.entitlements
+      configs:
+        Debug:
+          CODE_SIGN_IDENTITY: "-"
+          DEVELOPMENT_TEAM: ""
+        Release:
+          CODE_SIGN_IDENTITY: ${PEEKNOOK_CODE_SIGN_IDENTITY:--}
+          DEVELOPMENT_TEAM: ${PEEKNOOK_DEVELOPMENT_TEAM:}
     dependencies:
       - package: Peeknook
         product: PeeknookHost

@@ -43,6 +43,7 @@ public struct PeekSetupView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
+        .frame(maxHeight: PeekPanelLayout.setupMaxHeight)
         .onAppear { setup.startAutoRefresh() }
         .onDisappear { setup.stopAutoRefresh() }
         .task { await setup.refresh() }
@@ -52,21 +53,24 @@ public struct PeekSetupView: View {
     }
 
     private var setupContent: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            header
-            stepList
-            if let pull = setup.pullStatusLine {
-                Text(pull)
-                    .font(.system(size: 10))
-                    .foregroundStyle(theme.tertiaryLabel)
-                    .lineLimit(2)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                header
+                stepList
+                if let pull = setup.pullStatusLine {
+                    Text(pull)
+                        .font(.system(size: 10))
+                        .foregroundStyle(theme.tertiaryLabel)
+                        .lineLimit(2)
+                }
+                footerActions
             }
-            footerActions
         }
+        .scrollBounceBehavior(.basedOnSize, axes: .vertical)
     }
 
     private var header: some View {
-        Text("Gemma 4 runs on your Mac through Ollama. Nothing is sent to the cloud.")
+        Text("Gemma 4 runs on your Mac through Ollama. Screenshots stay local unless you turn on web lookup or point at a remote Ollama server in Settings.")
             .font(.system(size: 11))
             .foregroundStyle(theme.secondaryLabel)
     }

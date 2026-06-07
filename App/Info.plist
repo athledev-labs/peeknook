@@ -32,5 +32,7 @@
     <string>NSApplication</string>
     <key>NSScreenCaptureUsageDescription</key>
     <string>Peeknook captures only when you press the capture hotkey, to answer practice questions about on-screen text.</string>
+    <key>NSAccessibilityUsageDescription</key>
+    <string>Peeknook can read selected text to supplement a screenshot. Accessibility is optional; Screen Recording alone is enough to capture.</string>
 </dict>
 </plist>

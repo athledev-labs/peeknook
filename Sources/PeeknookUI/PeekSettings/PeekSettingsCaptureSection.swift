@@ -61,7 +61,7 @@ struct PeekSettingsCaptureSection: View {
             PeekSettingsToggleRow(
                 icon: orchestrator.settings.webLookupEnabled ? "globe.americas.fill" : "globe",
                 title: "Web lookup",
-                detail: "Search the web from capture context and show results with the answer",
+                detail: "Send a DuckDuckGo query from capture context (queries leave this Mac)",
                 isOn: webLookupBinding
             )
 

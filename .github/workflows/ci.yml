@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: macos-15
+    steps:
+      - name: Checkout Peeknook
+        uses: actions/checkout@v4
+        with:
+          path: peeknook
+
+      # Sibling checkout satisfies Package.swift ../opennook path pin.
+      # Without it, Package.swift falls back to the git dependency (from 0.2.0).
+      - name: Checkout OpenNook
+        uses: actions/checkout@v4
+        with:
+          repository: glendonC/opennook
+          ref: "0.2.0"
+          path: opennook
+
+      - name: Swift test
+        working-directory: peeknook
+        run: swift test

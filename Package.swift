@@ -1,8 +1,18 @@
 // swift-tools-version: 5.9
 
+import Foundation
 import PackageDescription
 
 let strictConcurrency: [SwiftSetting] = [.enableUpcomingFeature("StrictConcurrency")]
+
+let siblingOpenNookManifest = URL(fileURLWithPath: #filePath)
+    .deletingLastPathComponent()
+    .appendingPathComponent("../opennook/Package.swift")
+
+let opennookDependency: Package.Dependency =
+    FileManager.default.fileExists(atPath: siblingOpenNookManifest.path)
+    ? .package(path: "../opennook")
+    : .package(url: "https://github.com/glendonC/opennook.git", from: "0.2.0")
 
 let package = Package(
     name: "Peeknook",
@@ -17,9 +27,7 @@ let package = Package(
         .library(name: "PeeknookUI", targets: ["PeeknookUI"])
     ],
     dependencies: [
-        // Local dev: sibling OpenNook checkout. For CI / clones without it, switch to:
-        // .package(url: "https://github.com/glendonC/opennook.git", from: "0.2.0"),
-        .package(path: "../opennook")
+        opennookDependency
     ],
     targets: [
         .target(

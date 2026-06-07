@@ -3,8 +3,10 @@ Copyright 2026 Glendon Chin
 
 Licensed under the Apache License, Version 2.0.
 
-This product depends on OpenNook (Apache-2.0) and NookSurface (MIT).
-See https://github.com/glendonC/opennook
+This product depends on:
+- OpenNook (Apache-2.0): https://github.com/glendonC/opennook
+- NookSurface (MIT), via OpenNook
 
-Model weights are not distributed with this application. See README for
-third-party model licenses.
+Model weights are not distributed with this application. Users pull models through
+their own Ollama install. See README "Models" for third-party model license links
+(Gemma Terms of Use, Ollama MIT).

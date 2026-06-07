@@ -1,0 +1,100 @@
+name: Bug report
+description: Report a problem with Peeknook
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug. Include the details below so we can reproduce.
+
+  - type: input
+    id: macos_version
+    attributes:
+      label: macOS version
+      description: e.g. macOS 15.3 (24D60) — Apple menu → About This Mac
+      placeholder: macOS 15.x
+    validations:
+      required: true
+
+  - type: input
+    id: peeknook_version
+    attributes:
+      label: Peeknook version
+      description: Settings → About
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: input
+    id: ollama_version
+    attributes:
+      label: Ollama version
+      description: Run `ollama --version` or check Ollama.app → About
+      placeholder: "0.x.x"
+    validations:
+      required: true
+
+  - type: input
+    id: model_tag
+    attributes:
+      label: Model tag in use
+      description: e.g. gemma4:e4b — Settings → Model
+      placeholder: gemma4:e4b
+    validations:
+      required: true
+
+  - type: dropdown
+    id: screen_recording
+    attributes:
+      label: Screen Recording permission granted
+      options:
+        - "Yes"
+        - "No"
+        - "Not sure"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: accessibility
+    attributes:
+      label: Accessibility permission granted (optional selected-text supplement)
+      options:
+        - "Yes"
+        - "No"
+        - "Not applicable"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open …
+        2. Press ⌘⇧P …
+        3. See error …
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context
+      description: Logs, screenshots, or related settings (optional)
+    validations:
+      required: false
