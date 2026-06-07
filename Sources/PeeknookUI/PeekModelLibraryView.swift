@@ -247,11 +247,11 @@ struct PeekModelLibraryView: View {
         case .ready(let vision):
             switch vision {
             case true:
-                Text("Supports vision — ready to add.")
+                Text("Supports vision, ready to add.")
                     .font(.system(size: 9))
                     .foregroundStyle(Color.green.opacity(0.9))
             case false:
-                Text("Text-only — it won't read your screenshots. You can still add it to test.")
+                Text("Text-only, it won't read your screenshots. You can still add it to test.")
                     .font(.system(size: 9))
                     .foregroundStyle(Color.orange.opacity(0.95))
                     .fixedSize(horizontal: false, vertical: true)
@@ -266,7 +266,7 @@ struct PeekModelLibraryView: View {
                 .font(.system(size: 9))
                 .foregroundStyle(theme.secondaryLabel)
         case .unreachable:
-            Text("Can't reach Ollama — check it's running.")
+            Text("Can't reach Ollama, check it's running.")
                 .font(.system(size: 9))
                 .foregroundStyle(Color.orange.opacity(0.95))
         }

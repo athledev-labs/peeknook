@@ -59,7 +59,7 @@ struct TurnUsageChip: View {
     }
 }
 
-/// Stacked usage through the thread — tap a bar for a breakdown.
+/// Stacked usage through the thread, tap a bar for a breakdown.
 struct ContextThreadChart: View {
     @Environment(\.nookResolvedTheme) private var theme
     let points: [TurnUsageTimeline.Point]
@@ -117,7 +117,7 @@ struct ContextThreadChart: View {
     }
 }
 
-/// Expanded usage for one answer — shown when a chart bar is selected.
+/// Expanded usage for one answer, shown when a chart bar is selected.
 struct TurnUsageBreakdown: View {
     @Environment(\.nookResolvedTheme) private var theme
     let point: TurnUsageTimeline.Point
@@ -257,7 +257,7 @@ struct PeekContextWarningBanner: View {
     }
 }
 
-/// Context-usage bar color that warms as the prompt fills the model's window — plenty of room
+/// Context-usage bar color that warms as the prompt fills the model's window, plenty of room
 /// reads calm green, near-full reads red (Claude-style). One source of truth for every meter.
 enum PeekContextTint {
     static func color(for fraction: Double) -> Color {

@@ -56,7 +56,7 @@ struct PeekHomePhaseContent: View {
                             .strokeBorder(theme.tertiaryLabel.opacity(0.35), lineWidth: 1)
                     )
             } else {
-                Label("No preview image — capture may have failed. Try again.", systemImage: "exclamationmark.triangle")
+                Label("No preview image, capture may have failed. Try again.", systemImage: "exclamationmark.triangle")
                     .font(.system(size: 11))
                     .foregroundStyle(.orange)
             }
@@ -80,7 +80,7 @@ struct PeekHomePhaseContent: View {
                 if orchestrator.inferenceModelWasWarm {
                     StageLabel(text: "Reading the screen…", symbol: "viewfinder")
                 } else {
-                    StageLabel(text: "Loading the model — first run is slower…", symbol: "hourglass")
+                    StageLabel(text: "Loading the model, first run is slower…", symbol: "hourglass")
                 }
             } else {
                 Label("Answering…", systemImage: "sparkles")

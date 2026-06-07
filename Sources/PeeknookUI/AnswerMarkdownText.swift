@@ -7,10 +7,11 @@ import SwiftUI
 struct AnswerMarkdownText: View {
     @Environment(\.nookResolvedTheme) private var theme
     let text: String
+    var renderMarkdown: Bool = true
 
     var body: some View {
         Group {
-            if let attributed = Self.attributedMarkdown(from: text) {
+            if renderMarkdown, let attributed = Self.attributedMarkdown(from: text) {
                 Text(attributed)
             } else {
                 Text(text)

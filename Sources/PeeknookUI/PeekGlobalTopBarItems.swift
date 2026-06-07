@@ -7,13 +7,13 @@ import SwiftUI
 /// Breadcrumb labels shared between the home surface and the global top-bar items, so the
 /// label the chrome shows on drill-in matches the state `PeekHomeView` restores.
 enum PeekHomeBreadcrumb {
-    /// Expanded view of the *current* thread — contextual; toggled from the result command bar.
+    /// Expanded view of the *current* thread, contextual; toggled from the result command bar.
     static let history = "History"
-    /// The conversation archive — browse/resume *past* chats; global, opened from the top bar.
+    /// The conversation archive, browse/resume *past* chats; global, opened from the top bar.
     static let pastChats = "Past chats"
-    /// Lifetime and session usage analytics — global, opened from the top bar.
+    /// Lifetime and session usage analytics, global, opened from the top bar.
     static let stats = "Stats"
-    /// Browse, select, and download vision models — opened from the model picker or Settings.
+    /// Browse, select, and download vision models, opened from the model picker or Settings.
     static let modelLibrary = "Model Library"
 }
 
@@ -23,9 +23,9 @@ enum PeekHomeBreadcrumb {
 /// **Command placement rule:** a control belongs at the **top** if it's available regardless of
 /// phase *and* doesn't act on the current answer/thread; it belongs at the **bottom** if its
 /// availability or meaning depends on the current phase, capture, or thread. "Stats" and "Past
-/// chats" (browse the archive) are global, so they live here. Phase/thread-specific actions —
+/// chats" (browse the archive) are global, so they live here. Phase/thread-specific actions -
 /// Capture, Add, Follow,
-/// Done, New chat, the in-thread History toggle, Confirm/Cancel, the per-capture preflight pills —
+/// Done, New chat, the in-thread History toggle, Confirm/Cancel, the per-capture preflight pills -
 /// stay in the in-content bottom command bars.
 public struct PeekGlobalTopBarItems: View {
     public var orchestrator: SessionOrchestrator
@@ -92,7 +92,7 @@ public struct PeekGlobalTopBarItems: View {
                 appState.moduleBreadcrumb = PeekHomeBreadcrumb.pastChats
             } label: {
                 HStack(spacing: 5) {
-                    // Hover-reveal label — mirrors the chrome's leading cluster, which springs its
+                    // Hover-reveal label, mirrors the chrome's leading cluster, which springs its
                     // title in next to the glyph. Reveals leftward (toward the notch gap) so it
                     // doesn't push the framework lock/gear off the right edge.
                     if isPastChatsHovered {

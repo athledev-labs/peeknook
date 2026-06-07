@@ -74,7 +74,7 @@ public struct PeekCompactView: View {
         case .inferring:
             "Thinking…"
         case .result:
-            "Answer ready — tap to expand"
+            "Answer ready, tap to expand"
         case .failed(let failure):
             failure.title
         }

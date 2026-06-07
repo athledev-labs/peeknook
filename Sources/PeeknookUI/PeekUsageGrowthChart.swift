@@ -29,7 +29,7 @@ private struct ChartScrubState: Equatable {
     let date: Date
     let plotX: CGFloat
     let series: [ChartSeriesScrub]
-    /// Sticky focus for click when multiple lines overlap — not used for tooltip display.
+    /// Sticky focus for click when multiple lines overlap, not used for tooltip display.
     let focusSeriesID: String?
 }
 
@@ -55,7 +55,7 @@ struct UsageGrowthPoint: Identifiable, Equatable {
     }
 }
 
-/// Cumulative usage over calendar time — one colored line per model when unfiltered.
+/// Cumulative usage over calendar time, one colored line per model when unfiltered.
 struct PeekUsageGrowthChart: View {
     let events: [UsageEvent]
     let modelFilter: String?
@@ -308,7 +308,7 @@ struct PeekUsageGrowthChart: View {
         }
     }
 
-    /// Continuous X scrub — show every series at this date so overlapping lines don't flicker.
+    /// Continuous X scrub, show every series at this date so overlapping lines don't flicker.
     private func resolveScrub(
         at location: CGPoint,
         proxy: ChartProxy,

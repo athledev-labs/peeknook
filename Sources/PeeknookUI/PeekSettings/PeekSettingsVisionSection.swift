@@ -20,16 +20,7 @@ struct PeekSettingsVisionSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .center, spacing: 10) {
-                Image(systemName: "lock.fill")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Color.green)
-                    .frame(width: 18)
-                Text("100% local — nothing leaves this Mac")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(theme.secondaryLabel)
-            }
-            .padding(.vertical, 2)
+            privacyBanner
 
             PeekSettingsStatusRow(
                 icon: ollamaStatusTone.icon,
@@ -64,7 +55,7 @@ struct PeekSettingsVisionSection: View {
             )
 
             if setup.isPullingModel {
-                // Same pull task as Setup — expose Cancel here for symmetric UX.
+                // Same pull task as Setup, expose Cancel here for symmetric UX.
                 PeekSettingsCommandRow(
                     icon: "arrow.down.circle",
                     title: downloadRowTitle,
@@ -106,6 +97,42 @@ struct PeekSettingsVisionSection: View {
         .task(id: visionCheckKey) {
             visionSupport = await settings.currentModelSupportsVision()
         }
+    }
+
+    private var privacyBanner: some View {
+        let webLookup = orchestrator.settings.webLookupEnabled
+        let remoteOllama = usesRemoteOllama
+        let icon = webLookup ? "globe.americas.fill" : (remoteOllama ? "point.3.connected.trianglepath.dotted" : "lock.fill")
+        let tint: Color = webLookup ? .orange : (remoteOllama ? theme.accent : .green)
+        let message: String = {
+            if webLookup && remoteOllama {
+                return "Ollama runs elsewhere; web lookup sends search queries to DuckDuckGo."
+            }
+            if webLookup {
+                return "Answers stay local; web lookup sends search queries to DuckDuckGo."
+            }
+            if remoteOllama {
+                return "Screenshots and answers go to your Ollama server, not a cloud API."
+            }
+            return "Capture and answers run on this Mac via Ollama."
+        }()
+        return HStack(alignment: .top, spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(tint)
+                .frame(width: 18)
+            Text(message)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(theme.secondaryLabel)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.vertical, 2)
+    }
+
+    private var usesRemoteOllama: Bool {
+        guard let url = URL(string: orchestrator.settings.ollamaBaseURL),
+              let host = url.host?.lowercased() else { return false }
+        return host != "127.0.0.1" && host != "localhost"
     }
 
     /// Re-check vision support whenever the model or server changes.

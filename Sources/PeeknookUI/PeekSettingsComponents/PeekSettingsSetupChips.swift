@@ -5,7 +5,7 @@ import NookApp
 import PeeknookCore
 import SwiftUI
 
-/// Compact setup checklist chip — tap opens Get ready when something still needs attention.
+/// Compact setup checklist chip, tap opens Get ready when something still needs attention.
 struct PeekSettingsSetupChip: View {
     let title: String
     let status: String

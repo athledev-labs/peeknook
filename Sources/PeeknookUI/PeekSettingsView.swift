@@ -68,8 +68,8 @@ public struct PeekSettingsView: View {
                         )
                     }
 
-                    section(PeekSettingsSectionTitle.usage) {
-                        PeekSettingsUsageSection(stats: usage.stats, onReset: { usage.reset() })
+                    section(PeekSettingsSectionTitle.data) {
+                        PeekSettingsDataSection(onReset: { usage.reset() })
                     }
 
                     section(PeekSettingsSectionTitle.about) {
@@ -84,7 +84,7 @@ public struct PeekSettingsView: View {
             .onChange(of: scrollToSectionID) { _, sectionID in
                 guard let sectionID else { return }
                 Task { @MainActor in
-                    // Let the disclosure spring settle before scrolling — animating both
+                    // Let the disclosure spring settle before scrolling, animating both
                     // at once makes the scroll indicator flicker in the capped panel.
                     try? await Task.sleep(nanoseconds: 320_000_000)
                     var transaction = Transaction()
@@ -105,7 +105,7 @@ public struct PeekSettingsView: View {
             }
         }
         .task {
-            // Light periodic refresh while the panel is open so a server dying — or coming back —
+            // Light periodic refresh while the panel is open so a server dying, or coming back -
             // mid-session updates the badge without waiting on a URL/model edit. Silent (no
             // "Checking" flicker) since it's a background poll, not a user-triggered check.
             while !Task.isCancelled {

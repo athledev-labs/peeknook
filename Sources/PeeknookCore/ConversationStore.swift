@@ -27,7 +27,7 @@ public struct PersistedConversation: Codable, Sendable {
 }
 
 /// Best-effort local persistence for the active chat. All methods tolerate failure (return nil /
-/// no-op) — a corrupt or missing file just means "no saved chat", never a crash or data reset.
+/// no-op), a corrupt or missing file just means "no saved chat", never a crash or data reset.
 /// Persistence is opt-in (`PeeknookSettings.persistConversation`); the orchestrator only calls
 /// `save`/`load` when the user has enabled it, and `clear` whenever a thread is discarded.
 public final class ConversationStore: Sendable {

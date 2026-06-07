@@ -98,7 +98,7 @@ public struct PeekSetupView: View {
 
             SetupStepRow(
                 title: "Screen Recording",
-                detail: "Required — Peeknook sends a screenshot to the vision model. Optional: Accessibility adds selected text.",
+                detail: "Required, Peeknook sends a screenshot to the vision model. Optional: Accessibility adds selected text.",
                 state: setup.captureStep,
                 theme: theme,
                 primaryEnabled: true,
@@ -109,7 +109,7 @@ public struct PeekSetupView: View {
 
             SetupStepRow(
                 title: "Test capture",
-                detail: "Optional — run one capture to confirm permissions.",
+                detail: "Optional, run one capture to confirm permissions.",
                 state: setup.smokeTestStep,
                 theme: theme,
                 primaryEnabled: setup.isReady,
@@ -133,7 +133,7 @@ public struct PeekSetupView: View {
         return "\(setup.suggestedModelDiskHint) · once via Ollama."
     }
 
-    /// Same picker as Home/Settings — choose a tag, then Download pulls the selection.
+    /// Same picker as Home/Settings, choose a tag, then Download pulls the selection.
     private var modelPicker: some View {
         ValueDropdownPill(
             symbol: "cpu",

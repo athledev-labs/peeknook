@@ -36,7 +36,7 @@ public struct MacCaptureProvider: CaptureProviding, Sendable {
         }
 
         // Gemma 4 reads the screenshot directly. The only text worth adding is the user's
-        // *exact* selection (Accessibility) — full-frame OCR just produced noisy fragments
+        // *exact* selection (Accessibility), full-frame OCR just produced noisy fragments
         // that cluttered the preview and misled the model, so it's gone.
         let selected = await MainActor.run { Self.captureSelectedText() }
 
@@ -115,8 +115,8 @@ public struct MacCaptureProvider: CaptureProviding, Sendable {
         }
     }
 
-    /// Window to capture — multi-monitor aware, in priority order:
-    /// 1. the window directly **under the cursor** (what the user is pointing at — fixes
+    /// Window to capture, multi-monitor aware, in priority order:
+    /// 1. the window directly **under the cursor** (what the user is pointing at, fixes
     ///    "it grabbed the wrong screen" when the focused app lives on another display),
     /// 2. else the frontmost app's largest window,
     /// 3. else the largest window anywhere.

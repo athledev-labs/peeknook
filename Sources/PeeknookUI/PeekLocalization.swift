@@ -5,7 +5,7 @@ import SwiftUI
 /// Localization foundation for `PeeknookUI`.
 ///
 /// All user-facing strings in this module live in `Resources/Localizable.xcstrings` (a String
-/// Catalog). Because this is a library target — not the app — SwiftUI's default `Text("literal")`
+/// Catalog). Because this is a library target, not the app, SwiftUI's default `Text("literal")`
 /// would resolve against `Bundle.main`, missing the module catalog. Route shared-component strings
 /// through `Text(peek:)` / `PeekLocalized(_:)` so they resolve against `Bundle.module` instead.
 ///
@@ -21,7 +21,7 @@ extension Text {
     }
 }
 
-/// Localized `String` resolved against this module's String Catalog — for interpolation into
+/// Localized `String` resolved against this module's String Catalog, for interpolation into
 /// `help(_:)`, accessibility labels, or non-`Text` APIs.
 func PeekLocalized(_ key: String.LocalizationValue) -> String {
     String(localized: key, bundle: .module)

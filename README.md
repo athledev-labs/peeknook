@@ -58,7 +58,7 @@ Expanded home shows **Get ready** until:
 
 1. Ollama is running  
 2. Gemma 4 model is downloaded (in-app **Download model** via Ollama API)  
-3. **Screen Recording** is granted (required — the vision model sees a screenshot)  
+3. **Screen Recording** is granted (required, the vision model sees a screenshot)  
 
 Capture (⌘⇧P) stays disabled until then. **Accessibility** is optional and only supplements the screenshot with selected text. Optional **Test capture** step unlocks the normal home screen.
 
@@ -73,7 +73,7 @@ Peeknook talks to **local Ollama** only (`http://127.0.0.1:11434`). Default mode
 | 25+ GB | `gemma4:26b` |
 
 ```sh
-brew install --cask ollama-app   # official build — bundles the model runner
+brew install --cask ollama-app   # official build, bundles the model runner
 ollama serve                     # or just launch Ollama.app
 ollama pull gemma4:e4b           # or the tag Settings suggests
 ```
@@ -82,12 +82,12 @@ ollama pull gemma4:e4b           # or the tag Settings suggests
 
 ### Bring your own model
 
-Gemma 4 is the default, but the picker is open: **Vision model → Add a model…** (in Home, Setup, or Settings) accepts any Ollama tag, pulls it if needed, and selects it — so you can try the latest open models in your notch without a code change. Custom models persist and can be removed from Settings.
+Gemma 4 is the default, but the picker is open: **Vision model → Add a model…** (in Home, Setup, or Settings) accepts any Ollama tag, pulls it if needed, and selects it, so you can try the latest open models in your notch without a code change. Custom models persist and can be removed from Settings.
 
-Because every capture sends a screenshot, **pick a model that supports image input**. Peeknook reads the model's `/api/show` capabilities and warns when a chosen model is text-only. Note: some otherwise-multimodal models (e.g. NVIDIA's Nemotron 3 family) currently run **text-only** under Ollama because Ollama doesn't load their separate vision projector (`mmproj`) files — those will ignore the screenshot until upstream support lands.
+Because every capture sends a screenshot, **pick a model that supports image input**. Peeknook reads the model's `/api/show` capabilities and warns when a chosen model is text-only. Note: some otherwise-multimodal models (e.g. NVIDIA's Nemotron 3 family) currently run **text-only** under Ollama because Ollama doesn't load their separate vision projector (`mmproj`) files, those will ignore the screenshot until upstream support lands.
 
-Grant **Screen Recording** (required — the front-window screenshot the vision model reads) when macOS prompts. **Accessibility** is optional and only adds selected text alongside the screenshot. Model licenses belong in this README, not in `LICENSE`.
+Grant **Screen Recording** (required, the front-window screenshot the vision model reads) when macOS prompts. **Accessibility** is optional and only adds selected text alongside the screenshot. Model licenses belong in this README, not in `LICENSE`.
 
 ## License
 
-Apache 2.0 — see [LICENSE](LICENSE).
+Apache 2.0, see [LICENSE](LICENSE).

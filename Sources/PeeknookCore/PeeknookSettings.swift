@@ -19,13 +19,19 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     /// Global capture shortcut (default ⌘⇧P).
     public var captureHotkey: CaptureHotkey
     /// Opt-in: keep the active chat (including its screenshots) in a local file so it survives a
-    /// quit. Off by default — captures are private user data. Cleared when turned off.
+    /// quit. Off by default, captures are private user data. Cleared when turned off.
     public var persistConversation: Bool
     /// Opt-in: run a live web search from capture context and show results alongside the answer.
     /// Queries leave this Mac via DuckDuckGo HTML. Off by default.
     public var webLookupEnabled: Bool
     /// User-added models (any Ollama tag) shown alongside the curated catalog in the picker.
     public var customModels: [CustomModelEntry]
+    /// Optional nickname for the idle greeting. Empty falls back to the macOS account first name.
+    public var displayName: String
+    /// When false, the idle home headline is hidden.
+    public var showGreeting: Bool
+    /// When false, answers render as plain text instead of lightweight inline Markdown.
+    public var renderAnswerMarkdown: Bool
 
     public init(
         mode: PracticeMode = .general,
@@ -38,7 +44,10 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         captureHotkey: CaptureHotkey = .default,
         persistConversation: Bool = false,
         webLookupEnabled: Bool = false,
-        customModels: [CustomModelEntry] = []
+        customModels: [CustomModelEntry] = [],
+        displayName: String = "",
+        showGreeting: Bool = true,
+        renderAnswerMarkdown: Bool = true
     ) {
         self.mode = mode
         self.previewBeforeInfer = previewBeforeInfer
@@ -51,13 +60,16 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.persistConversation = persistConversation
         self.webLookupEnabled = webLookupEnabled
         self.customModels = customModels
+        self.displayName = displayName
+        self.showGreeting = showGreeting
+        self.renderAnswerMarkdown = renderAnswerMarkdown
     }
 
     private enum CodingKeys: String, CodingKey {
-        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, customModels
+        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, customModels, displayName, showGreeting, renderAnswerMarkdown
     }
 
-    // Tolerant decode — a saved blob missing a newer key keeps the rest of the user's
+    // Tolerant decode, a saved blob missing a newer key keeps the rest of the user's
     // settings instead of resetting everything to defaults.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -73,6 +85,9 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.persistConversation = try c.decodeIfPresent(Bool.self, forKey: .persistConversation) ?? false
         self.webLookupEnabled = try c.decodeIfPresent(Bool.self, forKey: .webLookupEnabled) ?? false
         self.customModels = try c.decodeIfPresent([CustomModelEntry].self, forKey: .customModels) ?? []
+        self.displayName = try c.decodeIfPresent(String.self, forKey: .displayName) ?? ""
+        self.showGreeting = try c.decodeIfPresent(Bool.self, forKey: .showGreeting) ?? true
+        self.renderAnswerMarkdown = try c.decodeIfPresent(Bool.self, forKey: .renderAnswerMarkdown) ?? true
     }
 
     public static let `default` = PeeknookSettings(

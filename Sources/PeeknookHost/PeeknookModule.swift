@@ -6,7 +6,7 @@ import PeeknookCore
 import PeeknookUI
 import SwiftUI
 
-/// Quiet contextual label for the home top bar — breadcrumb drill-ins still win.
+/// Quiet contextual label for the home top bar, breadcrumb drill-ins still win.
 private enum PeekTopBarDate {
     nonisolated static func label() -> String {
         let formatter = DateFormatter()
@@ -16,7 +16,7 @@ private enum PeekTopBarDate {
     }
 }
 
-/// Peeknook practice copilot — one module in a multi-module OpenNook host.
+/// Peeknook practice copilot, one module in a multi-module OpenNook host.
 @MainActor
 public final class PeeknookModule: NookModule {
     nonisolated public static let moduleDescriptor = NookModuleDescriptor(
@@ -79,7 +79,7 @@ public final class PeeknookModule: NookModule {
                 }
             )
         }
-        // Date is ambient home chrome only — drilled-in surfaces (Settings, module
+        // Date is ambient home chrome only, drilled-in surfaces (Settings, module
         // breadcrumb) use a stable back label so the route reads "Home › Settings",
         // not "Friday, Jun 5 › Settings".
         configuration.topBar.leadingTitle = { appState in
@@ -89,13 +89,13 @@ public final class PeeknookModule: NookModule {
             }
             return PeekTopBarDate.label()
         }
-        // Peeknook's module glyph — not the default OpenNook notch mark (see NookMarkView).
+        // Peeknook's module glyph, not the default OpenNook notch mark (see NookMarkView).
         configuration.topBar.leadingIcon = Self.moduleDescriptor.icon
         configuration.expandedWidth = 480
         // Seat the in-content command row close to the panel's rounded bottom. The chrome
         // reserves an expanded-content safe-area strip (8pt on three edges by default) that
         // stacks on top of the framework edge padding, leaving a dead band below our last
-        // row. Trim just the bottom inset — the command row is centered/leading, so it
+        // row. Trim just the bottom inset, the command row is centered/leading, so it
         // clears the bottom-corner curve. Radii pin the framework's default appearance.
         configuration.style = NookStyle(
             topCornerRadius: 19,
@@ -138,7 +138,7 @@ public final class PeeknookModule: NookModule {
     }
 
     /// When confirm-before-analyze is on, capture can finish while the nook is still
-    /// compact — expand to Home so the preview confirm UI is reachable, and pin the
+    /// compact, expand to Home so the preview confirm UI is reachable, and pin the
     /// surface until the user confirms or cancels.
     private func startPreviewPhaseHandling(on coordinator: AppCoordinator) {
         previewPhaseTask?.cancel()

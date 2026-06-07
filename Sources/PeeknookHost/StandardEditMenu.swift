@@ -5,7 +5,7 @@ import AppKit
 /// Installs a standard **Edit** menu into `NSApp.mainMenu`.
 ///
 /// Peeknook runs as an `.accessory` app whose only window is a non-activating notch panel.
-/// Such apps have no main menu by default — and in AppKit the standard text-editing shortcuts
+/// Such apps have no main menu by default, and in AppKit the standard text-editing shortcuts
 /// (⌘A select-all, ⌘C/⌘V/⌘X, ⌘Z/⇧⌘Z) are delivered through the **main menu's key equivalents**,
 /// not by the text view itself. Without an Edit menu, those keystrokes route nowhere even when a
 /// text field is first responder. Installing one makes editing work in every Peeknook field.
@@ -16,7 +16,7 @@ enum StandardEditMenu {
         let main = app.mainMenu ?? {
             let menu = NSMenu()
             // Slot 0 is treated as the app menu by AppKit; keep it present but empty (the bar
-            // is never shown for an accessory app — only the key equivalents matter).
+            // is never shown for an accessory app, only the key equivalents matter).
             let appItem = NSMenuItem()
             appItem.submenu = NSMenu()
             menu.addItem(appItem)

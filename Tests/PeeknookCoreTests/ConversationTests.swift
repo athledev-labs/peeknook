@@ -25,7 +25,7 @@ final class ScriptedEngine: InferenceEngine, @unchecked Sendable {
     }
 
     func stream(request: InferenceRequest) -> AsyncThrowingStream<InferenceEvent, Error> {
-        // Called synchronously on the orchestrator's main actor — safe to record here.
+        // Called synchronously on the orchestrator's main actor, safe to record here.
         requests.append(request)
         let tokens = callIndex < responsesPerCall.count ? responsesPerCall[callIndex] : []
         callIndex += 1
@@ -172,12 +172,12 @@ final class ConversationTests: XCTestCase {
 
         orchestrator.sendFollowUp("more")
         try? await Task.sleep(nanoseconds: 150_000_000)
-        XCTAssertEqual(usage.stats.captures, 1, "a follow-up reuses the screenshot — not a new capture")
+        XCTAssertEqual(usage.stats.captures, 1, "a follow-up reuses the screenshot, not a new capture")
     }
 
     func testFollowUpIgnoredWithoutAnAnswer() {
         let orchestrator = makeOrchestrator(ScriptedEngine(responsesPerCall: [["a"]]))
-        // No capture yet — phase is .idle, so a follow-up is a no-op.
+        // No capture yet, phase is .idle, so a follow-up is a no-op.
         orchestrator.sendFollowUp("hello?")
         XCTAssertTrue(orchestrator.conversation.isEmpty)
         guard case .idle = orchestrator.phase else {
@@ -205,7 +205,7 @@ final class ConversationTests: XCTestCase {
     }
 
     func testSuggestionsArriveFromSeparatePassWithoutPollutingAnswer() async {
-        // The answer stream and the suggestion pass are independent — the answer is never
+        // The answer stream and the suggestion pass are independent, the answer is never
         // mutated by suggestion handling.
         let engine = ScriptedEngine(responsesPerCall: [["The error is a nil unwrap."]])
         engine.followUps = ["How do I fix it?", "What line is it on?"]
@@ -222,7 +222,7 @@ final class ConversationTests: XCTestCase {
     }
 
     func testSuggestionsGeneratedEvenInQuickMode() async {
-        // Suggestions are a separate, non-blocking call — quick mode (terse answers) must not
+        // Suggestions are a separate, non-blocking call, quick mode (terse answers) must not
         // suppress them.
         let engine = ScriptedEngine(responsesPerCall: [["short answer"]])
         engine.followUps = ["What does this mean?"]

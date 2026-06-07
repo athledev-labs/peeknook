@@ -91,7 +91,7 @@ final class ConversationPersistenceTests: XCTestCase {
         try? await Task.sleep(nanoseconds: 200_000_000)
 
         let markdown = orchestrator.conversationMarkdown()
-        XCTAssertTrue(markdown.contains("Safari — Docs"))
+        XCTAssertTrue(markdown.contains("Safari · Docs"))
         XCTAssertTrue(markdown.contains("**Peeknook:**"))
         XCTAssertTrue(markdown.contains("The answer"))
     }

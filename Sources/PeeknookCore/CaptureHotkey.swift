@@ -15,7 +15,7 @@ public struct CaptureHotkey: Codable, Equatable, Sendable {
         self.keySymbol = keySymbol
     }
 
-    /// Default: ⌘⇧P — easier to read and say than ⌥⌘P.
+    /// Default: ⌘⇧P, easier to read and say than ⌥⌘P.
     public static let `default` = CaptureHotkey(
         keyCode: 35,
         carbonModifiers: 256 | 512,

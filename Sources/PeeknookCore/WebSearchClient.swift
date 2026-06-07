@@ -40,7 +40,7 @@ public enum WebSearchError: Error, Equatable, Sendable {
     case noResults
 }
 
-/// Opt-in web lookup — queries DuckDuckGo HTML (no API key). Network leaves this Mac.
+/// Opt-in web lookup, queries DuckDuckGo HTML (no API key). Network leaves this Mac.
 public struct WebSearchClient: Sendable {
     public var session: URLSession
 
@@ -73,7 +73,7 @@ public struct WebSearchClient: Sendable {
         return parsed
     }
 
-    /// Build a search query from capture context — prefers selected text, then window title.
+    /// Build a search query from capture context, prefers selected text, then window title.
     public static func query(from capture: CaptureResult) -> String? {
         if let text = capture.text?.trimmingCharacters(in: .whitespacesAndNewlines), text.count >= 4 {
             let firstLine = text.split(separator: "\n", maxSplits: 1).first.map(String.init) ?? text
@@ -94,12 +94,12 @@ public struct WebSearchClient: Sendable {
         guard !top.isEmpty else { return "" }
         var lines = ["Live web lookup for \"\(snapshot.query)\" (opt-in; may be stale):"]
         for (index, result) in top.enumerated() {
-            lines.append("\(index + 1). \(result.title) — \(result.url.absoluteString)")
+            lines.append("\(index + 1). \(result.title) · \(result.url.absoluteString)")
             if !result.snippet.isEmpty {
                 lines.append("   \(result.snippet)")
             }
         }
-        lines.append("Use these only to supplement the screenshot — prefer what is visible on screen.")
+        lines.append("Use these only to supplement the screenshot, prefer what is visible on screen.")
         return lines.joined(separator: "\n")
     }
 

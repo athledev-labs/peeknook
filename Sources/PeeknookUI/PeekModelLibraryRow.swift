@@ -12,7 +12,7 @@ enum ModelLibraryVisionState: Equatable {
     case unknown
 }
 
-/// One row in the model library — friendly name, tag/size detail, and install/select state.
+/// One row in the model library, friendly name, tag/size detail, and install/select state.
 struct PeekModelLibraryRow: View {
     let option: InferenceModelOption
     let isSelected: Bool

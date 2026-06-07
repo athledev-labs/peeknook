@@ -8,7 +8,7 @@ public struct OllamaCatalogModel: Identifiable, Equatable, Sendable {
     public let modelID: String
     public let pageURL: URL
 
-    /// Short display name — last path component of the model id.
+    /// Short display name, last path component of the model id.
     public var displayName: String {
         modelID.split(separator: "/").last.map(String.init) ?? modelID
     }
@@ -29,7 +29,7 @@ public struct OllamaCatalogTagDetail: Equatable, Sendable {
     }
 }
 
-/// Searches ollama.com's model library. Network-only — not used during capture inference.
+/// Searches ollama.com's model library. Network-only, not used during capture inference.
 public struct OllamaCatalogClient: Sendable {
     public var session: URLSession
     public var baseURL: String

@@ -3,7 +3,7 @@
 import Foundation
 
 /// One archived chat: a stable identity, lifecycle timestamps, and the full turn list (screenshots
-/// included, base64). The on-disk unit of the conversation archive — one JSON file per thread so the
+/// included, base64). The on-disk unit of the conversation archive, one JSON file per thread so the
 /// list view never has to parse every screenshot just to show a row.
 public struct ConversationThread: Codable, Sendable, Identifiable, Equatable {
     public var id: UUID
@@ -48,7 +48,7 @@ public struct ConversationThread: Codable, Sendable, Identifiable, Equatable {
         self.lastPromptTokens = try c.decodeIfPresent(Int.self, forKey: .lastPromptTokens)
     }
 
-    /// Human label for the switcher — first question, else first answer, else the capture target.
+    /// Human label for the switcher, first question, else first answer, else the capture target.
     public var title: String {
         ConversationThread.derivedTitle(from: turns)
     }
@@ -127,7 +127,7 @@ public struct ConversationSummary: Codable, Sendable, Identifiable, Equatable {
     }
 }
 
-/// On-disk index of the archive — a list of ``ConversationSummary`` so the switcher avoids parsing
+/// On-disk index of the archive, a list of ``ConversationSummary`` so the switcher avoids parsing
 /// every thread file. Versioned to gate the one-time legacy migration.
 struct ConversationArchiveIndex: Codable, Sendable {
     var version: Int
@@ -143,7 +143,7 @@ struct ConversationArchiveIndex: Codable, Sendable {
 /// save/load/list when enabled, and `deleteAll` when the user opts out.
 public final class ConversationArchiveStore: Sendable {
     public static let indexVersion = 2
-    /// Cap thread count and total bytes — screenshots are large, so the archive prunes oldest first.
+    /// Cap thread count and total bytes, screenshots are large, so the archive prunes oldest first.
     public static let defaultMaxThreads = 25
     public static let defaultMaxBytes = 250 * 1024 * 1024
 
@@ -180,7 +180,7 @@ public final class ConversationArchiveStore: Sendable {
 
     // MARK: - Read
 
-    /// Summaries for the switcher, newest first. Cheap — only the index file is read.
+    /// Summaries for the switcher, newest first. Cheap, only the index file is read.
     public func summaries() -> [ConversationSummary] {
         lock.lock(); defer { lock.unlock() }
         return readIndex().summaries.sorted { $0.updatedAt > $1.updatedAt }
@@ -222,7 +222,7 @@ public final class ConversationArchiveStore: Sendable {
         writeIndex(index)
     }
 
-    /// Wipe the whole archive — called when the user turns persistence off or taps Clear all.
+    /// Wipe the whole archive, called when the user turns persistence off or taps Clear all.
     public func deleteAll() {
         lock.lock(); defer { lock.unlock() }
         try? FileManager.default.removeItem(at: directory)

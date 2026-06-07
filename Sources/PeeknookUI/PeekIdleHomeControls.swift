@@ -5,27 +5,36 @@ import NookApp
 import PeeknookCore
 import SwiftUI
 
-// MARK: - Idle home — greeting only. Thread actions live in the command bar.
+// MARK: - Idle home: greeting only. Thread actions live in the command bar.
 
 struct PeekIdleHomeContent: View {
     @Environment(\.nookResolvedTheme) private var theme
+    var settings: PeeknookSettings
 
     var body: some View {
-        Text(PeekPersonalGreeting.headline)
-            .font(.system(size: 15, weight: .light))
-            .tracking(0.2)
-            .foregroundStyle(theme.primaryLabel.opacity(0.92))
+        if settings.showGreeting {
+            Text(PeekPersonalGreeting.headline(settings: settings))
+                .font(.system(size: 15, weight: .light))
+                .tracking(0.2)
+                .foregroundStyle(theme.primaryLabel.opacity(0.92))
+        }
     }
 }
 
 enum PeekPersonalGreeting {
-    static var headline: String {
-        let name = firstName
+    static func headline(settings: PeeknookSettings) -> String {
+        let name = resolvedName(settings: settings)
         guard !name.isEmpty else { return timeWord }
         return "\(timeWord), \(name)"
     }
 
-    private static var firstName: String {
+    private static func resolvedName(settings: PeeknookSettings) -> String {
+        let custom = settings.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard custom.isEmpty else { return custom }
+        return systemFirstName
+    }
+
+    private static var systemFirstName: String {
         let full = NSFullUserName().trimmingCharacters(in: .whitespacesAndNewlines)
         guard !full.isEmpty else { return "" }
         return full.split(separator: " ").first.map(String.init) ?? full
@@ -42,7 +51,7 @@ enum PeekPersonalGreeting {
     }
 }
 
-// MARK: - Idle command bar — thread actions + preflight (left) · Capture (right)
+// MARK: - Idle command bar: thread actions + preflight (left) · Capture (right)
 
 struct PeekIdleCommandBar: View {
     var orchestrator: SessionOrchestrator
@@ -136,7 +145,7 @@ struct PeekIdleCommandBar: View {
     }
 }
 
-/// Resume control — preview on hover via popover so the main panel never resizes (in-flow
+/// Resume control, preview on hover via popover so the main panel never resizes (in-flow
 /// expansion fights OpenNook's hover dismiss and causes a stutter loop).
 private struct PeekResumeButton: View {
     @Environment(\.nookResolvedTheme) private var theme

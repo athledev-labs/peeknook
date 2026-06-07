@@ -3,7 +3,7 @@
 import Foundation
 import Observation
 
-/// Canonical read/write API for ``PeeknookSettings`` — keeps orchestrator, setup, and
+/// Canonical read/write API for ``PeeknookSettings``, keeps orchestrator, setup, and
 /// UserDefaults in sync so Home and Settings cannot drift.
 @MainActor
 @Observable
@@ -78,6 +78,22 @@ public final class PeekSettingsController {
         update { $0.webLookupEnabled = enabled }
     }
 
+    public func setDisplayName(_ name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard settings.displayName != trimmed else { return }
+        update { $0.displayName = trimmed }
+    }
+
+    public func setShowGreeting(_ enabled: Bool) {
+        guard settings.showGreeting != enabled else { return }
+        update { $0.showGreeting = enabled }
+    }
+
+    public func setRenderAnswerMarkdown(_ enabled: Bool) {
+        guard settings.renderAnswerMarkdown != enabled else { return }
+        update { $0.renderAnswerMarkdown = enabled }
+    }
+
     public func setOllamaBaseURL(_ url: String) {
         guard settings.ollamaBaseURL != url else { return }
         update { $0.ollamaBaseURL = url }
@@ -120,7 +136,7 @@ public final class PeekSettingsController {
         let entry = CustomModelEntry(tag: rawTag, displayName: displayName)
         guard !entry.tag.isEmpty else { return nil }
 
-        // Don't duplicate a curated tag or one already added — just surface the existing option.
+        // Don't duplicate a curated tag or one already added, just surface the existing option.
         if let existing = TextModelCatalog.option(for: entry.tag, custom: settings.customModels) {
             return existing
         }
@@ -153,7 +169,7 @@ public final class PeekSettingsController {
         await supportsVision(for: settings.textModel)
     }
 
-    /// Vision support for any tag — used by the model library when scanning installed models or
+    /// Vision support for any tag, used by the model library when scanning installed models or
     /// validating a custom tag before add.
     public func supportsVision(for tag: String) async -> Bool? {
         await inference.supportsVision(model: tag, baseURL: settings.ollamaBaseURL)

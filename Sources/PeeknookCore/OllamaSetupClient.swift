@@ -114,7 +114,7 @@ public struct OllamaSetupClient: Sendable {
     }
 
     /// Tag-aware match. Ollama implies `:latest` when a tag is omitted, so bare "gemma4"
-    /// resolves to "gemma4:latest". But distinct tags are distinct models — "gemma4:e2b"
+    /// resolves to "gemma4:latest". But distinct tags are distinct models, "gemma4:e2b"
     /// must NOT satisfy a request for "gemma4:e4b" (a base-name match did exactly that,
     /// hiding the missing model until inference 404'd).
     public static func matchesModel(installedNames: [String], wanted: String) -> Bool {

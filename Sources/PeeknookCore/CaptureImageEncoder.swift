@@ -6,7 +6,7 @@ import ImageIO
 import UniformTypeIdentifiers
 
 enum CaptureImageEncoder {
-    /// JPEG base64 for Ollama vision models — resized to keep latency reasonable on local inference.
+    /// JPEG base64 for Ollama vision models, resized to keep latency reasonable on local inference.
     static func jpegBase64(from image: CGImage, maxPixel: Int = 1280, quality: CGFloat = 0.82) -> String? {
         let width = image.width
         let height = image.height

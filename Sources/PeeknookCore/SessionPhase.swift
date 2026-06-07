@@ -47,7 +47,7 @@ public struct CapturePreview: Equatable, Sendable {
         )
     }
 
-    /// *Which* window the model will see — "Safari — peeknook.com" or a fallback.
+    /// *Which* window the model will see, "Safari, peeknook.com" or a fallback.
     public var targetLabel: String {
         captureTargetLabel(appName: appName, windowTitle: windowTitle, fallback: sourceLabel)
     }

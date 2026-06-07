@@ -11,7 +11,7 @@ import AppKit
 public final class SessionOrchestrator {
     public private(set) var phase: SessionPhase = .idle
     public private(set) var streamedAnswer: String = ""
-    /// Committed conversation — image turns (each captured screenshot), the user's follow-up
+    /// Committed conversation, image turns (each captured screenshot), the user's follow-up
     /// questions, and assistant answers, oldest first. Empty until the first answer lands.
     public private(set) var conversation: [ChatTurn] = []
     /// Model-proposed next questions for the dynamic action pills; cleared on each new turn.
@@ -26,7 +26,7 @@ public final class SessionOrchestrator {
     /// be warm? Drives an honest loading label (cold model-load vs warm image-read).
     public private(set) var inferenceModelWasWarm = false
     /// Tokens in the last turn's prompt (≈ the whole chat re-sent, images included) and the
-    /// model's context window — together the chat's context-usage meter.
+    /// model's context window, together the chat's context-usage meter.
     public private(set) var lastPromptTokens: Int?
     public private(set) var contextWindow: Int?
     private var lastInferenceAt: Date?
@@ -202,14 +202,14 @@ public final class SessionOrchestrator {
         Task.detached { archive.save(thread) }
     }
 
-    /// Delete just the chat on screen from the archive — called when the user discards a thread.
+    /// Delete just the chat on screen from the archive, called when the user discards a thread.
     public func discardActiveThread() {
         if let id = activeThreadID { conversationArchive?.delete(id: id) }
         activeThreadID = nil
         activeThreadCreatedAt = nil
     }
 
-    /// Wipe the whole archive — called when the user turns persistence off or taps Clear all.
+    /// Wipe the whole archive, called when the user turns persistence off or taps Clear all.
     public func purgeAllConversations() {
         conversationArchive?.deleteAll()
         activeThreadID = nil
@@ -262,7 +262,7 @@ public final class SessionOrchestrator {
         startNewChat()
     }
 
-    /// Retry after a failure — re-runs a fresh capture (which re-checks setup readiness).
+    /// Retry after a failure, re-runs a fresh capture (which re-checks setup readiness).
     public func retryAfterFailure() {
         guard case .failed = phase else { return }
         startCapture(intent: .fresh)
@@ -311,7 +311,7 @@ public final class SessionOrchestrator {
         inferenceTask = Task { await runTurn(capturedNow: capture) }
     }
 
-    /// Ask a follow-up about the chat so far — reuses the screenshots already in the model's
+    /// Ask a follow-up about the chat so far, reuses the screenshots already in the model's
     /// context. Only valid once an answer is on screen.
     public func sendFollowUp(_ raw: String) {
         let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -343,7 +343,7 @@ public final class SessionOrchestrator {
         inferenceTask = nil
         suggestionTask?.cancel()
         streamedAnswer = ""
-        // Stopping mid-extension (a follow-up or an added image) keeps the answered thread —
+        // Stopping mid-extension (a follow-up or an added image) keeps the answered thread -
         // drop only the unanswered tail and return to the last answer.
         if hasConversation {
             if let last = conversation.last, !last.isAssistant { conversation.removeLast() }
@@ -394,14 +394,14 @@ public final class SessionOrchestrator {
         copyToPasteboard(text)
     }
 
-    /// The whole thread rendered as Markdown — screenshots become a captioned heading, questions
+    /// The whole thread rendered as Markdown, screenshots become a captioned heading, questions
     /// and answers become labeled blocks. For copy/export of a practice session.
     public func conversationMarkdown() -> String {
         var blocks: [String] = []
         for turn in conversation {
             switch turn.kind {
             case .image(let capture):
-                blocks.append("### Screenshot — \(capture.targetLabel)")
+                blocks.append("### Screenshot · \(capture.targetLabel)")
             case .user(let text):
                 blocks.append("**You:** \(text)")
             case .assistant(let text):
@@ -424,7 +424,7 @@ public final class SessionOrchestrator {
         #endif
     }
 
-    /// Within Ollama's `keep_alive` window (10m), the model is still resident — so the next
+    /// Within Ollama's `keep_alive` window (10m), the model is still resident, so the next
     /// capture skips cold load. 9m margin to stay safely inside it.
     private var modelLikelyWarm: Bool {
         guard let last = lastInferenceAt else { return false }
@@ -432,7 +432,7 @@ public final class SessionOrchestrator {
     }
 
     /// Runs one turn against the conversation so far. `capturedNow` is non-nil when this turn
-    /// introduced a new screenshot (first capture or Add image) — that drives usage accounting.
+    /// introduced a new screenshot (first capture or Add image), that drives usage accounting.
     private func runTurn(capturedNow capture: CaptureResult?) async {
         guard !conversation.isEmpty else { return }
         inferenceModelWasWarm = modelLikelyWarm
@@ -468,14 +468,14 @@ public final class SessionOrchestrator {
                 switch event {
                 case .token(let token):
                     streamedAnswer += token
-                    lastInferenceAt = Date() // model is loaded & producing — it's warm now
+                    lastInferenceAt = Date() // model is loaded & producing, it's warm now
                 case .completed(let stats):
                     finalStats = stats
                     didComplete = true
                 }
                 if didComplete { break }
             }
-            // The stream ends without `.completed` only when cancelled — don't record a
+            // The stream ends without `.completed` only when cancelled, don't record a
             // phantom capture or flip to a result the user cancelled.
             guard didComplete, !Task.isCancelled else { return }
             lastInferenceAt = Date()
@@ -498,7 +498,7 @@ public final class SessionOrchestrator {
             conversation.append(ChatTurn(id: turnCounter, kind: .assistant(answer), turnUsage: usage))
             phase = .result(answer)
             persistConversationNow()
-            // Suggestions are a separate, schema-constrained pass — kick it off without
+            // Suggestions are a separate, schema-constrained pass, kick it off without
             // blocking the answer; pills pop in a moment later.
             fetchSuggestions()
             ensureContextWindowLoaded()
@@ -536,7 +536,7 @@ public final class SessionOrchestrator {
     }
 
     /// Generates the dynamic action pills for the answer just shown. Controlled only by the
-    /// `suggestFollowUps` setting — it's a separate, non-blocking call, so quick mode (which is
+    /// `suggestFollowUps` setting, it's a separate, non-blocking call, so quick mode (which is
     /// about answer terseness) doesn't disable it. Applies only if the same answer is on screen.
     private func fetchSuggestions() {
         suggestionTask?.cancel()

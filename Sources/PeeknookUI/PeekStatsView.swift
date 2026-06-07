@@ -26,7 +26,7 @@ private enum StatsSection: String, CaseIterable, Hashable {
     }
 }
 
-/// All-time usage analytics with a date filter. Full-width charts — no clipped rings.
+/// All-time usage analytics with a date filter. Full-width charts, no clipped rings.
 struct PeekStatsView: View {
     var orchestrator: SessionOrchestrator
 
@@ -36,6 +36,7 @@ struct PeekStatsView: View {
     @State private var growthMetric: UsageGrowthMetric = .tokens
     @State private var selectedGrowthEventID: UUID?
     @State private var expandedSections: Set<StatsSection> = Set(StatsSection.allCases)
+    @State private var showsResetConfirmation = false
 
     private var rawStats: UsageStats {
         orchestrator.usage?.stats ?? UsageStats()
@@ -89,6 +90,20 @@ struct PeekStatsView: View {
             selectedGrowthEventID = nil
             timelineModel = nil
         }
+        .confirmationDialog(
+            "Reset usage stats?",
+            isPresented: $showsResetConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Reset stats", role: .destructive) {
+                orchestrator.usage?.reset()
+                selectedGrowthEventID = nil
+                timelineModel = nil
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Clears capture counts, token totals, and history on this Mac. You can't undo it.")
+        }
     }
 
     // MARK: - Chrome
@@ -103,6 +118,16 @@ struct PeekStatsView: View {
                     ) {
                         withAnimation(.easeOut(duration: 0.15)) { dateRange = range }
                     }
+                }
+            }
+            Spacer(minLength: 0)
+            if rawStats.window(for: .allTime).hasData {
+                NookToolbarButton(
+                    title: "Reset",
+                    symbol: "arrow.counterclockwise",
+                    help: "Clear usage counters on this Mac"
+                ) {
+                    showsResetConfirmation = true
                 }
             }
         }
@@ -126,7 +151,7 @@ struct PeekStatsView: View {
         )
     }
 
-    // MARK: - Overview (flat rows — same language as Settings usage)
+    // MARK: - Overview
 
     private var overviewRows: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -151,14 +176,14 @@ struct PeekStatsView: View {
                 label: "Response Speed",
                 value: window.averageTokensPerSecond > 0
                     ? String(format: "~%.0f tok/s", window.averageTokensPerSecond)
-                    : "—"
+                    : "-"
             )
             statsValueRow(
                 symbol: "clock",
                 label: "Generation Time",
                 value: window.generationSeconds > 0
                     ? String(format: "%.0fs", window.generationSeconds)
-                    : "—"
+                    : "-"
             )
         }
     }
@@ -218,7 +243,7 @@ struct PeekStatsView: View {
         Circle().fill(color).frame(width: 6, height: 6).peekDecorative()
     }
 
-    // MARK: - Usage over time (Swift Charts — calendar X, cumulative Y)
+    // MARK: - Usage over time (Swift Charts: calendar X, cumulative Y)
 
     private var growthSection: some View {
         VStack(alignment: .leading, spacing: 8) {

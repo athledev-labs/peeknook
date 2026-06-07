@@ -2,7 +2,7 @@
 
 import Foundation
 
-/// A vision model Peeknook can run — today via Ollama; extend this list as backends ship.
+/// A vision model Peeknook can run, today via Ollama; extend this list as backends ship.
 public struct InferenceModelOption: Identifiable, Equatable, Sendable {
     public var id: String { tag }
 
@@ -134,7 +134,7 @@ public enum TextModelCatalog {
         option(for: tag, custom: custom)?.displayName ?? tag
     }
 
-    /// @deprecated Use ``displayName(for:)`` — kept for tests migrating off short tags.
+    /// @deprecated Use ``displayName(for:)``, kept for tests migrating off short tags.
     public static func shortLabel(for model: String) -> String {
         displayName(for: model)
     }

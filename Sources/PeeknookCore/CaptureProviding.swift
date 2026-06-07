@@ -3,13 +3,13 @@
 import Foundation
 
 public struct CaptureResult: Sendable, Equatable, Codable {
-    /// Optional selected text (Accessibility) — supplements the screenshot for the model.
+    /// Optional selected text (Accessibility), supplements the screenshot for the model.
     public var text: String?
     /// Capture *modality* summary, e.g. "Vision + selected text".
     public var sourceLabel: String
-    /// Owning app of the captured window, e.g. "Safari" — preview trust.
+    /// Owning app of the captured window, e.g. "Safari", preview trust.
     public var appName: String?
-    /// Captured window title, e.g. "peeknook.com" — preview trust.
+    /// Captured window title, e.g. "peeknook.com", preview trust.
     public var windowTitle: String?
     /// JPEG base64 for multimodal models (Gemma 4, etc.).
     public var screenshotBase64: String?
@@ -30,13 +30,13 @@ public struct CaptureResult: Sendable, Equatable, Codable {
         self.screenshotBase64 = screenshotBase64
     }
 
-    /// *Which* window the model will see — the line the user must be able to trust.
-    /// "Safari — peeknook.com", "Safari", or the modality label as a last resort.
+    /// *Which* window the model will see, the line the user must be able to trust.
+    /// "Safari, peeknook.com", "Safari", or the modality label as a last resort.
     public var targetLabel: String {
         captureTargetLabel(appName: appName, windowTitle: windowTitle, fallback: sourceLabel)
     }
 
-    /// Real captured text (selection) for the preview, or "" — the UI hides it when empty
+    /// Real captured text (selection) for the preview, or "", the UI hides it when empty
     /// rather than showing filler.
     public var previewExcerpt: String {
         guard let text, !text.isEmpty else { return "" }
@@ -48,7 +48,7 @@ public struct CaptureResult: Sendable, Equatable, Codable {
 /// so the trust line never drifts between capture and preview.
 func captureTargetLabel(appName: String?, windowTitle: String?, fallback: String) -> String {
     switch (appName, windowTitle) {
-    case let (app?, title?): "\(app) — \(title)"
+    case let (app?, title?): "\(app) · \(title)"
     case let (app?, nil): app
     case let (nil, title?): title
     case (nil, nil): fallback
@@ -56,7 +56,7 @@ func captureTargetLabel(appName: String?, windowTitle: String?, fallback: String
 }
 
 extension Optional where Wrapped == String {
-    /// Trimmed value, or nil when missing/blank — keeps empty window titles out of the trust line.
+    /// Trimmed value, or nil when missing/blank, keeps empty window titles out of the trust line.
     var normalizedNonEmpty: String? {
         guard let trimmed = self?.trimmingCharacters(in: .whitespacesAndNewlines),
               !trimmed.isEmpty else { return nil }
@@ -70,9 +70,9 @@ public enum CaptureError: Error, Sendable, Equatable {
     case failed(String)
 }
 
-/// What the capture hotkey targets — both scopes are anchored on the cursor (multi-monitor aware).
+/// What the capture hotkey targets, both scopes are anchored on the cursor (multi-monitor aware).
 public enum CaptureScope: String, Codable, Sendable, CaseIterable, Identifiable {
-    /// The single window under the cursor (default — "help me with this one thing").
+    /// The single window under the cursor (default, "help me with this one thing").
     case window
     /// The whole display the cursor is on ("what's going on across my screen").
     case display
@@ -144,7 +144,7 @@ public enum AnswerDepth: String, CaseIterable, Sendable {
 
 public protocol CaptureProviding: Sendable {
     /// - Parameter quick: capture at lower fidelity (smaller image) to cut vision-prefill
-    ///   latency — the dominant cost of local inference.
+    ///   latency, the dominant cost of local inference.
     func capture(scope: CaptureScope, quick: Bool) async throws -> CaptureResult
 }
 
@@ -169,10 +169,10 @@ public struct StubCaptureProvider: CaptureProviding, Sendable {
     }
 
     public func capture(scope: CaptureScope, quick: Bool) async throws -> CaptureResult {
-        _ = (scope, quick) // stubs ignore these — tests only
+        _ = (scope, quick) // stubs ignore these, tests only
         let trimmed = sampleText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { throw CaptureError.noContent }
-        // Stubs have no vision — tests only.
+        // Stubs have no vision, tests only.
         return CaptureResult(
             text: trimmed,
             sourceLabel: sourceLabel,

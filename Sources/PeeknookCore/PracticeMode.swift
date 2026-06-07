@@ -33,6 +33,6 @@ public enum PracticeMode: String, Codable, CaseIterable, Sendable, Identifiable 
     }
 
     /// Modes exposed in product UI. Add modes here only when behavior is clearly distinct
-    /// at scale (not per-language pills — General infers gloss/translate/etc. from the screen).
+    /// at scale (not per-language pills, General infers gloss/translate/etc. from the screen).
     public static let shipped: [PracticeMode] = [.general]
 }

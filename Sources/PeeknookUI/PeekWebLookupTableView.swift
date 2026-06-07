@@ -21,7 +21,7 @@ private enum WebLookupSort: String, CaseIterable {
     }
 }
 
-/// Filterable, sortable web lookup results — shown during inference and on the answer screen.
+/// Filterable, sortable web lookup results, shown during inference and on the answer screen.
 struct PeekWebLookupTableView: View {
     let snapshot: WebLookupSnapshot?
     var isLoading: Bool = false

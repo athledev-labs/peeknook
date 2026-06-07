@@ -4,7 +4,7 @@ import NookApp
 import PeeknookCore
 import SwiftUI
 
-/// Reusable failure/recovery surface — glass card with a human title, explanation, and one or
+/// Reusable failure/recovery surface, glass card with a human title, explanation, and one or
 /// two ``RecoveryAction`` buttons. Consumes structured ``SessionFailure`` data; never parses
 /// error strings. Actions reuse `NookToolbarButton` so recovery matches the command bar.
 struct PeekFailureView: View {

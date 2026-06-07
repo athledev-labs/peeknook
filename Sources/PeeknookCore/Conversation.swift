@@ -17,7 +17,7 @@ public struct ChatTurn: Identifiable, Equatable, Sendable, Codable {
     public let id: Int
     public var kind: Kind
     /// Telemetry for this turn's inference (assistant answers). `promptTokens` is the full
-    /// prompt Ollama evaluated — the whole thread so far, not an isolated message slice.
+    /// prompt Ollama evaluated, the whole thread so far, not an isolated message slice.
     public var turnUsage: TurnUsage?
 
     public init(id: Int, kind: Kind, turnUsage: TurnUsage? = nil) {

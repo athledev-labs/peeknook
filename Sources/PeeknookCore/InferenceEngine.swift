@@ -49,7 +49,7 @@ public enum InferenceHealth: Sendable, Equatable {
     case unavailable(String)
 }
 
-/// Streaming inference boundary — Ollama and test mocks conform here.
+/// Streaming inference boundary, Ollama and test mocks conform here.
 public protocol InferenceEngine: Sendable {
     func health(baseURL: String, model: String) async -> InferenceHealth
     func stream(request: InferenceRequest) -> AsyncThrowingStream<InferenceEvent, Error>
@@ -92,7 +92,7 @@ public struct MockInferenceEngine: InferenceEngine, Sendable {
     public var completionStats: InferenceStats?
 
     public init(
-        tokens: [String] = ["안녕", " — ", "informal ", "greeting."],
+        tokens: [String] = ["안녕", " ", "informal ", "greeting."],
         delayNanoseconds: UInt64 = 40_000_000,
         completionStats: InferenceStats? = nil
     ) {

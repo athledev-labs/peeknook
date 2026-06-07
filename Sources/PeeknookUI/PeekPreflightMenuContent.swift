@@ -3,7 +3,7 @@
 import PeeknookCore
 import SwiftUI
 
-/// Shared menu content for capture preflight controls — Home command bar and Settings
+/// Shared menu content for capture preflight controls, Home command bar and Settings
 /// rows use the same options, actions, and popover rows.
 @MainActor
 enum PeekPreflightMenuContent {

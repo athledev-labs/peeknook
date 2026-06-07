@@ -4,7 +4,7 @@ import NookApp
 import SwiftUI
 
 /// A soft light band that sweeps left→right across content, masked to the content's shape.
-/// Used for "analyzing" loading states — premium feel without an external animation library.
+/// Used for "analyzing" loading states, premium feel without an external animation library.
 struct Shimmer: ViewModifier {
     @State private var phase: CGFloat = 0
     /// Band width as a fraction of the content width.

@@ -11,7 +11,7 @@ public struct SystemProfile: Sendable, Equatable {
         let bytes = ProcessInfo.processInfo.physicalMemory
         let gb = max(1, Int(bytes / (1024 * 1024 * 1024)))
 
-        // RAM is the binding constraint for local Gemma 4 — pick the tag that fits.
+        // RAM is the binding constraint for local Gemma 4, pick the tag that fits.
         let model: String
         if gb <= 16 {
             model = "gemma4:e2b"

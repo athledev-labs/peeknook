@@ -125,7 +125,7 @@ final class ConversationArchiveStoreTests: XCTestCase {
         let store = ConversationArchiveStore(directory: dir, legacyFileURL: dir.appendingPathComponent("conversation.v1.json"))
         store.save(thread("existing"))
 
-        // Write a legacy file after the archive exists — it must be ignored.
+        // Write a legacy file after the archive exists, it must be ignored.
         let legacyURL = dir.appendingPathComponent("conversation.v1.json")
         let legacy = PersistedConversation(turns: [ChatTurn(id: 9, kind: .assistant("old"))], contextWindow: nil, turnCounter: 9, lastPromptTokens: nil)
         try JSONEncoder().encode(legacy).write(to: legacyURL)

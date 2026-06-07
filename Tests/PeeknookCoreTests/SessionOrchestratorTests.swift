@@ -66,12 +66,12 @@ final class SessionOrchestratorTests: XCTestCase {
         }
         XCTAssertEqual(preview.appName, "Safari")
         XCTAssertEqual(preview.windowTitle, "peeknook.com")
-        XCTAssertEqual(preview.targetLabel, "Safari — peeknook.com")
+        XCTAssertEqual(preview.targetLabel, "Safari · peeknook.com")
     }
 
     func testCaptureTargetLabelFallsBackToModalityLabel() {
         let full = CaptureResult(text: nil, sourceLabel: "Front window (vision)", appName: "Safari", windowTitle: "Docs")
-        XCTAssertEqual(full.targetLabel, "Safari — Docs")
+        XCTAssertEqual(full.targetLabel, "Safari · Docs")
 
         let appOnly = CaptureResult(text: nil, sourceLabel: "Front window (vision)", appName: "Xcode")
         XCTAssertEqual(appOnly.targetLabel, "Xcode")

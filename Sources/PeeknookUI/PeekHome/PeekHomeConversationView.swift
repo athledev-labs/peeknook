@@ -65,6 +65,7 @@ struct PeekHomeConversationView: View {
                 } else {
                     PeekHomeAnswerCard(
                         text: orchestrator.streamedAnswer,
+                        renderMarkdown: orchestrator.settings.renderAnswerMarkdown,
                         showCopy: true,
                         onCopy: { orchestrator.copyToPasteboard(orchestrator.streamedAnswer) }
                     )
@@ -127,6 +128,7 @@ struct PeekHomeConversationView: View {
             VStack(alignment: .leading, spacing: 4) {
                 PeekHomeAnswerCard(
                     text: text,
+                    renderMarkdown: orchestrator.settings.renderAnswerMarkdown,
                     showCopy: isLatestAssistant,
                     onCopy: { orchestrator.copyToPasteboard(text) }
                 )

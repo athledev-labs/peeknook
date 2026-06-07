@@ -7,6 +7,7 @@ import SwiftUI
 struct PeekHomeAnswerCard: View {
     @Environment(\.nookResolvedTheme) private var theme
     let text: String
+    var renderMarkdown: Bool = true
     let showCopy: Bool
     let onCopy: () -> Void
     @State private var isHovered = false
@@ -14,7 +15,7 @@ struct PeekHomeAnswerCard: View {
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            AnswerMarkdownText(text: text)
+            AnswerMarkdownText(text: text, renderMarkdown: renderMarkdown)
                 .padding(.trailing, showCopy ? 22 : 0)
 
             if showCopy {

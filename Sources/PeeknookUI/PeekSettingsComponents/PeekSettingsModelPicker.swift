@@ -4,7 +4,7 @@ import NookApp
 import PeeknookCore
 import SwiftUI
 
-/// Curated vision model picker — friendly names instead of raw Ollama tags.
+/// Curated vision model picker, friendly names instead of raw Ollama tags.
 struct PeekSettingsModelPickerRow: View {
     let currentTag: String
     let recommendedTag: String

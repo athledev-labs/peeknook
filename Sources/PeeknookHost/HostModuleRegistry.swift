@@ -15,7 +15,7 @@ import NookApp
 public enum HostModuleRegistry {
     @MainActor
     public static func registerAdditionalModules(into host: inout NookHostConfiguration) {
-        // Intentionally empty — add sibling nook apps below.
+        // Intentionally empty, add sibling nook apps below.
         _ = host
     }
 }

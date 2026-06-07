@@ -18,7 +18,7 @@ private enum CatalogSearchFilter: String, CaseIterable {
     }
 }
 
-/// Search tab for the model library — queries ollama.com via the community catalog API.
+/// Search tab for the model library, queries ollama.com via the community catalog API.
 struct PeekModelCatalogSearchView: View {
     var settings: PeekSettingsController
     var setup: SetupCoordinator
@@ -116,7 +116,7 @@ struct PeekModelCatalogSearchView: View {
                 .foregroundStyle(Color.orange.opacity(0.95))
                 .fixedSize(horizontal: false, vertical: true)
         } else if trimmedQuery.isEmpty {
-            Text("Search the public Ollama library — results load from ollama.com.")
+            Text("Search the public Ollama library, results load from ollama.com.")
                 .font(.system(size: 9))
                 .foregroundStyle(theme.tertiaryLabel)
                 .fixedSize(horizontal: false, vertical: true)
@@ -297,7 +297,7 @@ struct PeekModelCatalogSearchView: View {
 
     private func tagCountLabel(for model: OllamaCatalogModel) -> String {
         if let tags = tagsByModel[model.modelID] {
-            return tags.isEmpty ? "—" : "\(tags.count)"
+            return tags.isEmpty ? "-" : "\(tags.count)"
         }
         return "…"
     }
@@ -328,7 +328,7 @@ struct PeekModelCatalogSearchView: View {
                 guard !Task.isCancelled else { return }
                 results = []
                 isSearching = false
-                searchError = "Can't reach the model catalog — check your connection."
+                searchError = "Can't reach the model catalog, check your connection."
             }
         }
     }

@@ -3,7 +3,7 @@
 import Foundation
 
 /// A one-tap path out of a failure. The view layer maps each case to a label, symbol, and
-/// handler — core stays free of presentation so copy and routing live next to the buttons.
+/// handler, core stays free of presentation so copy and routing live next to the buttons.
 public enum RecoveryAction: Equatable, Sendable {
     case tryAgain
     case openSetup
@@ -33,7 +33,7 @@ public struct SessionFailure: Equatable, Sendable {
     public let message: String
     public let primaryRecovery: RecoveryAction
     public let secondaryRecovery: RecoveryAction?
-    /// Raw technical hint (e.g. an Ollama error body or a CLI command) — surfaced small, optional.
+    /// Raw technical hint (e.g. an Ollama error body or a CLI command), surfaced small, optional.
     public let technicalDetail: String?
 
     public init(
@@ -63,7 +63,7 @@ public extension SessionFailure {
     )
 
     /// The model completed but streamed no text (often a reasoning model spending its budget on
-    /// hidden thinking) — retrying usually clears it, or switch models.
+    /// hidden thinking), retrying usually clears it, or switch models.
     static let emptyAnswer = SessionFailure(
         kind: .emptyAnswer,
         title: "No answer came back",

@@ -145,7 +145,7 @@ final class SettingsAndPromptTests: XCTestCase {
     func testMergedCatalogAppendsCustomAndDedupes() {
         let custom = [
             CustomModelEntry(tag: "qwen3-vl:8b"),
-            CustomModelEntry(tag: "gemma4:e2b"), // already curated — must not duplicate
+            CustomModelEntry(tag: "gemma4:e2b"), // already curated, must not duplicate
         ]
         let merged = TextModelCatalog.merged(custom: custom)
         XCTAssertEqual(merged.filter { $0.tag == "gemma4:e2b" }.count, 1)
@@ -170,5 +170,24 @@ final class SettingsAndPromptTests: XCTestCase {
         let installed = ["gemma4:e4b", "qwen3-vl:8b", "qwen3-vl:8b", "llama3:latest"]
         let undiscovered = ModelTagDiscovery.undiscovered(installedNames: installed, knownTags: known)
         XCTAssertEqual(undiscovered, ["llama3:latest", "qwen3-vl:8b"])
+    }
+
+    func testPersonalAndAnswerRenderingSettingsDefaultAndRoundTrip() throws {
+        let legacy = Data(#"{"mode":"general","textModel":"gemma4:e4b"}"#.utf8)
+        let decoded = try JSONDecoder().decode(PeeknookSettings.self, from: legacy)
+        XCTAssertEqual(decoded.displayName, "")
+        XCTAssertTrue(decoded.showGreeting)
+        XCTAssertTrue(decoded.renderAnswerMarkdown)
+
+        let custom = PeeknookSettings(
+            textModel: "gemma4:e4b",
+            displayName: "Alex",
+            showGreeting: false,
+            renderAnswerMarkdown: false
+        )
+        let back = try JSONDecoder().decode(PeeknookSettings.self, from: JSONEncoder().encode(custom))
+        XCTAssertEqual(back.displayName, "Alex")
+        XCTAssertFalse(back.showGreeting)
+        XCTAssertFalse(back.renderAnswerMarkdown)
     }
 }

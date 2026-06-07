@@ -3,7 +3,7 @@
 import NookApp
 import SwiftUI
 
-/// Per-command liquid glass — visible on the notch's black panel (material alone blurs to nothing).
+/// Per-command liquid glass, visible on the notch's black panel (material alone blurs to nothing).
 struct PeekCommandPillGlass: View {
     var cornerRadius: CGFloat = 7
     var isHovered: Bool = false

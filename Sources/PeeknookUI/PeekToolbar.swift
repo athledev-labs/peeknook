@@ -80,7 +80,7 @@ struct InlineHotkeyKeycaps: View {
     }
 }
 
-// MARK: - Preflight dropdowns (icon · value · chevron — each its own glass pill)
+// MARK: - Preflight dropdowns (icon · value · chevron: each its own glass pill)
 
 struct ValueDropdownPill<MenuContent: View>: View {
     @Environment(\.nookResolvedTheme) private var theme

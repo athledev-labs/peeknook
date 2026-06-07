@@ -3,7 +3,7 @@
 import Foundation
 import Observation
 
-/// One inference event for timeline charts — appended on each completed answer.
+/// One inference event for timeline charts, appended on each completed answer.
 public struct UsageEvent: Codable, Equatable, Sendable, Identifiable {
     public var id: UUID
     public var recordedAt: Date
@@ -94,7 +94,7 @@ public enum UsageDateRange: String, CaseIterable, Sendable {
     }
 }
 
-/// Aggregated usage for a date range — built from the event log, or legacy totals for all-time
+/// Aggregated usage for a date range, built from the event log, or legacy totals for all-time
 /// when no events exist yet.
 public struct UsageWindow: Equatable, Sendable {
     public var captures: Int
@@ -144,7 +144,7 @@ public struct UsageWindow: Equatable, Sendable {
     }
 }
 
-/// Per-model rollup — persisted in ``UsageStats/modelTotals`` and derived from events.
+/// Per-model rollup, persisted in ``UsageStats/modelTotals`` and derived from events.
 public struct ModelUsageSummary: Codable, Equatable, Sendable, Identifiable {
     public var modelTag: String
     public var promptTokens: Int
@@ -177,7 +177,7 @@ public struct ModelUsageSummary: Codable, Equatable, Sendable, Identifiable {
     }
 }
 
-/// On-device usage counters. Everything here is local — nothing is ever sent anywhere,
+/// On-device usage counters. Everything here is local, nothing is ever sent anywhere,
 /// which is itself a stat worth showing.
 public struct UsageStats: Codable, Equatable, Sendable {
     public static let defaultsKey = "peeknook.usage.v1"
@@ -190,7 +190,7 @@ public struct UsageStats: Codable, Equatable, Sendable {
     public var imageBytes: Int
     /// Rolling inference log for timeline charts (newest last; pruned to ``maxEvents``).
     public var events: [UsageEvent]
-    /// Lifetime per-model totals — updated on every recorded answer.
+    /// Lifetime per-model totals, updated on every recorded answer.
     public var modelTotals: [String: ModelUsageSummary]
 
     public init(
@@ -307,7 +307,7 @@ public struct UsageStats: Codable, Equatable, Sendable {
     }
 }
 
-/// Accumulates per-inference telemetry into persistent local totals for the Settings stats panel.
+/// Accumulates per-inference telemetry into persistent local totals for the Stats drill-in.
 @MainActor
 @Observable
 public final class UsageStore {
@@ -338,7 +338,7 @@ public final class UsageStore {
         stats.save(to: defaults)
     }
 
-    /// A follow-up turn reuses the same screenshot, so it adds no capture and no image bytes —
+    /// A follow-up turn reuses the same screenshot, so it adds no capture and no image bytes -
     /// only the model's token/time usage counts.
     public func recordFollowUp(inference: InferenceStats?, modelTag: String) {
         guard let inference else { return }

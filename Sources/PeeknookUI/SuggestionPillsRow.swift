@@ -3,7 +3,7 @@
 import NookApp
 import SwiftUI
 
-/// Horizontal follow-up suggestions — skeleton while loading, pills with hover when ready.
+/// Horizontal follow-up suggestions, skeleton while loading, pills with hover when ready.
 struct SuggestionPillsRow: View {
     @Environment(\.nookResolvedTheme) private var theme
     let isLoading: Bool
@@ -95,6 +95,6 @@ private struct SuggestionPillButton: View {
         .animation(.easeOut(duration: 0.14), value: isHovered)
         .onHover { isHovered = $0 }
         .help(title)
-        .peekAction(label: title, hint: "Suggested follow-up — sends immediately")
+        .peekAction(label: title, hint: "Suggested follow-up, sends immediately")
     }
 }

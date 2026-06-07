@@ -3,7 +3,7 @@
 import NookApp
 import SwiftUI
 
-/// Bottom command row shared by home, stats, and other drilled-in surfaces — same HStack layout
+/// Bottom command row shared by home, stats, and other drilled-in surfaces, same HStack layout
 /// and spacing as ``PeekIdleCommandBar`` (fixed below scrollable content, not inside it).
 struct PeekSurfaceCommandBar<Content: View>: View {
     @ViewBuilder var content: () -> Content
@@ -31,7 +31,7 @@ struct PeekSurfaceCommandPills<Content: View>: View {
     }
 }
 
-/// Toggleable surface section — chevron gutter, optional icon, vertical guardrail on content.
+/// Toggleable surface section, chevron gutter, optional icon, vertical guardrail on content.
 /// Matches ``PeekSettingsDisclosureSection`` so drilled-in stats read like Settings.
 struct PeekCollapsibleSection<Content: View>: View {
     @Environment(\.nookResolvedTheme) private var theme
@@ -91,7 +91,7 @@ struct PeekCollapsibleSection<Content: View>: View {
     }
 }
 
-/// Glass command pill for ``PeekSurfaceCommandPills`` — matches ``NookToolbarButton`` /
+/// Glass command pill for ``PeekSurfaceCommandPills``, matches ``NookToolbarButton`` /
 /// ``ValueDropdownPill`` (peekGlass, 9pt label, selected = prominent).
 struct PeekSurfaceFilterPill: View {
     @Environment(\.nookResolvedTheme) private var theme

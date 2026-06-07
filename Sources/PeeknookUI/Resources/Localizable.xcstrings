@@ -97,7 +97,7 @@
       "comment" : "Hint below the usage-over-time chart.",
       "extractionState" : "manual"
     },
-    "Dashed line projects your recent pace forward 7 days — not a guarantee." : {
+    "Dashed line projects your recent pace forward 7 days, not a guarantee." : {
       "comment" : "Hint below the forecast extension on the usage-over-time chart.",
       "extractionState" : "manual"
     },
@@ -193,7 +193,7 @@
       "comment" : "Hint linking Stats per-thread chart to the History drill-in.",
       "extractionState" : "manual"
     },
-    "All on this Mac — nothing is sent anywhere." : {
+    "All on this Mac, nothing is sent anywhere." : {
       "comment" : "Privacy note on the Stats screen.",
       "extractionState" : "manual"
     },

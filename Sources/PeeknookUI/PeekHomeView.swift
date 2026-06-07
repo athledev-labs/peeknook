@@ -75,7 +75,7 @@ public struct PeekHomeView: View {
         }
         // Bridge the panel resize when entering a History drill-in (the archive list or the full
         // thread can shrink the panel, dropping the cursor outside its new bounds and auto-dismissing
-        // the surface). This is a short grace pin, not a hold-open — once it expires, normal
+        // the surface). This is a short grace pin, not a hold-open, once it expires, normal
         // hover-to-dismiss resumes so you don't have to press Close.
         .nookKeepsExpanded(while: $keepOpenGrace)
         .onChange(of: showsArchive) { _, shown in if shown { armKeepOpenGrace() } }
@@ -167,7 +167,7 @@ public struct PeekHomeView: View {
     private var homeColumn: some View {
         VStack(alignment: .leading, spacing: 0) {
             if case .idle = orchestrator.phase {
-                PeekIdleHomeContent()
+                PeekIdleHomeContent(settings: orchestrator.settings)
             }
             if !setup.isReady {
                 setupBanner
@@ -239,7 +239,7 @@ public struct PeekHomeView: View {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 8))
                     .foregroundStyle(.orange.opacity(0.9))
-                Text("\(setupStatusDetail) —")
+                Text("\(setupStatusDetail)")
                     .foregroundStyle(theme.tertiaryLabel)
                 Text("Get ready")
                     .foregroundStyle(.orange)

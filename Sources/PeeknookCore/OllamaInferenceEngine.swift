@@ -120,7 +120,7 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
         }
 
         // Gemma 4 reasons by default and streams empty `content` until thinking ends (blank answers,
-        // worst in quick mode) — a notch HUD wants the direct answer, so disable chain-of-thought.
+        // worst in quick mode), a notch HUD wants the direct answer, so disable chain-of-thought.
         // Not every model supports `think`; if Ollama 400s on it, retry once without it so swapping
         // to a non-reasoning model still works.
         var (bytes, http) = try await send(makeBody(think: false))
@@ -133,7 +133,7 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
             }
         }
         guard http.statusCode == 200 else {
-            // Surface Ollama's actual error body — a generic "check the model" hint hides
+            // Surface Ollama's actual error body, a generic "check the model" hint hides
             // real failures like a missing llama-server runner.
             let detail = await Self.readErrorBody(bytes)
             throw InferenceError.http(
@@ -322,7 +322,7 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
                 raw += line
                 if raw.count > 4_000 { break }
             }
-        } catch { /* best-effort — fall through to whatever we collected */ }
+        } catch { /* best-effort, fall through to whatever we collected */ }
 
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }

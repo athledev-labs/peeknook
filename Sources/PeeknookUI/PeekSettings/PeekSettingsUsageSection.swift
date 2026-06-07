@@ -1,26 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
-import PeeknookCore
 import SwiftUI
 
-struct PeekSettingsUsageSection: View {
-    var stats: UsageStats
+struct PeekSettingsDataSection: View {
     var onReset: () -> Void
+    @State private var showsResetConfirmation = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            PeekSettingsValueRow(label: "Captures", value: "\(stats.captures)")
-            PeekSettingsValueRow(label: "Screen data", value: String(format: "%.1f MB", stats.imageMegabytes))
-            PeekSettingsValueRow(
-                label: "Model usage",
-                value: "\(stats.promptTokens.formatted()) in · \(stats.responseTokens.formatted()) out"
-            )
-            PeekSettingsValueRow(
-                label: "Response speed",
-                value: stats.averageTokensPerSecond > 0
-                    ? String(format: "~%.0f (higher is faster)", stats.averageTokensPerSecond)
-                    : "—"
-            )
+            PeekSettingsNote(text: "Charts and breakdowns are in Stats on the home screen.")
 
             PeekSettingsCommandRow(
                 icon: "arrow.counterclockwise",
@@ -28,8 +16,18 @@ struct PeekSettingsUsageSection: View {
                 subtitle: "Clear counters on this Mac",
                 style: .destructive,
                 trailing: .button("Reset"),
-                action: onReset
+                action: { showsResetConfirmation = true }
             )
+        }
+        .confirmationDialog(
+            "Reset usage stats?",
+            isPresented: $showsResetConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Reset stats", role: .destructive, action: onReset)
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Clears capture counts, token totals, and history on this Mac. You can't undo it.")
         }
     }
 }
