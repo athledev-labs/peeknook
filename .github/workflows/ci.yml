@@ -15,12 +15,12 @@ jobs:
           path: peeknook
 
       # Sibling checkout satisfies Package.swift ../opennook path pin.
-      # Without it, Package.swift falls back to the git dependency (from 0.2.0).
+      # Pin to main: Peeknook uses OpenNook APIs (e.g. moduleBreadcrumb) not in v0.2.0.
       - name: Checkout OpenNook
         uses: actions/checkout@v4
         with:
           repository: glendonC/opennook
-          ref: v0.2.0
+          ref: main
           path: opennook
 
       - name: Swift test
