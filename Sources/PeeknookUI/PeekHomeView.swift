@@ -16,6 +16,7 @@ public struct PeekHomeView: View {
     @State private var showsFullConversation = false
     @State private var showsNewChatConfirmation = false
     @State private var showsArchive = false
+    @State private var showsStats = false
     @State private var pendingDownload: InferenceModelOption?
     @State private var showAddModel = false
     /// Transient pin that bridges a panel resize when entering a History drill-in, then releases so
@@ -38,7 +39,13 @@ public struct PeekHomeView: View {
 
     public var body: some View {
         Group {
-            if showsArchive, case .idle = orchestrator.phase {
+            if showsStats {
+                PeekStatsView(orchestrator: orchestrator)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .padding(.horizontal, 12)
+                    .padding(.top, 8)
+                    .padding(.bottom, 2)
+            } else if showsArchive, case .idle = orchestrator.phase {
                 PeekConversationArchiveView(
                     orchestrator: orchestrator,
                     onOpen: openArchivedThread,
@@ -65,6 +72,7 @@ public struct PeekHomeView: View {
         // hover-to-dismiss resumes so you don't have to press Close.
         .nookKeepsExpanded(while: $keepOpenGrace)
         .onChange(of: showsArchive) { _, shown in if shown { armKeepOpenGrace() } }
+        .onChange(of: showsStats) { _, shown in if shown { armKeepOpenGrace() } }
         .onChange(of: showsFullConversation) { _, shown in if shown { armKeepOpenGrace() } }
         .onDisappear { keepOpenGraceTask?.cancel() }
         .onChange(of: orchestrator.phase) { _, newPhase in
@@ -74,20 +82,31 @@ public struct PeekHomeView: View {
             setHistoryVisible(false)
         }
         .onChange(of: appState.moduleBreadcrumb) { _, breadcrumb in
-            if breadcrumb == Self.archiveBreadcrumb {
-                // "Past chats" is opened from the global top-bar item, which can't flip this
-                // view's local state directly — mirror it here so the archive surface appears.
-                if case .idle = orchestrator.phase, !showsArchive {
-                    withAnimation(.easeOut(duration: 0.2)) { showsArchive = true }
+            // Global drill-ins are mutually exclusive — switching breadcrumb must swap the
+            // visible surface (Stats ↔ Past chats), not leave the previous one showing.
+            withAnimation(.easeOut(duration: 0.2)) {
+                switch breadcrumb {
+                case Self.statsBreadcrumb:
+                    showsStats = true
+                    showsArchive = false
+                case Self.archiveBreadcrumb:
+                    if case .idle = orchestrator.phase {
+                        showsArchive = true
+                        showsStats = false
+                    }
+                case nil:
+                    showsStats = false
+                    showsArchive = false
+                    if showsFullConversation { showsFullConversation = false }
+                default:
+                    break
                 }
-            } else if breadcrumb == nil {
-                if showsFullConversation { showsFullConversation = false }
-                if showsArchive { showsArchive = false }
             }
         }
         .onDisappear {
             if appState.moduleBreadcrumb == Self.historyBreadcrumb
-                || appState.moduleBreadcrumb == Self.archiveBreadcrumb {
+                || appState.moduleBreadcrumb == Self.archiveBreadcrumb
+                || appState.moduleBreadcrumb == Self.statsBreadcrumb {
                 appState.moduleBreadcrumb = nil
             }
         }
@@ -114,6 +133,7 @@ public struct PeekHomeView: View {
 
     private static let historyBreadcrumb = PeekHomeBreadcrumb.history
     private static let archiveBreadcrumb = PeekHomeBreadcrumb.pastChats
+    private static let statsBreadcrumb = PeekHomeBreadcrumb.stats
 
     private var homeColumn: some View {
         VStack(alignment: .leading, spacing: 0) {

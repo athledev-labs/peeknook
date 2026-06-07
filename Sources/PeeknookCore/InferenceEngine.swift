@@ -89,13 +89,16 @@ public extension InferenceEngine {
 public struct MockInferenceEngine: InferenceEngine, Sendable {
     public var tokens: [String]
     public var delayNanoseconds: UInt64
+    public var completionStats: InferenceStats?
 
     public init(
         tokens: [String] = ["안녕", " — ", "informal ", "greeting."],
-        delayNanoseconds: UInt64 = 40_000_000
+        delayNanoseconds: UInt64 = 40_000_000,
+        completionStats: InferenceStats? = nil
     ) {
         self.tokens = tokens
         self.delayNanoseconds = delayNanoseconds
+        self.completionStats = completionStats
     }
 
     public func health(baseURL: String, model: String) async -> InferenceHealth { .ready }
@@ -109,7 +112,7 @@ public struct MockInferenceEngine: InferenceEngine, Sendable {
                     if Task.isCancelled { break }
                     continuation.yield(.token(token))
                 }
-                continuation.yield(.completed(nil))
+                continuation.yield(.completed(completionStats))
                 continuation.finish()
             }
             continuation.onTermination = { _ in task.cancel() }

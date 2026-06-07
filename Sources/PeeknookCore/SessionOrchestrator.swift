@@ -468,9 +468,9 @@ public final class SessionOrchestrator {
             }
             // A new screenshot is a capture (image bytes); a text follow-up reuses it (tokens only).
             if let capture {
-                usage?.record(capture: capture, inference: finalStats)
+                usage?.record(capture: capture, inference: finalStats, modelTag: settings.textModel)
             } else {
-                usage?.recordFollowUp(inference: finalStats)
+                usage?.recordFollowUp(inference: finalStats, modelTag: settings.textModel)
             }
             if let prompt = finalStats?.promptTokens, prompt > 0 { lastPromptTokens = prompt }
             turnCounter += 1

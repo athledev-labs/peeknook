@@ -28,6 +28,190 @@
     "Clear all" : {
       "comment" : "Delete every saved chat in the archive.",
       "extractionState" : "manual"
+    },
+    "Stats" : {
+      "comment" : "Header for the usage analytics drill-in.",
+      "extractionState" : "manual"
+    },
+    "All time" : {
+      "comment" : "Date filter pill for unbounded usage stats.",
+      "extractionState" : "manual"
+    },
+    "All Time" : {
+      "comment" : "Title-case date filter pill in the stats command bar.",
+      "extractionState" : "manual"
+    },
+    "7 Days" : {
+      "comment" : "Title-case date filter pill in the stats command bar.",
+      "extractionState" : "manual"
+    },
+    "30 Days" : {
+      "comment" : "Title-case date filter pill in the stats command bar.",
+      "extractionState" : "manual"
+    },
+    "Usage Overview" : {
+      "comment" : "Collapsible stats section for headline metrics.",
+      "extractionState" : "manual"
+    },
+    "Token Mix" : {
+      "comment" : "Collapsible stats section for prompt vs output tokens.",
+      "extractionState" : "manual"
+    },
+    "Activity Profile" : {
+      "comment" : "Collapsible stats section for captures, data, speed, and time.",
+      "extractionState" : "manual"
+    },
+    "Usage Growth" : {
+      "comment" : "Legacy stats section title (replaced by Usage Over Time).",
+      "extractionState" : "manual"
+    },
+    "Usage Over Time" : {
+      "comment" : "Collapsible stats section for cumulative usage on a calendar timeline.",
+      "extractionState" : "manual"
+    },
+    "Date" : {
+      "comment" : "X-axis title on the usage-over-time chart.",
+      "extractionState" : "manual"
+    },
+    "Cumulative tokens" : {
+      "comment" : "Y-axis title when the timeline metric is tokens.",
+      "extractionState" : "manual"
+    },
+    "Cumulative captures" : {
+      "comment" : "Y-axis title when the timeline metric is captures.",
+      "extractionState" : "manual"
+    },
+    "Speed (tok/s)" : {
+      "comment" : "Legacy Y-axis title for response speed.",
+      "extractionState" : "manual"
+    },
+    "Daily avg speed (tok/s)" : {
+      "comment" : "Y-axis title when the timeline metric is daily averaged response speed.",
+      "extractionState" : "manual"
+    },
+    "Timeline needs per-answer history. Your totals are in Usage Overview until your next capture." : {
+      "comment" : "Shown when legacy usage totals exist but no per-answer event log yet.",
+      "extractionState" : "manual"
+    },
+    "Cumulative totals by date · tap the chart to inspect an answer" : {
+      "comment" : "Hint below the usage-over-time chart.",
+      "extractionState" : "manual"
+    },
+    "Dashed line projects your recent pace forward 7 days — not a guarantee." : {
+      "comment" : "Hint below the forecast extension on the usage-over-time chart.",
+      "extractionState" : "manual"
+    },
+    "Model Usage" : {
+      "comment" : "Collapsible stats section for per-model breakdown.",
+      "extractionState" : "manual"
+    },
+    "Per-Answer Usage" : {
+      "comment" : "Collapsible stats section for per-answer token bars.",
+      "extractionState" : "manual"
+    },
+    "Today" : {
+      "comment" : "Date filter pill for today's usage stats.",
+      "extractionState" : "manual"
+    },
+    "7 days" : {
+      "comment" : "Date filter pill for the last week's usage stats.",
+      "extractionState" : "manual"
+    },
+    "30 days" : {
+      "comment" : "Date filter pill for the last month's usage stats.",
+      "extractionState" : "manual"
+    },
+    "All time on this Mac" : {
+      "comment" : "Section title for lifetime usage counters.",
+      "extractionState" : "manual"
+    },
+    "Last 7 days" : {
+      "comment" : "Section title for a week of usage stats.",
+      "extractionState" : "manual"
+    },
+    "Last 30 days" : {
+      "comment" : "Section title for a month of usage stats.",
+      "extractionState" : "manual"
+    },
+    "Per answer" : {
+      "comment" : "Section title for per-answer token bar chart.",
+      "extractionState" : "manual"
+    },
+    "Tap a bar · height = tokens generated that answer" : {
+      "comment" : "Hint below the per-answer activity chart.",
+      "extractionState" : "manual"
+    },
+    "Token mix" : {
+      "comment" : "Chart title for prompt vs generated token split.",
+      "extractionState" : "manual"
+    },
+    "Activity profile" : {
+      "comment" : "Chart title for captures, screen data, speed, and time bars.",
+      "extractionState" : "manual"
+    },
+    "Growth to now" : {
+      "comment" : "Chart title for lifetime trend when per-answer events are not logged yet.",
+      "extractionState" : "manual"
+    },
+    "Models" : {
+      "comment" : "Section title for per-model usage bars.",
+      "extractionState" : "manual"
+    },
+    "Lifetime curve · per-answer detail fills in from your next capture" : {
+      "comment" : "Hint below the synthesis trend chart.",
+      "extractionState" : "manual"
+    },
+    "Showing your active model against all lifetime usage. Per-model split tracks from your next capture." : {
+      "comment" : "Footnote when model mix is inferred from the active model.",
+      "extractionState" : "manual"
+    },
+    "Tap a point to inspect" : {
+      "comment" : "Hint below the interactive timeline chart.",
+      "extractionState" : "manual"
+    },
+    "Tap a bar · tokens generated per answer" : {
+      "comment" : "Hint below the per-answer bar chart.",
+      "extractionState" : "manual"
+    },
+    "Nothing recorded today." : {
+      "comment" : "Empty state for today's usage filter.",
+      "extractionState" : "manual"
+    },
+    "Nothing recorded in the last 7 days." : {
+      "comment" : "Empty state for the 7-day usage filter.",
+      "extractionState" : "manual"
+    },
+    "Nothing recorded in the last 30 days." : {
+      "comment" : "Empty state for the 30-day usage filter.",
+      "extractionState" : "manual"
+    },
+    "No usage yet. Capture with ⌘⇧P to start building stats." : {
+      "comment" : "Empty state when lifetime usage counters are zero.",
+      "extractionState" : "manual"
+    },
+    "Per-turn detail also lives in History on the result command bar." : {
+      "comment" : "Hint linking Stats per-thread chart to the History drill-in.",
+      "extractionState" : "manual"
+    },
+    "All on this Mac — nothing is sent anywhere." : {
+      "comment" : "Privacy note on the Stats screen.",
+      "extractionState" : "manual"
+    },
+    "Over time" : {
+      "comment" : "Section title for the usage timeline chart.",
+      "extractionState" : "manual"
+    },
+    "By model" : {
+      "comment" : "Section title for per-model token share bars.",
+      "extractionState" : "manual"
+    },
+    "Tap a point · switch model or metric above" : {
+      "comment" : "Hint below the interactive timeline chart.",
+      "extractionState" : "manual"
+    },
+    "No events for this model yet." : {
+      "comment" : "Empty state when a timeline model filter has no data.",
+      "extractionState" : "manual"
     }
   },
   "version" : "1.0"
