@@ -20,7 +20,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: glendonC/opennook
-          ref: "0.2.0"
+          ref: v0.2.0
           path: opennook
 
       - name: Swift test
