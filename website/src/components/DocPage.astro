@@ -1,0 +1,40 @@
+---
+// SPDX-License-Identifier: Apache-2.0
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { renderRepoMarkdown } from "../lib/markdown";
+
+interface Props {
+  title: string;
+  description?: string;
+  source: string;
+  current: "privacy" | "licenses";
+}
+
+const { title, description, source, current } = Astro.props;
+const { html, headings } = renderRepoMarkdown(source);
+const toc = headings.filter((heading) => heading.level === 2);
+const showToc = toc.length >= 4;
+---
+
+<BaseLayout title={title} description={description} current={current}>
+  <article class="prose doc-article" set:html={html} />
+
+  {
+    showToc && (
+      <div slot="rail" class="doc-toc">
+        <p class="doc-toc-label">On this page</p>
+        <nav aria-label="On this page">
+          <ul class="doc-toc-list">
+            {toc.map((heading) => (
+              <li>
+                <a class="doc-toc-link" href={`#${heading.id}`}>
+                  {heading.text}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </div>
+    )
+  }
+</BaseLayout>

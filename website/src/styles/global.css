@@ -20,6 +20,11 @@
   --weight-regular: 400;
   --weight-medium: 500;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --page-pad: clamp(1.25rem, 4vw, 2.5rem);
+  --doc-col: 42rem;
+  --doc-rail: 11rem;
+  --doc-gap: clamp(2rem, 5vw, 4rem);
+  --doc-wide: calc(var(--doc-col) + var(--doc-gap) + var(--doc-rail));
 }
 
 *,
@@ -61,6 +66,8 @@ button:focus-visible {
 
 .shell {
   position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
   min-height: 100dvh;
   isolation: isolate;
 }
@@ -76,24 +83,48 @@ button:focus-visible {
   z-index: -1;
 }
 
-.shell--viewport {
-  height: 100dvh;
-  overflow: hidden;
+/* Page frame — shared width on every page. */
+.page-grid {
+  width: min(100%, calc(var(--doc-wide) + 2 * var(--page-pad)));
+  max-width: calc(var(--doc-wide) + 2 * var(--page-pad));
+  margin-inline: auto;
+  padding-inline: var(--page-pad);
+}
+
+/* Header + footer: always brand/version left, GitHub/links right. */
+.topbar .page-grid,
+.footbar .page-grid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+/* Main: content + optional right rail. */
+.page-main .page-grid {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, var(--doc-col)) var(--doc-gap) minmax(0, var(--doc-rail));
+  align-items: start;
+}
+
+.page-main .page-grid:not(:has(.page-rail)) {
+  grid-template-columns: minmax(0, var(--doc-col));
+  max-width: calc(var(--doc-col) + 2 * var(--page-pad));
+}
+
+.page-main .page-content {
+  grid-column: 1;
+}
+
+.page-main .page-rail {
+  grid-column: 3;
 }
 
 .topbar {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.35rem clamp(1.25rem, 4vw, 2.5rem) 0.75rem;
+  padding: 1.35rem 0 0.75rem;
 }
 
 .brand {
-  position: absolute;
-  left: clamp(1.25rem, 4vw, 2.5rem);
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -131,12 +162,26 @@ button:focus-visible {
   color: var(--text);
 }
 
-.footbar {
+.page-main {
+  padding: 0 0 2.5rem;
+}
+
+.page-main--center {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.85rem clamp(1.25rem, 4vw, 2.5rem) 1.25rem;
+}
+
+.page-main--center .page-grid {
+  width: 100%;
+}
+
+.page-content,
+.page-rail {
+  min-width: 0;
+}
+
+.footbar {
+  padding: 0.85rem 0 1.25rem;
   border-top: 0.5px solid var(--line-soft);
   font-size: 0.6875rem;
   font-weight: var(--weight-light);
@@ -145,10 +190,17 @@ button:focus-visible {
   color: var(--text-faint);
 }
 
+.footbar-version {
+  flex: none;
+}
+
 .footbar-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem 1.1rem;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  min-width: 0;
 }
 
 .footbar-links a:hover,
@@ -158,23 +210,12 @@ button:focus-visible {
 
 /* ── Home ────────────────────────────────────────────── */
 
-.home-main {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 0;
-}
-
 .home-hero {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-start;
   gap: 2.25rem;
-  width: min(100% - 2.5rem, 52rem);
-  margin: 0 auto;
-  padding: 0 clamp(1.25rem, 4vw, 2.5rem);
-  text-align: center;
+  padding-top: 0.5rem;
 }
 
 .home-hero h1 {
@@ -196,7 +237,6 @@ button:focus-visible {
 .home-actions {
   display: flex;
   align-items: center;
-  justify-content: center;
   flex-wrap: wrap;
   gap: 0.85rem 1.35rem;
   animation: rise 0.85s var(--ease) 0.08s both;
@@ -277,14 +317,58 @@ button:focus-visible {
 
 /* ── Document pages ──────────────────────────────────── */
 
-.doc-main {
-  width: min(100% - 2.5rem, 40rem);
-  margin: 0 auto;
-  padding: 1.5rem clamp(1.25rem, 4vw, 2.5rem) 3rem;
+.doc-article {
+  padding-top: 0.25rem;
 }
 
-.doc-main--wide {
-  width: min(100% - 2.5rem, 46rem);
+.doc-toc {
+  display: none;
+}
+
+.doc-toc-label {
+  margin: 0 0 0.85rem;
+  font-size: 0.6875rem;
+  font-weight: var(--weight-light);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.doc-toc-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.doc-toc-link {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: var(--weight-light);
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+  color: var(--text-muted);
+  border-left: 1px solid transparent;
+  padding-left: 0.75rem;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.doc-toc-link:hover {
+  color: var(--text);
+  border-color: var(--line);
+}
+
+@media (min-width: 980px) {
+  .doc-toc {
+    display: block;
+    position: sticky;
+    top: 1.5rem;
+    align-self: start;
+    padding-top: 0.35rem;
+  }
 }
 
 .doc-title {
@@ -385,26 +469,57 @@ button:focus-visible {
 .prose h3 {
   color: var(--text);
   font-family: var(--font-display);
-  font-weight: var(--weight-light);
   letter-spacing: -0.025em;
 }
 
 .prose h1 {
-  font-size: 1.5rem;
-  margin: 0 0 1rem;
-  line-height: 1.2;
+  font-size: clamp(1.875rem, 3.5vw, 2.25rem);
+  font-weight: var(--weight-light);
+  margin: 0 0 0.65rem;
+  line-height: 1.12;
+}
+
+.prose > p:first-of-type {
+  font-size: 0.8125rem;
+  letter-spacing: 0.02em;
+  color: var(--text-faint);
 }
 
 .prose h2 {
-  font-size: 1rem;
+  font-size: clamp(1.125rem, 2.2vw, 1.375rem);
   font-weight: var(--weight-regular);
-  margin: 2rem 0 0.65rem;
+  margin: 0 0 0.85rem;
+  line-height: 1.25;
 }
 
 .prose h3 {
   font-size: 0.9375rem;
   font-weight: var(--weight-regular);
-  margin: 1.35rem 0 0.45rem;
+  margin: 1.35rem 0 0.5rem;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.prose-section {
+  margin-top: 2.25rem;
+  padding-top: 2rem;
+  padding-left: 1.1rem;
+  border-left: 0.5px solid var(--line-soft);
+}
+
+.prose-section:first-of-type {
+  margin-top: 1.75rem;
+}
+
+.prose-section > h2 {
+  margin-left: -1.1rem;
+  padding-left: 1.1rem;
+}
+
+.prose-section > h2 + p,
+.prose-section > h2 + ul,
+.prose-section > h2 + ol,
+.prose-section > h2 + table {
+  margin-top: 0;
 }
 
 .prose p,
@@ -417,6 +532,15 @@ button:focus-visible {
 .prose ul,
 .prose ol {
   padding-left: 1.15rem;
+}
+
+.prose li::marker {
+  color: var(--text-faint);
+}
+
+.prose strong {
+  font-weight: var(--weight-regular);
+  color: var(--text);
 }
 
 .prose table {
@@ -448,16 +572,44 @@ button:focus-visible {
   border-color: rgba(255, 255, 255, 0.35);
 }
 
-@media (max-width: 860px) {
-  .shell--viewport {
-    height: auto;
-    min-height: 100dvh;
-    overflow: auto;
+@media (max-width: 979px) {
+  .page-main .page-grid,
+  .page-main .page-grid:not(:has(.page-rail)) {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: calc(var(--doc-col) + 2 * var(--page-pad));
   }
 
-  .home-hero {
-    padding-top: 2rem;
-    padding-bottom: 2rem;
+  .page-main .page-content,
+  .page-main .page-rail {
+    grid-column: auto;
+  }
+
+  .page-rail {
+    display: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .prose-section {
+    padding-left: 0.85rem;
+  }
+
+  .prose-section > h2 {
+    margin-left: -0.85rem;
+    padding-left: 0.85rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .footbar .page-grid {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.65rem;
+  }
+
+  .footbar-links {
+    justify-content: flex-start;
+    gap: 0.45rem 0.85rem;
   }
 }
 
@@ -465,11 +617,6 @@ button:focus-visible {
   .nav {
     gap: 0.85rem;
     font-size: 0.6875rem;
-  }
-
-  .footbar {
-    flex-direction: column;
-    align-items: flex-start;
   }
 }
 
