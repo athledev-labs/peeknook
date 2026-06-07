@@ -1,47 +1,29 @@
 ---
 // SPDX-License-Identifier: Apache-2.0
 import BaseLayout from "../layouts/BaseLayout.astro";
+import DemoFrame from "../components/DemoFrame.astro";
 import { release } from "../data/release";
 ---
 
 <BaseLayout
-  title="Download"
-  description="Download Peeknook for Mac. Local-first practice copilot in the MacBook notch."
+  title="Peeknook"
+  description="Local-first practice copilot in the MacBook notch."
   current="home"
+  viewport={true}
 >
-  <section class="hero">
-    <p class="eyebrow">macOS 15+ · local Ollama · no cloud inference</p>
-    <h1>Practice in the notch.</h1>
-    <p class="lede">
-      Peeknook is a local-first practice copilot for the MacBook notch. Press
-      ⌘⇧P to capture what you are studying and get a short answer from Gemma 4
-      on your Mac.
-    </p>
-
-    <ul class="bullets">
-      <li>Capture runs only when you press the hotkey. No ambient recording.</li>
-      <li>Vision inference stays on your Mac through Ollama by default.</li>
-      <li>Conversation archive and web lookup are off unless you turn them on.</li>
-    </ul>
-
-    <div class="cta-row">
-      <a class="btn btn-primary" href={release.dmgURL}>
-        Download for Mac
-      </a>
-      <a class="btn btn-ghost" href={release.latestReleasesURL}>
-        GitHub releases
-      </a>
-    </div>
-
-    <p class="meta-note">
-      v{release.version} · DMG · notarized Developer ID build · requires macOS 15+
-    </p>
-
-    <div class="glass-card">
-      <p>
-        New here? Follow the <a href={`${import.meta.env.BASE_URL}install/`}>install guide</a>
-        for Ollama, Gemma 4, and Screen Recording setup.
+  <section class="home-stage">
+    <div class="home-copy">
+      <p class="kicker">macOS · local only</p>
+      <h1>Practice in the notch.</h1>
+      <p class="tagline">
+        Capture with ⌘⇧P. Answers stay on your Mac.
       </p>
+      <div class="home-actions">
+        <a class="btn-download" href={release.dmgURL}>Download for Mac</a>
+        <a class="link-quiet" href={release.latestReleasesURL}>GitHub</a>
+      </div>
     </div>
+
+    <DemoFrame />
   </section>
 </BaseLayout>
