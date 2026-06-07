@@ -38,6 +38,7 @@ final class ConversationPersistenceTests: XCTestCase {
         )
         second.conversationArchive = store
         second.loadPersistedConversationIfEnabled()
+        try await Task.sleep(nanoseconds: 200_000_000)
 
         XCTAssertTrue(second.hasConversation)
         second.resumeChat()
@@ -60,7 +61,8 @@ final class ConversationPersistenceTests: XCTestCase {
         orchestrator.beginCapture()
         try await Task.sleep(nanoseconds: 200_000_000)
 
-        XCTAssertTrue(store.summaries().isEmpty, "Persistence off should never write a thread")
+        let summaries = await store.summaries()
+        XCTAssertTrue(summaries.isEmpty, "Persistence off should never write a thread")
     }
 
     func testDiscardActiveThreadRemovesItFromArchive() async throws {
@@ -75,10 +77,14 @@ final class ConversationPersistenceTests: XCTestCase {
         orchestrator.conversationArchive = store
         orchestrator.beginCapture()
         try await Task.sleep(nanoseconds: 350_000_000)
-        XCTAssertEqual(store.summaries().count, 1)
+        try await Task.sleep(nanoseconds: 150_000_000)
+        let beforeDiscard = await store.summaries()
+        XCTAssertEqual(beforeDiscard.count, 1)
 
-        orchestrator.startNewChat() // discards the active thread
-        XCTAssertTrue(store.summaries().isEmpty, "Discarding the active chat should remove it from the archive")
+        orchestrator.startNewChat()
+        try await Task.sleep(nanoseconds: 150_000_000)
+        let afterDiscard = await store.summaries()
+        XCTAssertTrue(afterDiscard.isEmpty, "Discarding the active chat should remove it from the archive")
     }
 
     func testConversationMarkdownRendersTurns() async {

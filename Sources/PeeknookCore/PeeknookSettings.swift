@@ -65,6 +65,12 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.renderAnswerMarkdown = renderAnswerMarkdown
     }
 
+    /// True when inference is configured to a host other than the default local Ollama loopback.
+    public var usesRemoteOllama: Bool {
+        let lower = ollamaBaseURL.lowercased()
+        return !lower.contains("127.0.0.1") && !lower.contains("localhost")
+    }
+
     private enum CodingKeys: String, CodingKey {
         case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, customModels, displayName, showGreeting, renderAnswerMarkdown
     }

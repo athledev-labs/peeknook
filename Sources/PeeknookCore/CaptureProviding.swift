@@ -155,24 +155,31 @@ public struct StubCaptureProvider: CaptureProviding, Sendable {
     public var sourceLabel: String
     public var appName: String?
     public var windowTitle: String?
+    /// When set, capture awaits this long before returning (for cancellation tests).
+    public var captureDelayNanoseconds: UInt64?
 
     public init(
         sampleText: String,
         sourceLabel: String = "Test capture",
         appName: String? = nil,
-        windowTitle: String? = nil
+        windowTitle: String? = nil,
+        captureDelayNanoseconds: UInt64? = nil
     ) {
         self.sampleText = sampleText
         self.sourceLabel = sourceLabel
         self.appName = appName
         self.windowTitle = windowTitle
+        self.captureDelayNanoseconds = captureDelayNanoseconds
     }
 
     public func capture(scope: CaptureScope, quick: Bool) async throws -> CaptureResult {
-        _ = (scope, quick) // stubs ignore these, tests only
+        _ = (scope, quick)
+        if let captureDelayNanoseconds {
+            try await Task.sleep(nanoseconds: captureDelayNanoseconds)
+            try Task.checkCancellation()
+        }
         let trimmed = sampleText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { throw CaptureError.noContent }
-        // Stubs have no vision, tests only.
         return CaptureResult(
             text: trimmed,
             sourceLabel: sourceLabel,

@@ -48,6 +48,9 @@ public final class SessionOrchestrator {
     private let webSearch = WebSearchClient()
     private var inferenceTask: Task<Void, Never>?
     private var suggestionTask: Task<Void, Never>?
+    private var archiveIOTask: Task<Void, Never>?
+    /// Bumped on cancel so a late capture task cannot commit after the user aborts.
+    private var captureGeneration = 0
     private var isPrewarming = false
     private var pendingPreview: CapturePreview?
     private var pendingCapture: CaptureResult?
@@ -140,21 +143,26 @@ public final class SessionOrchestrator {
     /// thread, not an auto-opened result.
     public func loadPersistedConversationIfEnabled() {
         guard settings.persistConversation, let archive = conversationArchive else { return }
-        archive.migrateLegacyIfNeeded()
-        guard let restored = archive.mostRecent(), !restored.turns.isEmpty else { return }
-        adopt(restored)
+        Task {
+            _ = await archive.migrateLegacyIfNeeded()
+            guard let restored = await archive.mostRecent(), !restored.turns.isEmpty else { return }
+            adopt(restored)
+        }
     }
 
     /// Summaries of every archived chat (newest first) for the History switcher. Empty when
     /// persistence is off or nothing is saved.
-    public func availableThreads() -> [ConversationSummary] {
+    public func availableThreads() async -> [ConversationSummary] {
         guard settings.persistConversation else { return [] }
-        return conversationArchive?.summaries() ?? []
+        guard let archive = conversationArchive else { return [] }
+        return await archive.summaries()
     }
 
     /// Open an archived chat by id: load it into memory and surface its last answer as a result.
-    public func openThread(id: UUID) {
-        guard let archive = conversationArchive, let thread = archive.load(id: id), !thread.turns.isEmpty else { return }
+    public func openThread(id: UUID) async {
+        guard let archive = conversationArchive,
+              let thread = await archive.load(id: id),
+              !thread.turns.isEmpty else { return }
         inferenceTask?.cancel()
         suggestionTask?.cancel()
         suggestedFollowUps = []
@@ -166,7 +174,9 @@ public final class SessionOrchestrator {
 
     /// Delete one archived chat. If it's the one on screen, also clear it from memory and return idle.
     public func deleteThread(id: UUID) {
-        conversationArchive?.delete(id: id)
+        enqueueArchiveIO { archive in
+            await archive.delete(id: id)
+        }
         if id == activeThreadID {
             resetConversation()
             phase = .idle
@@ -185,7 +195,7 @@ public final class SessionOrchestrator {
     /// Write the current chat to the archive (off the main actor) when persistence is on; no-op
     /// otherwise. The first save mints the thread's stable id and creation date.
     public func persistConversationNow() {
-        guard settings.persistConversation, let archive = conversationArchive, !conversation.isEmpty else { return }
+        guard settings.persistConversation, conversationArchive != nil, !conversation.isEmpty else { return }
         if activeThreadID == nil {
             activeThreadID = UUID()
             activeThreadCreatedAt = Date()
@@ -199,27 +209,52 @@ public final class SessionOrchestrator {
             turnCounter: turnCounter,
             lastPromptTokens: lastPromptTokens
         )
-        Task.detached { archive.save(thread) }
+        enqueueArchiveIO { archive in
+            await archive.save(thread)
+        }
     }
 
     /// Delete just the chat on screen from the archive, called when the user discards a thread.
     public func discardActiveThread() {
-        if let id = activeThreadID { conversationArchive?.delete(id: id) }
+        guard let id = activeThreadID else {
+            activeThreadCreatedAt = nil
+            return
+        }
+        enqueueArchiveIO { archive in
+            await archive.delete(id: id)
+        }
         activeThreadID = nil
         activeThreadCreatedAt = nil
     }
 
     /// Wipe the whole archive, called when the user turns persistence off or taps Clear all.
     public func purgeAllConversations() {
-        conversationArchive?.deleteAll()
+        enqueueArchiveIO { archive in
+            await archive.deleteAll()
+        }
         activeThreadID = nil
         activeThreadCreatedAt = nil
     }
 
+    /// Serializes archive read/write so delete/purge cannot race a late save.
+    private func enqueueArchiveIO(_ operation: @escaping (ConversationArchiveStore) async -> Void) {
+        guard let archive = conversationArchive else { return }
+        let prior = archiveIOTask
+        archiveIOTask = Task {
+            _ = await prior?.value
+            guard !Task.isCancelled else { return }
+            await operation(archive)
+        }
+    }
+
     /// Hotkey / compact affordance entry: capture → preview → infer (a fresh chat).
     public func beginCapture() {
-        guard case .idle = phase else { return }
-        startCapture(intent: .fresh)
+        switch phase {
+        case .idle, .result:
+            startCapture(intent: .fresh)
+        default:
+            return
+        }
     }
 
     /// Capture a new screenshot to **replace** the current chat (answer a different screen).
@@ -278,10 +313,13 @@ public final class SessionOrchestrator {
         pendingIntent = intent
         streamedAnswer = ""
         phase = .capturing
+        captureGeneration += 1
+        let generation = captureGeneration
 
         inferenceTask = Task {
             do {
                 let result = try await capture.capture(scope: settings.captureScope, quick: settings.quickMode)
+                guard generation == captureGeneration, !Task.isCancelled else { return }
                 pendingCapture = result
                 pendingPreview = CapturePreview(capture: result)
                 if settings.previewBeforeInfer, let preview = pendingPreview {
@@ -289,9 +327,13 @@ public final class SessionOrchestrator {
                 } else {
                     commitCapture(result, intent: intent)
                 }
+            } catch is CancellationError {
+                return
             } catch let error as CaptureError {
+                guard generation == captureGeneration else { return }
                 phase = .failed(.from(captureError: error))
             } catch {
+                guard generation == captureGeneration else { return }
                 phase = .failed(.generic(message: error.localizedDescription))
             }
         }
@@ -339,6 +381,7 @@ public final class SessionOrchestrator {
     }
 
     public func cancel() {
+        captureGeneration += 1
         inferenceTask?.cancel()
         inferenceTask = nil
         suggestionTask?.cancel()
@@ -443,11 +486,26 @@ public final class SessionOrchestrator {
         if settings.webLookupEnabled, let capture, let query = WebSearchClient.query(from: capture) {
             isFetchingWebLookup = true
             defer { isFetchingWebLookup = false }
-            do {
-                let results = try await webSearch.search(query: query)
-                webLookupSnapshot = WebLookupSnapshot(query: query, results: results)
-            } catch {
-                webLookupSnapshot = WebLookupSnapshot(query: query, results: [])
+            let allowed = await WebSearchRateLimiter.shared.allowSearch()
+            if !allowed {
+                webLookupSnapshot = WebLookupSnapshot(
+                    query: query,
+                    results: [],
+                    lookupFailed: true,
+                    lookupFailure: .rateLimited
+                )
+            } else {
+                do {
+                    let results = try await webSearch.search(query: query)
+                    webLookupSnapshot = WebLookupSnapshot(query: query, results: results)
+                } catch {
+                    webLookupSnapshot = WebLookupSnapshot(
+                        query: query,
+                        results: [],
+                        lookupFailed: true,
+                        lookupFailure: .unavailable
+                    )
+                }
             }
         }
 

@@ -141,7 +141,8 @@ struct ConversationArchiveIndex: Codable, Sendable {
 ///
 /// Persistence stays opt-in (`PeeknookSettings.persistConversation`); the orchestrator only calls
 /// save/load/list when enabled, and `deleteAll` when the user opts out.
-public final class ConversationArchiveStore: Sendable {
+/// Serializes all archive I/O so a late save cannot resurrect a discarded thread.
+public actor ConversationArchiveStore {
     public static let indexVersion = 2
     /// Cap thread count and total bytes, screenshots are large, so the archive prunes oldest first.
     public static let defaultMaxThreads = 25
@@ -153,7 +154,6 @@ public final class ConversationArchiveStore: Sendable {
     private let legacyFileURL: URL?
     private let maxThreads: Int
     private let maxBytes: Int
-    private let lock = NSLock()
 
     public init(
         directory: URL,
@@ -182,12 +182,10 @@ public final class ConversationArchiveStore: Sendable {
 
     /// Summaries for the switcher, newest first. Cheap, only the index file is read.
     public func summaries() -> [ConversationSummary] {
-        lock.lock(); defer { lock.unlock() }
-        return readIndex().summaries.sorted { $0.updatedAt > $1.updatedAt }
+        readIndex().summaries.sorted { $0.updatedAt > $1.updatedAt }
     }
 
     public func load(id: UUID) -> ConversationThread? {
-        lock.lock(); defer { lock.unlock() }
         guard let data = try? Data(contentsOf: threadURL(id)) else { return nil }
         return try? JSONDecoder().decode(ConversationThread.self, from: data)
     }
@@ -201,7 +199,6 @@ public final class ConversationArchiveStore: Sendable {
     // MARK: - Write
 
     public func save(_ thread: ConversationThread) {
-        lock.lock(); defer { lock.unlock() }
         guard !thread.turns.isEmpty else { return }
         guard let data = try? JSONEncoder().encode(thread) else { return }
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -215,7 +212,6 @@ public final class ConversationArchiveStore: Sendable {
     }
 
     public func delete(id: UUID) {
-        lock.lock(); defer { lock.unlock() }
         try? FileManager.default.removeItem(at: threadURL(id))
         var index = readIndex()
         index.summaries.removeAll { $0.id == id }
@@ -224,7 +220,6 @@ public final class ConversationArchiveStore: Sendable {
 
     /// Wipe the whole archive, called when the user turns persistence off or taps Clear all.
     public func deleteAll() {
-        lock.lock(); defer { lock.unlock() }
         try? FileManager.default.removeItem(at: directory)
         // Also drop any un-migrated legacy file so opting out truly leaves nothing behind.
         if let legacyFileURL { try? FileManager.default.removeItem(at: legacyFileURL) }
@@ -237,7 +232,6 @@ public final class ConversationArchiveStore: Sendable {
     /// migrated thread (so the caller can resume it) or nil when there was nothing to migrate.
     @discardableResult
     public func migrateLegacyIfNeeded() -> ConversationThread? {
-        lock.lock(); defer { lock.unlock() }
         guard !FileManager.default.fileExists(atPath: indexURL.path) else { return nil }
         guard let legacyFileURL,
               let data = try? Data(contentsOf: legacyFileURL),

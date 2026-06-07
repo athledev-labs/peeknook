@@ -42,6 +42,13 @@ enum PeekPanelLayout {
         return min(480, max(280, visibleHeight * 0.5))
     }
 
+    /// First-run setup checklist, scrollable against the notch screen.
+    static var setupMaxHeight: CGFloat {
+        guard let screen = notchScreen else { return 360 }
+        let visibleHeight = screen.visibleFrame.height
+        return min(440, max(260, visibleHeight * 0.42))
+    }
+
     private static var notchScreen: NSScreen? {
         NSScreen.screens.first(where: { $0.safeAreaInsets.top > 0 })
             ?? NSScreen.main

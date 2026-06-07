@@ -34,6 +34,7 @@ public struct PeekGlobalTopBarItems: View {
     @Environment(\.nookResolvedTheme) private var theme
     @State private var isPastChatsHovered = false
     @State private var isStatsHovered = false
+    @State private var hasArchivedThreads = false
 
     public init(orchestrator: SessionOrchestrator) {
         self.orchestrator = orchestrator
@@ -46,11 +47,25 @@ public struct PeekGlobalTopBarItems: View {
                 pastChatsButton
             }
         }
+        .task(id: pastChatsRefreshKey) {
+            let threads = await orchestrator.availableThreads()
+            hasArchivedThreads = !threads.isEmpty
+        }
+    }
+
+    private var pastChatsRefreshKey: String {
+        let phaseKey: String = {
+            switch orchestrator.phase {
+            case .idle: return "idle"
+            default: return "active"
+            }
+        }()
+        return "\(phaseKey)-\(orchestrator.settings.persistConversation)"
     }
 
     private var statsButton: some View {
         Button {
-            // Home owns drill-in state; dismiss Settings (or any non-home surface) first.
+            guard allowsGlobalDrillIn else { return }
             appState.showHome()
             appState.moduleBreadcrumb = PeekHomeBreadcrumb.stats
         } label: {
@@ -83,8 +98,10 @@ public struct PeekGlobalTopBarItems: View {
         .buttonStyle(.plain)
         .onHover { isStatsHovered = $0 }
         .animation(.spring(response: 0.26, dampingFraction: 0.82), value: isStatsHovered)
-        .help("Usage stats on this Mac")
-        .peekAction(label: "Stats", hint: "Usage stats on this Mac")
+        .help(statsHelp)
+        .peekAction(label: "Stats", hint: statsHelp)
+        .opacity(allowsGlobalDrillIn ? 1 : 0.4)
+        .disabled(!allowsGlobalDrillIn)
     }
 
     private var pastChatsButton: some View {
@@ -135,6 +152,22 @@ public struct PeekGlobalTopBarItems: View {
     /// something to show; otherwise the cluster stays just the framework lock/gear.
     private var showsPastChats: Bool {
         guard case .idle = orchestrator.phase else { return false }
-        return !orchestrator.availableThreads().isEmpty
+        return hasArchivedThreads
+    }
+
+    /// Stats and Past chats stay available on idle, result, and failed; block during capture flow.
+    private var allowsGlobalDrillIn: Bool {
+        switch orchestrator.phase {
+        case .capturing, .previewing, .inferring:
+            return false
+        default:
+            return true
+        }
+    }
+
+    private var statsHelp: String {
+        allowsGlobalDrillIn
+            ? "Usage stats on this Mac"
+            : "Finish or cancel the current capture first"
     }
 }

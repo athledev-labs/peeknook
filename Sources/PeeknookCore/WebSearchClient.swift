@@ -21,16 +21,47 @@ public struct WebSearchResult: Identifiable, Equatable, Sendable, Codable {
 }
 
 public struct WebLookupSnapshot: Equatable, Sendable, Codable, Identifiable {
+    public enum Failure: String, Codable, Sendable, Equatable {
+        case unavailable
+        case rateLimited
+    }
+
     public let id: UUID
     public let query: String
     public let results: [WebSearchResult]
     public let fetchedAt: Date
+    /// True when lookup was attempted but failed or was throttled (distinct from zero organic results).
+    public var lookupFailed: Bool
+    public var lookupFailure: Failure?
 
-    public init(id: UUID = UUID(), query: String, results: [WebSearchResult], fetchedAt: Date = Date()) {
+    public init(
+        id: UUID = UUID(),
+        query: String,
+        results: [WebSearchResult],
+        fetchedAt: Date = Date(),
+        lookupFailed: Bool = false,
+        lookupFailure: Failure? = nil
+    ) {
         self.id = id
         self.query = query
         self.results = results
         self.fetchedAt = fetchedAt
+        self.lookupFailed = lookupFailed
+        self.lookupFailure = lookupFailure
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, query, results, fetchedAt, lookupFailed, lookupFailure
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        self.query = try c.decodeIfPresent(String.self, forKey: .query) ?? ""
+        self.results = try c.decodeIfPresent([WebSearchResult].self, forKey: .results) ?? []
+        self.fetchedAt = try c.decodeIfPresent(Date.self, forKey: .fetchedAt) ?? Date()
+        self.lookupFailed = try c.decodeIfPresent(Bool.self, forKey: .lookupFailed) ?? false
+        self.lookupFailure = try c.decodeIfPresent(Failure.self, forKey: .lookupFailure)
     }
 }
 
@@ -42,6 +73,8 @@ public enum WebSearchError: Error, Equatable, Sendable {
 
 /// Opt-in web lookup, queries DuckDuckGo HTML (no API key). Network leaves this Mac.
 public struct WebSearchClient: Sendable {
+    public static let minimumIntervalBetweenSearches: TimeInterval = 2
+
     public var session: URLSession
 
     public init(session: URLSession = .shared) {
@@ -155,5 +188,24 @@ public struct WebSearchClient: Sendable {
             .replacingOccurrences(of: "&#39;", with: "'")
             .replacingOccurrences(of: "&lt;", with: "<")
             .replacingOccurrences(of: "&gt;", with: ">")
+    }
+}
+
+/// Per-session throttle for opt-in web lookup (DuckDuckGo HTML).
+public actor WebSearchRateLimiter {
+    public static let shared = WebSearchRateLimiter()
+
+    private var lastSearchAt: Date?
+
+    public func allowSearch(minimumInterval: TimeInterval = WebSearchClient.minimumIntervalBetweenSearches) -> Bool {
+        if let last = lastSearchAt, Date().timeIntervalSince(last) < minimumInterval {
+            return false
+        }
+        lastSearchAt = Date()
+        return true
+    }
+
+    public func reset() {
+        lastSearchAt = nil
     }
 }

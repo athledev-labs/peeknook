@@ -53,11 +53,16 @@ final class SessionFailureTests: XCTestCase {
             inference: MockInferenceEngine(tokens: ["ok"])
         )
 
-        // No-op from idle.
         orchestrator.retryAfterFailure()
         guard case .idle = orchestrator.phase else {
             XCTFail("retryAfterFailure should not start from idle")
             return
         }
+    }
+
+    func testURLErrorMapsToOllamaUnreachable() {
+        let failure = SessionFailure.from(error: URLError(.networkConnectionLost))
+        XCTAssertEqual(failure.kind, .ollamaUnreachable)
+        XCTAssertEqual(failure.primaryRecovery, .checkOllama)
     }
 }

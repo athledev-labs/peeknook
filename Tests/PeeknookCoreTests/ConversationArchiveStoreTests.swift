@@ -18,63 +18,69 @@ final class ConversationArchiveStoreTests: XCTestCase {
         )
     }
 
-    func testSaveListLoadDelete() throws {
+    func testSaveListLoadDelete() async throws {
         let dir = tempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         let store = ConversationArchiveStore(directory: dir)
 
         let a = thread("first", updatedAt: Date(timeIntervalSinceNow: -60))
         let b = thread("second", updatedAt: Date())
-        store.save(a)
-        store.save(b)
+        await store.save(a)
+        await store.save(b)
 
-        let summaries = store.summaries()
+        let summaries = await store.summaries()
         XCTAssertEqual(summaries.count, 2)
         XCTAssertEqual(summaries.first?.id, b.id, "Newest thread should sort first")
 
-        let loaded = store.load(id: a.id)
+        let loaded = await store.load(id: a.id)
         XCTAssertEqual(loaded?.id, a.id)
         XCTAssertEqual(loaded?.title, "first")
 
-        store.delete(id: a.id)
-        XCTAssertEqual(store.summaries().count, 1)
-        XCTAssertNil(store.load(id: a.id))
+        await store.delete(id: a.id)
+        let afterDelete = await store.summaries()
+        XCTAssertEqual(afterDelete.count, 1)
+        let deletedLoad = await store.load(id: a.id)
+        XCTAssertNil(deletedLoad)
     }
 
-    func testSaveSkipsEmptyThread() {
+    func testSaveSkipsEmptyThread() async {
         let dir = tempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         let store = ConversationArchiveStore(directory: dir)
-        store.save(ConversationThread(turns: []))
-        XCTAssertTrue(store.summaries().isEmpty)
+        await store.save(ConversationThread(turns: []))
+        let summaries = await store.summaries()
+        XCTAssertTrue(summaries.isEmpty)
     }
 
-    func testUpdatingExistingThreadDoesNotDuplicate() {
+    func testUpdatingExistingThreadDoesNotDuplicate() async {
         let dir = tempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         let store = ConversationArchiveStore(directory: dir)
 
         var t = thread("draft")
-        store.save(t)
+        await store.save(t)
         t.turns.append(ChatTurn(id: 2, kind: .user("more")))
         t.updatedAt = Date(timeIntervalSinceNow: 5)
-        store.save(t)
+        await store.save(t)
 
-        XCTAssertEqual(store.summaries().count, 1)
-        XCTAssertEqual(store.load(id: t.id)?.turns.count, 2)
+        let summaries = await store.summaries()
+        XCTAssertEqual(summaries.count, 1)
+        let loaded = await store.load(id: t.id)
+        XCTAssertEqual(loaded?.turns.count, 2)
     }
 
-    func testDeleteAllClearsArchive() {
+    func testDeleteAllClearsArchive() async {
         let dir = tempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         let store = ConversationArchiveStore(directory: dir)
-        store.save(thread("a"))
-        store.save(thread("b"))
-        store.deleteAll()
-        XCTAssertTrue(store.summaries().isEmpty)
+        await store.save(thread("a"))
+        await store.save(thread("b"))
+        await store.deleteAll()
+        let summaries = await store.summaries()
+        XCTAssertTrue(summaries.isEmpty)
     }
 
-    func testRetentionPrunesOldestOverCountCap() {
+    func testRetentionPrunesOldestOverCountCap() async {
         let dir = tempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         let store = ConversationArchiveStore(directory: dir, maxThreads: 3)
@@ -83,17 +89,17 @@ final class ConversationArchiveStoreTests: XCTestCase {
         for i in 0..<5 {
             let t = thread("chat \(i)", updatedAt: Date(timeIntervalSinceNow: Double(i)))
             ids.append(t.id)
-            store.save(t)
+            await store.save(t)
         }
 
-        let remaining = store.summaries().map(\.id)
+        let remaining = await store.summaries().map(\.id)
         XCTAssertEqual(remaining.count, 3)
         XCTAssertFalse(remaining.contains(ids[0]), "Oldest should be pruned")
         XCTAssertFalse(remaining.contains(ids[1]), "Second oldest should be pruned")
         XCTAssertTrue(remaining.contains(ids[4]), "Newest should survive")
     }
 
-    func testMigratesLegacySingleFile() throws {
+    func testMigratesLegacySingleFile() async throws {
         let dir = tempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         let legacyURL = dir.appendingPathComponent("conversation.v1.json")
@@ -108,30 +114,32 @@ final class ConversationArchiveStoreTests: XCTestCase {
         try JSONEncoder().encode(legacy).write(to: legacyURL)
 
         let store = ConversationArchiveStore(directory: dir, legacyFileURL: legacyURL)
-        let migrated = store.migrateLegacyIfNeeded()
+        let migrated = await store.migrateLegacyIfNeeded()
 
         XCTAssertNotNil(migrated)
         XCTAssertEqual(migrated?.contextWindow, 4096)
-        XCTAssertEqual(store.summaries().count, 1)
+        let summaries = await store.summaries()
+        XCTAssertEqual(summaries.count, 1)
         XCTAssertFalse(FileManager.default.fileExists(atPath: legacyURL.path), "Legacy file should be removed after migration")
 
-        // Idempotent: a second call (index now exists) migrates nothing.
-        XCTAssertNil(store.migrateLegacyIfNeeded())
+        let secondMigration = await store.migrateLegacyIfNeeded()
+        XCTAssertNil(secondMigration)
     }
 
-    func testMigrationSkippedWhenArchiveAlreadyExists() throws {
+    func testMigrationSkippedWhenArchiveAlreadyExists() async throws {
         let dir = tempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         let store = ConversationArchiveStore(directory: dir, legacyFileURL: dir.appendingPathComponent("conversation.v1.json"))
-        store.save(thread("existing"))
+        await store.save(thread("existing"))
 
-        // Write a legacy file after the archive exists, it must be ignored.
         let legacyURL = dir.appendingPathComponent("conversation.v1.json")
         let legacy = PersistedConversation(turns: [ChatTurn(id: 9, kind: .assistant("old"))], contextWindow: nil, turnCounter: 9, lastPromptTokens: nil)
         try JSONEncoder().encode(legacy).write(to: legacyURL)
 
-        XCTAssertNil(store.migrateLegacyIfNeeded())
-        XCTAssertEqual(store.summaries().count, 1)
+        let skipped = await store.migrateLegacyIfNeeded()
+        XCTAssertNil(skipped)
+        let summaries = await store.summaries()
+        XCTAssertEqual(summaries.count, 1)
     }
 
     func testDerivedTitlePrefersQuestionThenAnswerThenCapture() {

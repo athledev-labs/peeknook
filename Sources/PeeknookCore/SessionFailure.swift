@@ -154,6 +154,19 @@ public extension SessionFailure {
         if let inference = error as? InferenceError {
             return .from(inferenceError: inference)
         }
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .notConnectedToInternet, .networkConnectionLost, .cannotConnectToHost,
+                 .timedOut, .cannotFindHost, .dnsLookupFailed:
+                return .from(
+                    inferenceError: .ollamaUnreachable(
+                        "Lost connection to Ollama. Check that it is still running, then try again."
+                    )
+                )
+            default:
+                break
+            }
+        }
         let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         return .generic(message: message)
     }

@@ -91,7 +91,9 @@ struct PeekConversationArchiveView: View {
     }
 
     private func reload() {
-        summaries = orchestrator.availableThreads()
+        Task {
+            summaries = await orchestrator.availableThreads()
+        }
     }
 
     private func open(_ summary: ConversationSummary) {

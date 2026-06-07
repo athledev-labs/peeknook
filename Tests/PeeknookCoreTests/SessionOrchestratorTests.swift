@@ -82,4 +82,48 @@ final class SessionOrchestratorTests: XCTestCase {
         let blank = CaptureResult(text: nil, sourceLabel: "Front window (vision)", appName: "   ", windowTitle: "")
         XCTAssertEqual(blank.targetLabel, "Front window (vision)")
     }
+
+    func testCancelDuringCaptureDoesNotCommit() async throws {
+        let orchestrator = SessionOrchestrator(
+            settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b"),
+            capture: StubCaptureProvider(sampleText: "late", captureDelayNanoseconds: 200_000_000),
+            inference: MockInferenceEngine(tokens: ["nope"])
+        )
+
+        orchestrator.beginCapture()
+        guard case .capturing = orchestrator.phase else {
+            XCTFail("Expected capturing")
+            return
+        }
+        orchestrator.cancel()
+        guard case .idle = orchestrator.phase else {
+            XCTFail("Expected idle after cancel, got \(orchestrator.phase)")
+            return
+        }
+
+        try await Task.sleep(nanoseconds: 300_000_000)
+        XCTAssertEqual(orchestrator.phase, .idle)
+        XCTAssertFalse(orchestrator.hasConversation)
+    }
+
+    func testBeginCaptureFromResultStartsFreshCapture() async {
+        let orchestrator = SessionOrchestrator(
+            settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b"),
+            capture: StubCaptureProvider(sampleText: "again"),
+            inference: MockInferenceEngine(tokens: ["ok"])
+        )
+        orchestrator.beginCapture()
+        try? await Task.sleep(nanoseconds: 150_000_000)
+        guard case .result = orchestrator.phase else {
+            XCTFail("Expected result before second capture")
+            return
+        }
+
+        orchestrator.beginCapture()
+        try? await Task.sleep(nanoseconds: 150_000_000)
+        guard case .result("ok") = orchestrator.phase else {
+            XCTFail("Expected hotkey capture from result, got \(orchestrator.phase)")
+            return
+        }
+    }
 }

@@ -99,17 +99,19 @@ public struct PeekHomeView: View {
             }
         }
         .onDisappear {
-            if appState.moduleBreadcrumb == Self.historyBreadcrumb
-                || appState.moduleBreadcrumb == Self.archiveBreadcrumb
+            if appState.moduleBreadcrumb == Self.archiveBreadcrumb
                 || appState.moduleBreadcrumb == Self.statsBreadcrumb
                 || appState.moduleBreadcrumb == Self.modelLibraryBreadcrumb {
                 appState.moduleBreadcrumb = nil
             }
         }
-        .task(id: setup.isReady) {
-            if setup.isReady {
+        .task(id: setupRefreshKey) {
+            while !Task.isCancelled {
                 await setup.refresh()
-                orchestrator.prewarm()
+                if setup.isReady {
+                    orchestrator.prewarm()
+                }
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
             }
         }
         .confirmationDialog(
@@ -127,6 +129,8 @@ public struct PeekHomeView: View {
         }
     }
 
+    private var setupRefreshKey: Bool { setup.isReady }
+
     private static let historyBreadcrumb = PeekHomeBreadcrumb.history
     private static let archiveBreadcrumb = PeekHomeBreadcrumb.pastChats
     private static let statsBreadcrumb = PeekHomeBreadcrumb.stats
@@ -137,13 +141,27 @@ public struct PeekHomeView: View {
     private func applyModuleBreadcrumb(_ breadcrumb: String?) {
         switch breadcrumb {
         case Self.statsBreadcrumb:
-            showsStats = true
-            showsModelLibrary = false
-            showsArchive = false
+            if allowsGlobalDrillIn {
+                showsStats = true
+                showsModelLibrary = false
+                showsArchive = false
+            } else {
+                showsStats = false
+                showsModelLibrary = false
+                showsArchive = false
+            }
         case Self.modelLibraryBreadcrumb:
-            showsModelLibrary = true
-            showsStats = false
-            showsArchive = false
+            if allowsGlobalDrillIn {
+                showsModelLibrary = true
+                showsStats = false
+                showsArchive = false
+            } else {
+                showsModelLibrary = false
+                showsStats = false
+                showsArchive = false
+            }
+        case Self.historyBreadcrumb:
+            showsFullConversation = true
         case Self.archiveBreadcrumb:
             if case .idle = orchestrator.phase {
                 showsArchive = true
@@ -161,6 +179,16 @@ public struct PeekHomeView: View {
             if showsFullConversation { showsFullConversation = false }
         default:
             break
+        }
+    }
+
+    /// Stats and Model Library stay available on idle, result, and failed; block during capture flow.
+    private var allowsGlobalDrillIn: Bool {
+        switch orchestrator.phase {
+        case .capturing, .previewing, .inferring:
+            return false
+        default:
+            return true
         }
     }
 
@@ -303,7 +331,11 @@ public struct PeekHomeView: View {
             // Setup hosts the model picker and the full readiness checklist.
             onOpenSetup()
         case .checkOllama:
-            SetupCoordinator.openOllamaApp()
+            if orchestrator.settings.usesRemoteOllama {
+                onOpenSetup()
+            } else {
+                SetupCoordinator.openOllamaApp()
+            }
         case .downloadModel(let tag):
             let option = TextModelCatalog.option(for: tag)
                 ?? InferenceModelOption(
@@ -355,6 +387,7 @@ public struct PeekHomeView: View {
     }
 
     private func openModelLibrary() {
+        guard allowsGlobalDrillIn else { return }
         withAnimation(.easeOut(duration: 0.2)) {
             appState.moduleBreadcrumb = Self.modelLibraryBreadcrumb
         }
@@ -368,8 +401,10 @@ public struct PeekHomeView: View {
     }
 
     private func openArchivedThread(_ summary: ConversationSummary) {
-        orchestrator.openThread(id: summary.id)
-        showsArchive = false
-        appState.moduleBreadcrumb = nil
+        Task {
+            await orchestrator.openThread(id: summary.id)
+            showsArchive = false
+            appState.moduleBreadcrumb = nil
+        }
     }
 }

@@ -37,7 +37,7 @@ final class ConversationArchiveFlowTests: XCTestCase {
         return (ConversationArchiveStore(directory: dir), dir)
     }
 
-    func testOpenThreadRestoresArchivedChatAsResult() {
+    func testOpenThreadRestoresArchivedChatAsResult() async {
         let (store, dir) = tempArchive()
         defer { try? FileManager.default.removeItem(at: dir) }
 
@@ -48,7 +48,7 @@ final class ConversationArchiveFlowTests: XCTestCase {
             ],
             turnCounter: 2
         )
-        store.save(saved)
+        await store.save(saved)
 
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(textModel: "gemma4:e4b", persistConversation: true),
@@ -57,8 +57,9 @@ final class ConversationArchiveFlowTests: XCTestCase {
         )
         orchestrator.conversationArchive = store
 
-        XCTAssertEqual(orchestrator.availableThreads().count, 1)
-        orchestrator.openThread(id: saved.id)
+        let threads = await orchestrator.availableThreads()
+        XCTAssertEqual(threads.count, 1)
+        await orchestrator.openThread(id: saved.id)
 
         guard case .result("archived answer") = orchestrator.phase else {
             XCTFail("Expected restored result, got \(orchestrator.phase)")
@@ -79,16 +80,19 @@ final class ConversationArchiveFlowTests: XCTestCase {
         orchestrator.conversationArchive = store
         orchestrator.beginCapture()
         try await Task.sleep(nanoseconds: 350_000_000)
+        try await Task.sleep(nanoseconds: 200_000_000)
 
-        let summaries = orchestrator.availableThreads()
+        let summaries = await orchestrator.availableThreads()
         XCTAssertEqual(summaries.count, 1)
 
-        orchestrator.openThread(id: summaries[0].id)
+        await orchestrator.openThread(id: summaries[0].id)
         orchestrator.deleteThread(id: summaries[0].id)
+        try await Task.sleep(nanoseconds: 100_000_000)
 
         XCTAssertEqual(orchestrator.phase, .idle)
         XCTAssertFalse(orchestrator.hasConversation)
-        XCTAssertTrue(orchestrator.availableThreads().isEmpty)
+        let remaining = await orchestrator.availableThreads()
+        XCTAssertTrue(remaining.isEmpty)
     }
 
     func testContextPressureCriticalNearWindowLimit() async throws {
