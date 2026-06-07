@@ -49,7 +49,7 @@ struct PeekIdleCommandBar: View {
     var setup: SetupCoordinator
     var settings: PeekSettingsController
     @Binding var pendingDownload: InferenceModelOption?
-    @Binding var showAddModel: Bool
+    var onBrowseModels: () -> Void
     var onCapture: () -> Void
     var onResume: () -> Void
 
@@ -90,7 +90,7 @@ struct PeekIdleCommandBar: View {
                 models: settings.availableModels,
                 isInstalled: { setup.isModelInstalled($0) },
                 onSelect: selectModel,
-                onAddCustom: { showAddModel = true },
+                onBrowseModels: onBrowseModels,
                 close: close
             )
         }

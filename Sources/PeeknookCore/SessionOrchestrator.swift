@@ -18,6 +18,10 @@ public final class SessionOrchestrator {
     public private(set) var suggestedFollowUps: [String] = []
     /// True while the separate suggestion pass is in flight (drives pill skeletons in the UI).
     public private(set) var isFetchingSuggestions = false
+    /// Opt-in web lookup snapshot for the current capture turn (cleared on new chat).
+    public private(set) var webLookupSnapshot: WebLookupSnapshot?
+    /// True while DuckDuckGo HTML lookup is in flight before inference.
+    public private(set) var isFetchingWebLookup = false
     /// Snapshotted when an inference starts: was the model loaded recently enough to still
     /// be warm? Drives an honest loading label (cold model-load vs warm image-read).
     public private(set) var inferenceModelWasWarm = false
@@ -41,6 +45,7 @@ public final class SessionOrchestrator {
 
     private let capture: any CaptureProviding
     private let inference: any InferenceEngine
+    private let webSearch = WebSearchClient()
     private var inferenceTask: Task<Void, Never>?
     private var suggestionTask: Task<Void, Never>?
     private var isPrewarming = false
@@ -369,6 +374,8 @@ public final class SessionOrchestrator {
         conversation = []
         suggestedFollowUps = []
         isFetchingSuggestions = false
+        webLookupSnapshot = nil
+        isFetchingWebLookup = false
         turnCounter = 0
         lastPromptTokens = nil
         activeThreadID = nil
@@ -431,9 +438,22 @@ public final class SessionOrchestrator {
         inferenceModelWasWarm = modelLikelyWarm
         phase = .inferring
         streamedAnswer = ""
+        webLookupSnapshot = nil
+
+        if settings.webLookupEnabled, let capture, let query = WebSearchClient.query(from: capture) {
+            isFetchingWebLookup = true
+            defer { isFetchingWebLookup = false }
+            do {
+                let results = try await webSearch.search(query: query)
+                webLookupSnapshot = WebLookupSnapshot(query: query, results: results)
+            } catch {
+                webLookupSnapshot = WebLookupSnapshot(query: query, results: [])
+            }
+        }
+
         let request = InferenceRequest(
             mode: settings.mode,
-            messages: inferenceMessages(from: conversation),
+            messages: inferenceMessages(from: conversation, webLookup: webLookupSnapshot),
             model: settings.textModel,
             ollamaBaseURL: settings.ollamaBaseURL,
             quickMode: settings.quickMode
@@ -491,13 +511,20 @@ public final class SessionOrchestrator {
 
     /// Maps the display conversation to the model's message list: each image turn becomes a
     /// grounded user message carrying its screenshot; questions and answers pass through.
-    private func inferenceMessages(from conversation: [ChatTurn]) -> [InferenceMessage] {
-        conversation.map { turn in
+    private func inferenceMessages(from conversation: [ChatTurn], webLookup: WebLookupSnapshot? = nil) -> [InferenceMessage] {
+        let lastImageID = conversation.last(where: { if case .image = $0.kind { return true }; return false })?.id
+        return conversation.map { turn in
             switch turn.kind {
             case .image(let capture):
+                let lookup = turn.id == lastImageID ? webLookup : nil
                 return InferenceMessage(
                     role: .user,
-                    text: PromptBuilder.userMessage(capture: capture, mode: settings.mode, quick: settings.quickMode),
+                    text: PromptBuilder.userMessage(
+                        capture: capture,
+                        mode: settings.mode,
+                        quick: settings.quickMode,
+                        webLookup: lookup
+                    ),
                     imageBase64: capture.screenshotBase64
                 )
             case .user(let text):

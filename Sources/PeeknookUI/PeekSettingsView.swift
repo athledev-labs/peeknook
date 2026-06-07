@@ -21,7 +21,6 @@ public struct PeekSettingsView: View {
     @State private var didApplyDefaultExpansion = false
     @State private var visionModelAdvancedExpanded = false
     @State private var pendingDownload: InferenceModelOption?
-    @State private var showAddModel = false
     @State private var scrollToSectionID: String?
 
     public init(
@@ -65,7 +64,7 @@ public struct PeekSettingsView: View {
                             ollamaStatusTone: ollamaStatusTone,
                             advancedExpanded: $visionModelAdvancedExpanded,
                             onSelectModel: selectModel,
-                            onAddCustomModel: { showAddModel = true }
+                            onBrowseModels: openModelLibrary
                         )
                     }
 
@@ -118,11 +117,6 @@ public struct PeekSettingsView: View {
         .peekModelDownloadConfirmation(pending: $pendingDownload) { option in
             settings.beginModelDownload(option)
         }
-        .peekAddModelOverlay(isPresented: $showAddModel) { tag in
-            if case .needsDownload(let pending) = settings.addAndPickModel(tag: tag) {
-                pendingDownload = pending
-            }
-        }
     }
 
     @ViewBuilder
@@ -173,6 +167,10 @@ public struct PeekSettingsView: View {
     private func openSetup() {
         appState.showHome()
         appState.moduleBreadcrumb = PeekRootView.setupBreadcrumb
+    }
+
+    private func openModelLibrary() {
+        PeekModelLibraryNavigation.open(appState: appState)
     }
 
     private func selectModel(_ option: InferenceModelOption) {

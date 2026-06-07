@@ -73,6 +73,11 @@ public final class PeekSettingsController {
         }
     }
 
+    public func setWebLookupEnabled(_ enabled: Bool) {
+        guard settings.webLookupEnabled != enabled else { return }
+        update { $0.webLookupEnabled = enabled }
+    }
+
     public func setOllamaBaseURL(_ url: String) {
         guard settings.ollamaBaseURL != url else { return }
         update { $0.ollamaBaseURL = url }
@@ -145,7 +150,26 @@ public final class PeekSettingsController {
     /// Whether the current model can read the captured screenshot. `nil` while unknown (model not
     /// installed yet, or an older Ollama that omits capabilities) so the UI stays quiet.
     public func currentModelSupportsVision() async -> Bool? {
-        await inference.supportsVision(model: settings.textModel, baseURL: settings.ollamaBaseURL)
+        await supportsVision(for: settings.textModel)
+    }
+
+    /// Vision support for any tag — used by the model library when scanning installed models or
+    /// validating a custom tag before add.
+    public func supportsVision(for tag: String) async -> Bool? {
+        await inference.supportsVision(model: tag, baseURL: settings.ollamaBaseURL)
+    }
+
+    /// Installed Ollama tags that aren't already in the picker (curated + custom), sorted for display.
+    public func undiscoveredInstalledTags() -> [String] {
+        ModelTagDiscovery.undiscovered(
+            installedNames: setup.installedModelNames,
+            knownTags: availableModels.map(\.tag)
+        )
+    }
+
+    /// Whether a tag is already in the picker (curated or custom).
+    public func isKnownModel(tag: String) -> Bool {
+        TextModelCatalog.option(for: tag, custom: settings.customModels) != nil
     }
 
     public func selectInstalledModel(_ tag: String) {
@@ -177,5 +201,21 @@ public final class PeekSettingsController {
 
     public func inferenceHealth() async -> InferenceHealth {
         await inference.health(baseURL: settings.ollamaBaseURL, model: settings.textModel)
+    }
+}
+
+/// Filters installed Ollama tags to those not already listed in the picker.
+public enum ModelTagDiscovery {
+    public static func undiscovered(installedNames: [String], knownTags: [String]) -> [String] {
+        let known = Set(knownTags.map { OllamaSetupClient.normalizedTag($0) })
+        var seen = Set<String>()
+        var result: [String] = []
+        for name in installedNames {
+            let key = OllamaSetupClient.normalizedTag(name)
+            guard !key.isEmpty, !known.contains(key), !seen.contains(key) else { continue }
+            seen.insert(key)
+            result.append(name)
+        }
+        return result.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
     }
 }

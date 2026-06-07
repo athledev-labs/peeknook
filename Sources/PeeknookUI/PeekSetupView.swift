@@ -11,7 +11,7 @@ public struct PeekSetupView: View {
     public var onContinue: () -> Void
     @Environment(\.nookResolvedTheme) private var theme
     @State private var pendingDownload: InferenceModelOption?
-    @State private var showAddModel = false
+    @State private var showsModelLibrary = false
 
     public init(
         setup: SetupCoordinator,
@@ -26,16 +26,19 @@ public struct PeekSetupView: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            header
-            stepList
-            if let pull = setup.pullStatusLine {
-                Text(pull)
-                    .font(.system(size: 10))
-                    .foregroundStyle(theme.tertiaryLabel)
-                    .lineLimit(2)
+        Group {
+            if showsModelLibrary {
+                PeekModelLibraryView(
+                    orchestrator: orchestrator,
+                    setup: setup,
+                    settings: settings,
+                    pendingDownload: $pendingDownload,
+                    showsBackButton: true,
+                    onDismiss: { showsModelLibrary = false }
+                )
+            } else {
+                setupContent
             }
-            footerActions
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 16)
@@ -46,10 +49,19 @@ public struct PeekSetupView: View {
         .peekModelDownloadConfirmation(pending: $pendingDownload) { option in
             settings.beginModelDownload(option)
         }
-        .peekAddModelOverlay(isPresented: $showAddModel) { tag in
-            if case .needsDownload(let pending) = settings.addAndPickModel(tag: tag) {
-                pendingDownload = pending
+    }
+
+    private var setupContent: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            header
+            stepList
+            if let pull = setup.pullStatusLine {
+                Text(pull)
+                    .font(.system(size: 10))
+                    .foregroundStyle(theme.tertiaryLabel)
+                    .lineLimit(2)
             }
+            footerActions
         }
     }
 
@@ -133,7 +145,7 @@ public struct PeekSetupView: View {
                 models: settings.availableModels,
                 isInstalled: { setup.isModelInstalled($0) },
                 onSelect: selectModel,
-                onAddCustom: { showAddModel = true },
+                onBrowseModels: { showsModelLibrary = true },
                 close: close
             )
         }

@@ -13,6 +13,8 @@ enum PeekHomeBreadcrumb {
     static let pastChats = "Past chats"
     /// Lifetime and session usage analytics — global, opened from the top bar.
     static let stats = "Stats"
+    /// Browse, select, and download vision models — opened from the model picker or Settings.
+    static let modelLibrary = "Model Library"
 }
 
 /// Global, always-available app actions for the chrome's trailing top-bar cluster (next to the

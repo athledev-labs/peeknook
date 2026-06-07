@@ -38,6 +38,13 @@ struct PeekHomeConversationView: View {
 
     private var turnStack: some View {
         VStack(alignment: .leading, spacing: 10) {
+            if orchestrator.settings.webLookupEnabled,
+               orchestrator.isFetchingWebLookup || orchestrator.webLookupSnapshot != nil {
+                PeekWebLookupTableView(
+                    snapshot: orchestrator.webLookupSnapshot,
+                    isLoading: orchestrator.isFetchingWebLookup
+                )
+            }
             if !showsFullConversation, let capture = orchestrator.latestAnswerCapture {
                 Label(capture.targetLabel, systemImage: "viewfinder")
                     .font(.system(size: 10, weight: .medium))

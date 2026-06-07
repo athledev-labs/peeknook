@@ -21,6 +21,9 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     /// Opt-in: keep the active chat (including its screenshots) in a local file so it survives a
     /// quit. Off by default — captures are private user data. Cleared when turned off.
     public var persistConversation: Bool
+    /// Opt-in: run a live web search from capture context and show results alongside the answer.
+    /// Queries leave this Mac via DuckDuckGo HTML. Off by default.
+    public var webLookupEnabled: Bool
     /// User-added models (any Ollama tag) shown alongside the curated catalog in the picker.
     public var customModels: [CustomModelEntry]
 
@@ -34,6 +37,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         suggestFollowUps: Bool = true,
         captureHotkey: CaptureHotkey = .default,
         persistConversation: Bool = false,
+        webLookupEnabled: Bool = false,
         customModels: [CustomModelEntry] = []
     ) {
         self.mode = mode
@@ -45,11 +49,12 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.suggestFollowUps = suggestFollowUps
         self.captureHotkey = captureHotkey
         self.persistConversation = persistConversation
+        self.webLookupEnabled = webLookupEnabled
         self.customModels = customModels
     }
 
     private enum CodingKeys: String, CodingKey {
-        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, customModels
+        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, customModels
     }
 
     // Tolerant decode — a saved blob missing a newer key keeps the rest of the user's
@@ -66,6 +71,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.suggestFollowUps = try c.decodeIfPresent(Bool.self, forKey: .suggestFollowUps) ?? true
         self.captureHotkey = try c.decodeIfPresent(CaptureHotkey.self, forKey: .captureHotkey) ?? .default
         self.persistConversation = try c.decodeIfPresent(Bool.self, forKey: .persistConversation) ?? false
+        self.webLookupEnabled = try c.decodeIfPresent(Bool.self, forKey: .webLookupEnabled) ?? false
         self.customModels = try c.decodeIfPresent([CustomModelEntry].self, forKey: .customModels) ?? []
     }
 

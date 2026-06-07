@@ -17,8 +17,8 @@ public struct PeekHomeView: View {
     @State private var showsNewChatConfirmation = false
     @State private var showsArchive = false
     @State private var showsStats = false
+    @State private var showsModelLibrary = false
     @State private var pendingDownload: InferenceModelOption?
-    @State private var showAddModel = false
     /// Transient pin that bridges a panel resize when entering a History drill-in, then releases so
     /// normal hover-to-dismiss resumes (no forced Close).
     @State private var keepOpenGrace = false
@@ -45,6 +45,18 @@ public struct PeekHomeView: View {
                     .padding(.horizontal, 12)
                     .padding(.top, 8)
                     .padding(.bottom, 2)
+            } else if showsModelLibrary {
+                PeekModelLibraryView(
+                    orchestrator: orchestrator,
+                    setup: setup,
+                    settings: settings,
+                    pendingDownload: $pendingDownload,
+                    onDismiss: closeModelLibrary
+                )
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .padding(.horizontal, 12)
+                .padding(.top, 8)
+                .padding(.bottom, 2)
             } else if showsArchive, case .idle = orchestrator.phase {
                 PeekConversationArchiveView(
                     orchestrator: orchestrator,
@@ -61,11 +73,6 @@ public struct PeekHomeView: View {
         .peekModelDownloadConfirmation(pending: $pendingDownload) { option in
             settings.beginModelDownload(option)
         }
-        .peekAddModelOverlay(isPresented: $showAddModel) { tag in
-            if case .needsDownload(let pending) = settings.addAndPickModel(tag: tag) {
-                pendingDownload = pending
-            }
-        }
         // Bridge the panel resize when entering a History drill-in (the archive list or the full
         // thread can shrink the panel, dropping the cursor outside its new bounds and auto-dismissing
         // the surface). This is a short grace pin, not a hold-open — once it expires, normal
@@ -73,6 +80,7 @@ public struct PeekHomeView: View {
         .nookKeepsExpanded(while: $keepOpenGrace)
         .onChange(of: showsArchive) { _, shown in if shown { armKeepOpenGrace() } }
         .onChange(of: showsStats) { _, shown in if shown { armKeepOpenGrace() } }
+        .onChange(of: showsModelLibrary) { _, shown in if shown { armKeepOpenGrace() } }
         .onChange(of: showsFullConversation) { _, shown in if shown { armKeepOpenGrace() } }
         .onDisappear { keepOpenGraceTask?.cancel() }
         .onChange(of: orchestrator.phase) { _, newPhase in
@@ -81,32 +89,20 @@ public struct PeekHomeView: View {
             if case .result = newPhase { return }
             setHistoryVisible(false)
         }
-        .onChange(of: appState.moduleBreadcrumb) { _, breadcrumb in
-            // Global drill-ins are mutually exclusive — switching breadcrumb must swap the
-            // visible surface (Stats ↔ Past chats), not leave the previous one showing.
+        .onChange(of: appState.moduleBreadcrumb, initial: true) { _, breadcrumb in
+            // Breadcrumb lives in AppState (survives compact/re-expand); drill-in flags are
+            // local @State (reset when the home surface remounts). Sync on every change
+            // *and* on first appear so Settings → Manage models and post-collapse restore
+            // don't leave "Model Library" in the chrome over the idle home body.
             withAnimation(.easeOut(duration: 0.2)) {
-                switch breadcrumb {
-                case Self.statsBreadcrumb:
-                    showsStats = true
-                    showsArchive = false
-                case Self.archiveBreadcrumb:
-                    if case .idle = orchestrator.phase {
-                        showsArchive = true
-                        showsStats = false
-                    }
-                case nil:
-                    showsStats = false
-                    showsArchive = false
-                    if showsFullConversation { showsFullConversation = false }
-                default:
-                    break
-                }
+                applyModuleBreadcrumb(breadcrumb)
             }
         }
         .onDisappear {
             if appState.moduleBreadcrumb == Self.historyBreadcrumb
                 || appState.moduleBreadcrumb == Self.archiveBreadcrumb
-                || appState.moduleBreadcrumb == Self.statsBreadcrumb {
+                || appState.moduleBreadcrumb == Self.statsBreadcrumb
+                || appState.moduleBreadcrumb == Self.modelLibraryBreadcrumb {
                 appState.moduleBreadcrumb = nil
             }
         }
@@ -134,6 +130,39 @@ public struct PeekHomeView: View {
     private static let historyBreadcrumb = PeekHomeBreadcrumb.history
     private static let archiveBreadcrumb = PeekHomeBreadcrumb.pastChats
     private static let statsBreadcrumb = PeekHomeBreadcrumb.stats
+    private static let modelLibraryBreadcrumb = PeekHomeBreadcrumb.modelLibrary
+
+    /// Maps the shared chrome breadcrumb onto local drill-in state. Keep in sync with
+    /// ``PeekHomeBreadcrumb`` and ``PeekModelLibraryNavigation``.
+    private func applyModuleBreadcrumb(_ breadcrumb: String?) {
+        switch breadcrumb {
+        case Self.statsBreadcrumb:
+            showsStats = true
+            showsModelLibrary = false
+            showsArchive = false
+        case Self.modelLibraryBreadcrumb:
+            showsModelLibrary = true
+            showsStats = false
+            showsArchive = false
+        case Self.archiveBreadcrumb:
+            if case .idle = orchestrator.phase {
+                showsArchive = true
+                showsStats = false
+                showsModelLibrary = false
+            } else {
+                showsArchive = false
+                showsStats = false
+                showsModelLibrary = false
+            }
+        case nil:
+            showsStats = false
+            showsModelLibrary = false
+            showsArchive = false
+            if showsFullConversation { showsFullConversation = false }
+        default:
+            break
+        }
+    }
 
     private var homeColumn: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -187,7 +216,7 @@ public struct PeekHomeView: View {
                         setup: setup,
                         settings: settings,
                         pendingDownload: $pendingDownload,
-                        showAddModel: $showAddModel,
+                        onBrowseModels: openModelLibrary,
                         onCapture: { orchestrator.beginCapture() },
                         onResume: resumeChat
                     )
@@ -316,6 +345,18 @@ public struct PeekHomeView: View {
         keepOpenGraceTask = Task {
             try? await Task.sleep(nanoseconds: 1_000_000_000)
             if !Task.isCancelled { keepOpenGrace = false }
+        }
+    }
+
+    private func closeModelLibrary() {
+        withAnimation(.easeOut(duration: 0.2)) {
+            appState.moduleBreadcrumb = nil
+        }
+    }
+
+    private func openModelLibrary() {
+        withAnimation(.easeOut(duration: 0.2)) {
+            appState.moduleBreadcrumb = Self.modelLibraryBreadcrumb
         }
     }
 

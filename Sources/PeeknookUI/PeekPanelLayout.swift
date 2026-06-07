@@ -35,6 +35,13 @@ enum PeekPanelLayout {
         return min(480, max(280, visibleHeight * 0.5))
     }
 
+    /// Model library drill-in — browse and download vision models.
+    static var modelLibraryMaxHeight: CGFloat {
+        guard let screen = notchScreen else { return 400 }
+        let visibleHeight = screen.visibleFrame.height
+        return min(480, max(280, visibleHeight * 0.5))
+    }
+
     private static var notchScreen: NSScreen? {
         NSScreen.screens.first(where: { $0.safeAreaInsets.top > 0 })
             ?? NSScreen.main

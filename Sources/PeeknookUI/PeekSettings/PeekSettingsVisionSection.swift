@@ -13,7 +13,7 @@ struct PeekSettingsVisionSection: View {
     var ollamaStatusTone: PeekSettingsStatusTone
     @Binding var advancedExpanded: Bool
     var onSelectModel: (InferenceModelOption) -> Void
-    var onAddCustomModel: () -> Void
+    var onBrowseModels: () -> Void
 
     @Environment(\.nookResolvedTheme) private var theme
     @State private var visionSupport: Bool?
@@ -46,7 +46,7 @@ struct PeekSettingsVisionSection: View {
                 customModels: settings.customModels,
                 isInstalled: { setup.isModelInstalled($0) },
                 onSelect: onSelectModel,
-                onAddCustom: onAddCustomModel
+                onBrowseModels: onBrowseModels
             )
 
             if visionSupport == false {
@@ -55,25 +55,12 @@ struct PeekSettingsVisionSection: View {
                 )
             }
 
-            if !settings.customModels.isEmpty {
-                ForEach(settings.customModels) { entry in
-                    PeekSettingsCommandRow(
-                        icon: "cpu",
-                        title: entry.resolvedDisplayName,
-                        subtitle: "Custom · \(entry.tag)",
-                        style: .destructive,
-                        trailing: .button("Remove"),
-                        action: { settings.removeCustomModel(tag: entry.tag) }
-                    )
-                }
-            }
-
             PeekSettingsCommandRow(
-                icon: "plus.circle",
-                title: "Add a model",
-                subtitle: "Test any Ollama tag in your notch",
-                trailing: .button("Add"),
-                action: onAddCustomModel
+                icon: "square.grid.2x2",
+                title: "Manage models",
+                subtitle: "Browse, download, and switch vision models",
+                trailing: .chevron,
+                action: onBrowseModels
             )
 
             if setup.isPullingModel {

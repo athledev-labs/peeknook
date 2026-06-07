@@ -43,6 +43,17 @@ final class SettingsAndPromptTests: XCTestCase {
         XCTAssertTrue(quick.contains("Quick mode"))
     }
 
+    func testWebLookupPromptAddsSearchContext() {
+        let capture = CaptureResult(text: "Swift actors", sourceLabel: "Front window (vision)", screenshotBase64: "x")
+        let snapshot = WebLookupSnapshot(
+            query: "Swift actors",
+            results: [WebSearchResult(title: "Actors", url: URL(string: "https://example.com")!, snippet: "Docs")]
+        )
+        let message = PromptBuilder.userMessage(capture: capture, mode: .general, webLookup: snapshot)
+        XCTAssertTrue(message.contains("Live web lookup"))
+        XCTAssertTrue(message.contains("Actors"))
+    }
+
     func testCaptureHotkeyDefaultsToCommandShiftPAndRoundTrips() throws {
         let legacy = Data("""
         {"mode":"general","textModel":"gemma4:e4b"}
@@ -152,5 +163,12 @@ final class SettingsAndPromptTests: XCTestCase {
         XCTAssertTrue(defaults.bool(forKey: SetupCoordinator.onboardingCompleteKey))
         let reloaded = SetupCoordinator(settings: .default, defaults: defaults)
         XCTAssertTrue(reloaded.hasCompletedOnboarding)
+    }
+
+    func testUndiscoveredTagsExcludeKnownAndDedupe() {
+        let known = TextModelCatalog.offered.map(\.tag)
+        let installed = ["gemma4:e4b", "qwen3-vl:8b", "qwen3-vl:8b", "llama3:latest"]
+        let undiscovered = ModelTagDiscovery.undiscovered(installedNames: installed, knownTags: known)
+        XCTAssertEqual(undiscovered, ["llama3:latest", "qwen3-vl:8b"])
     }
 }

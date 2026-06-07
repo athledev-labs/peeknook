@@ -43,7 +43,12 @@ enum PromptBuilder {
         }
     }
 
-    static func userMessage(capture: CaptureResult, mode: PracticeMode, quick: Bool = false) -> String {
+    static func userMessage(
+        capture: CaptureResult,
+        mode: PracticeMode,
+        quick: Bool = false,
+        webLookup: WebLookupSnapshot? = nil
+    ) -> String {
         var parts: [String] = [
             "The user pressed capture. Mode: \(mode.displayName).",
             "Source: \(capture.sourceLabel)."
@@ -67,6 +72,10 @@ enum PromptBuilder {
             """)
         } else {
             parts.append("No reliable extracted text — rely on the screenshot.")
+        }
+
+        if let webLookup, !webLookup.results.isEmpty {
+            parts.append(WebSearchClient.promptContext(from: webLookup))
         }
 
         if quick {

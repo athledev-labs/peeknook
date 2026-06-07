@@ -12,7 +12,7 @@ struct PeekSettingsModelPickerRow: View {
     let customModels: [CustomModelEntry]
     let isInstalled: (String) -> Bool
     let onSelect: (InferenceModelOption) -> Void
-    let onAddCustom: () -> Void
+    let onBrowseModels: () -> Void
 
     @Environment(\.nookResolvedTheme) private var theme
 
@@ -59,7 +59,7 @@ struct PeekSettingsModelPickerRow: View {
                     models: models,
                     isInstalled: isInstalled,
                     onSelect: onSelect,
-                    onAddCustom: onAddCustom,
+                    onBrowseModels: onBrowseModels,
                     close: close
                 )
             }

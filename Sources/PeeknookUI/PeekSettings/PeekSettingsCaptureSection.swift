@@ -37,6 +37,13 @@ struct PeekSettingsCaptureSection: View {
             )
 
             PeekSettingsToggleRow(
+                icon: orchestrator.settings.webLookupEnabled ? "globe.americas.fill" : "globe",
+                title: "Web lookup",
+                detail: "Search the web from capture context and show results with the answer",
+                isOn: webLookupBinding
+            )
+
+            PeekSettingsToggleRow(
                 icon: orchestrator.settings.persistConversation ? "tray.full.fill" : "tray",
                 title: "Save conversations",
                 detail: "Archive past chats and their screenshots on this Mac. Turning this off deletes the archive.",
@@ -88,6 +95,13 @@ struct PeekSettingsCaptureSection: View {
         Binding(
             get: { orchestrator.settings.suggestFollowUps },
             set: { settings.setSuggestFollowUps($0) }
+        )
+    }
+
+    private var webLookupBinding: Binding<Bool> {
+        Binding(
+            get: { orchestrator.settings.webLookupEnabled },
+            set: { settings.setWebLookupEnabled($0) }
         )
     }
 

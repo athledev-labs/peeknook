@@ -55,7 +55,7 @@ enum PeekPreflightMenuContent {
         models: [InferenceModelOption],
         isInstalled: @escaping (String) -> Bool,
         onSelect: @escaping (InferenceModelOption) -> Void,
-        onAddCustom: (() -> Void)? = nil,
+        onBrowseModels: (() -> Void)? = nil,
         close: @escaping () -> Void
     ) -> some View {
         ForEach(models) { option in
@@ -76,16 +76,16 @@ enum PeekPreflightMenuContent {
             .buttonStyle(.plain)
         }
 
-        if let onAddCustom {
+        if let onBrowseModels {
             Divider().padding(.vertical, 2)
             Button {
-                onAddCustom()
+                onBrowseModels()
                 close()
             } label: {
                 HStack(spacing: 6) {
-                    Image(systemName: "plus.circle")
+                    Image(systemName: "square.grid.2x2")
                         .font(.system(size: 11, weight: .semibold))
-                    Text("Add a model…")
+                    Text("Browse models…")
                         .font(.system(size: 11))
                     Spacer(minLength: 0)
                 }
