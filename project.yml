@@ -72,3 +72,30 @@ targets:
         product: PeeknookHost
       - package: Nook
         product: NookApp
+
+  PeeknookUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: UITests
+    dependencies:
+      - target: PeeknookHostApp
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.peeknook.app.uitests
+        TEST_TARGET_NAME: Peeknook
+        GENERATE_INFOPLIST_FILE: YES
+      configs:
+        Debug:
+          CODE_SIGN_IDENTITY: "-"
+          DEVELOPMENT_TEAM: ""
+
+schemes:
+  Peeknook:
+    build:
+      targets:
+        PeeknookHostApp: all
+    test:
+      targets:
+        - PeeknookUITests
