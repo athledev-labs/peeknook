@@ -44,12 +44,13 @@ final class PeekSettingsControllerTests: XCTestCase {
     @MainActor
     func testPickModelReturnsNeedsDownloadWhenMissing() {
         let stack = PeeknookServices.makeStack(settings: .default, defaults: defaults)
+        let initialModel = stack.orchestrator.settings.textModel
 
-        let option = TextModelCatalog.offered[0]
+        let option = InferenceModelOption(custom: CustomModelEntry(tag: "peeknook-ci-missing:0"))
         let result = stack.settings.pickModel(option)
 
         XCTAssertEqual(result, .needsDownload(option))
-        XCTAssertNotEqual(stack.orchestrator.settings.textModel, option.tag)
+        XCTAssertEqual(stack.orchestrator.settings.textModel, initialModel)
     }
 
     @MainActor
