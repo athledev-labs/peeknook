@@ -22,10 +22,9 @@ final class ConversationPersistenceTests: XCTestCase {
         )
         first.conversationArchive = store
         first.beginCapture()
-        try await Task.sleep(nanoseconds: 200_000_000)
-
-        guard case .result("answer") = first.phase else {
-            XCTFail("Expected result, got \(first.phase)")
+        let firstPhase = await first.waitForResult("answer")
+        guard case .result("answer") = firstPhase else {
+            XCTFail("Expected result, got \(firstPhase)")
             return
         }
         // The detached save task needs a beat to land on disk.
@@ -94,7 +93,11 @@ final class ConversationPersistenceTests: XCTestCase {
             inference: MockInferenceEngine(tokens: ["The ", "answer"])
         )
         orchestrator.beginCapture()
-        try? await Task.sleep(nanoseconds: 200_000_000)
+        let phase = await orchestrator.waitForResult("The answer")
+        guard case .result = phase else {
+            XCTFail("Expected result, got \(phase)")
+            return
+        }
 
         let markdown = orchestrator.conversationMarkdown()
         XCTAssertTrue(markdown.contains("Safari · Docs"))

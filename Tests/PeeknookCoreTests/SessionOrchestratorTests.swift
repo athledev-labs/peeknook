@@ -37,14 +37,11 @@ final class SessionOrchestratorTests: XCTestCase {
         )
 
         orchestrator.beginCapture()
-
-        let deadline = Date().addingTimeInterval(2)
-        while Date() < deadline {
-            if case .result("ok") = orchestrator.phase { return }
-            try? await Task.sleep(nanoseconds: 25_000_000)
+        let phase = await orchestrator.waitForResult("ok")
+        guard case .result("ok") = phase else {
+            XCTFail("Expected result ok, got \(phase)")
+            return
         }
-
-        XCTFail("Expected result ok, got \(orchestrator.phase)")
     }
 
     func testPreviewCarriesWindowIdentity() async {
