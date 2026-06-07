@@ -6,35 +6,18 @@ import { release } from "../data/release";
 interface Props {
   title: string;
   description?: string;
-  current?: "home" | "install" | "privacy" | "licenses";
+  current?: "home" | "privacy" | "licenses";
   wide?: boolean;
   viewport?: boolean;
 }
 
 const {
   title,
-  description = "Local-first practice copilot in the MacBook notch.",
+  description = "Context in the MacBook notch.",
   current,
 } = Astro.props;
 
-const nav = [
-  { href: import.meta.env.BASE_URL, label: "Home", id: "home" as const },
-  {
-    href: `${import.meta.env.BASE_URL}install/`,
-    label: "Install",
-    id: "install" as const,
-  },
-  {
-    href: `${import.meta.env.BASE_URL}privacy/`,
-    label: "Privacy",
-    id: "privacy" as const,
-  },
-  {
-    href: `${import.meta.env.BASE_URL}licenses/`,
-    label: "Licenses",
-    id: "licenses" as const,
-  },
-];
+const base = import.meta.env.BASE_URL;
 ---
 
 <!doctype html>
@@ -44,6 +27,12 @@ const nav = [
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
     <meta name="color-scheme" content="dark" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500&display=swap"
+      rel="stylesheet"
+    />
     <title>{title} · Peeknook</title>
     <link
       rel="icon"
@@ -54,24 +43,25 @@ const nav = [
   <body>
     <div class:list={["shell", Astro.props.viewport && "shell--viewport"]}>
       <header class="topbar">
-        <a class="brand" href={import.meta.env.BASE_URL}>Peeknook</a>
+        <a class="brand" href={import.meta.env.BASE_URL}>
+          <img
+            class="brand-mark"
+            src={`${import.meta.env.BASE_URL}logo-mark.svg`}
+            alt=""
+            width="18"
+            height="18"
+            decoding="async"
+          />
+          <span>Peeknook</span>
+        </a>
         <nav class="nav" aria-label="Primary">
-          {
-            nav.map((item) => (
-              <a
-                href={item.href}
-                aria-current={current === item.id ? "page" : undefined}
-              >
-                {item.label}
-              </a>
-            ))
-          }
+          <a href="https://github.com/glendonC/peeknook">GitHub</a>
         </nav>
       </header>
 
       <main
         class:list={[
-          Astro.props.viewport ? undefined : "doc-main",
+          Astro.props.viewport ? "home-main" : "doc-main",
           !Astro.props.viewport && Astro.props.wide && "doc-main--wide",
         ]}
       >
@@ -81,7 +71,18 @@ const nav = [
       <footer class="footbar">
         <span>v{release.version}</span>
         <div class="footbar-links">
-          <a href="https://github.com/glendonC/peeknook">GitHub</a>
+          <a
+            href={`${base}privacy/`}
+            aria-current={current === "privacy" ? "page" : undefined}
+          >
+            Privacy
+          </a>
+          <a
+            href={`${base}licenses/`}
+            aria-current={current === "licenses" ? "page" : undefined}
+          >
+            Licenses
+          </a>
           <a href="https://github.com/glendonC/peeknook/issues">Issues</a>
           <a href={release.latestReleasesURL}>Releases</a>
         </div>
