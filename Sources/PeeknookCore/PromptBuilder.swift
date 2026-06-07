@@ -3,93 +3,172 @@
 import Foundation
 
 enum PromptBuilder {
-    /// Shared product contract, prepended to every mode.
-    static let core = """
-    You are Peeknook, a local-first practice copilot on macOS. The user explicitly captured \
-    what is on their screen; you receive a screenshot of what they captured, a specific window or \
-    their whole screen, and sometimes extracted text. \
-    Answer from what is actually visible, do not invent UI, text, or questions that are not there. \
-    If the screen is ambiguous, state your best inference in one short line, then answer. \
-    Keep responses readable in a small notch HUD unless the screen clearly requires numbered steps.
-    """
+    // MARK: - System prompt (stable contract + optional agent appendix)
 
-    static func systemPrompt(for mode: PracticeMode) -> String {
-        switch mode {
-        case .general, .korean:
-            """
-            \(core)
-            Behave like a capable screen-aware assistant (not a generic chatbot). \
-            FIRST read the actual visible text, titles, headings, labels, prices, buttons, code, errors, subtitles, and identify specifically what app, site, or content this is. Name it concretely. \
-            THEN give the single most useful, specific thing: answer the visible question, explain the concept, debug the error, gloss the non-English text, or summarize the key point. \
-            Do NOT just describe the layout ("a form with two columns"), that is useless. And NEVER ask the user what they want or what they are trying to do; they captured this screen for help, so help with what is visible. \
-            When non-English text is prominent (e.g. Korean subtitles or lesson UI), lead with a short English gloss or translation (≤3 lines). \
-            Be direct and specific. Default length: 4–8 short lines. No filler ("Sure!", "Based on the image", "It looks like").
-            """
-        case .explain:
-            """
-            \(core)
-            Explain what is on screen clearly in ≤5 short lines.
-            """
-        case .code:
-            """
-            \(core)
-            Code practice: hint ladder, nudge first, not a full solution. ≤5 lines unless an error message needs unpacking.
-            """
-        case .chessCoach:
-            """
-            \(core)
-            Chess coaching for solo/bot study: themes and plans only, not engine lines. ≤4 lines.
-            """
+    static func systemPrompt(agentAppendix: String? = nil) -> String {
+        var parts = [
+            roleSection,
+            groundRulesSection,
+            prioritySection,
+            defaultBehaviorSection,
+            outputSection,
+        ]
+        if let appendix = agentAppendix?.trimmingCharacters(in: .whitespacesAndNewlines), !appendix.isEmpty {
+            parts.append("""
+            ## Custom agent
+            \(appendix)
+            """)
         }
+        return parts.joined(separator: "\n\n")
     }
 
-    static func userMessage(
+    private static let roleSection = """
+    ## Role
+    You are Peeknook, a local-first practice copilot on macOS. The user explicitly captured what is on \
+    their screen. You receive a screenshot (a window or whole display) and sometimes extracted text.
+    """
+
+    private static let groundRulesSection = """
+    ## Ground rules
+    - Answer from what is actually visible. Do not invent UI, text, or questions that are not there.
+    - If the screen is ambiguous, state your best inference in one short line, then answer.
+    - Use plain text only: no LaTeX, no `$...$` delimiters, no `\\text{}`.
+    - Use domain-appropriate plain-text notation when relevant (code, moves, formulas).
+    - Keep responses readable in a small notch HUD unless numbered steps are clearly required.
+    """
+
+    private static let prioritySection = """
+    ## Priority (when instructions conflict)
+    1. **Session brief** — defines what "helpful" means for this chat; carry it across captures and follow-ups.
+    2. **Answer depth** — Quick or Deep on the current turn (stated in the user message).
+    3. **Defaults below** — use when the brief is silent on that point.
+    """
+
+    private static let defaultBehaviorSection = """
+    ## Default behavior
+    - Give the single most useful, **actionable** thing for what is on screen.
+    - **Lead with the answer**: the recommendation, fix, translation, steps, or decision — not UI narration.
+    - Do NOT recite panels, chrome, or on-screen labels instead of helping.
+    - Do NOT hand-wave ("consider your best option", "think about strategy") without a concrete recommendation.
+    - NEVER ask what the user wants; they captured this screen for help.
+    """
+
+    private static let outputSection = """
+    ## Output
+    - Be direct and specific. No filler ("Sure!", "Based on the image", "It looks like").
+    - Default length when Deep: 4–8 short lines unless the brief asks for more or less.
+    """
+
+    // MARK: - User messages
+
+    static func captureUserMessage(
         capture: CaptureResult,
-        mode: PracticeMode,
-        quick: Bool = false,
+        assembly: PromptAssembly,
         webLookup: WebLookupSnapshot? = nil
     ) -> String {
-        var parts: [String] = [
-            "The user pressed capture. Mode: \(mode.displayName).",
-            "Source: \(capture.sourceLabel)."
-        ]
+        var sections: [String] = []
 
+        if let brief = assembly.trimmedBrief {
+            sections.append(sessionBriefSection(brief))
+        }
+
+        sections.append(captureContextSection(capture: capture, webLookup: webLookup))
+        sections.append(depthSection(assembly.answerDepth))
+
+        if assembly.continuingSession {
+            sections.append("""
+            ## Session context
+            Continuing chat: this is a new capture in the same thread. Answer what matters **now** for the session brief; \
+            use prior turns only if they clarify the recommendation.
+            """)
+        }
+
+        sections.append("## Task\nRespond to the screenshot above.")
+        return sections.joined(separator: "\n\n")
+    }
+
+    static func followUpUserMessage(question: String, assembly: PromptAssembly) -> String {
+        let trimmed = question.trimmingCharacters(in: .whitespacesAndNewlines)
+        var sections: [String] = []
+
+        if let brief = assembly.trimmedBrief {
+            sections.append(sessionBriefReminderSection(brief))
+        }
+
+        sections.append("""
+        ## Follow-up
+        \(trimmed)
+        """)
+
+        sections.append(depthSection(assembly.answerDepth))
+        sections.append("## Task\nAnswer the follow-up using the screenshots and conversation so far.")
+        return sections.joined(separator: "\n\n")
+    }
+
+    // MARK: - Sections
+
+    private static func sessionBriefSection(_ brief: String) -> String {
+        """
+        ## Session brief
+        Primary intent for this chat — follow over defaults; carry across captures:
+        ---
+        \(brief)
+        ---
+        """
+    }
+
+    private static func sessionBriefReminderSection(_ brief: String) -> String {
+        """
+        ## Session brief (reminder)
+        \(brief)
+        """
+    }
+
+    private static func captureContextSection(
+        capture: CaptureResult,
+        webLookup: WebLookupSnapshot?
+    ) -> String {
+        var lines = ["## Capture", "Source: \(capture.sourceLabel)."]
         if capture.appName != nil || capture.windowTitle != nil {
-            // Honest capture identity, helps grounding, but the screenshot is ground truth.
-            parts.append("Captured: \(capture.targetLabel).")
+            lines.append("Target: \(capture.targetLabel).")
         }
-
         if capture.hasVision {
-            parts.append("A screenshot is attached to this message (vision).")
+            lines.append("A screenshot is attached to this message (vision).")
         }
-
         if let text = capture.text, !text.isEmpty {
-            parts.append("""
-            Supplementary extracted text (may be incomplete, prefer the screenshot when they disagree):
+            lines.append("""
+            Supplementary extracted text (may be incomplete; prefer the screenshot when they disagree):
             ---
             \(text)
             ---
             """)
         } else {
-            parts.append("No reliable extracted text, rely on the screenshot.")
+            lines.append("No reliable extracted text — rely on the screenshot.")
         }
-
         if let webLookup, !webLookup.results.isEmpty {
-            parts.append(WebSearchClient.promptContext(from: webLookup))
+            lines.append(WebSearchClient.promptContext(from: webLookup))
         }
-
-        if quick {
-            parts.append("Quick mode: answer in at most 2–3 short lines. Lead with the single most useful point; no preamble.")
-        }
-
-        parts.append("Answer from what is on screen.")
-        return parts.joined(separator: "\n\n")
+        return lines.joined(separator: "\n")
     }
 
-    // MARK: - Follow-up suggestions (generated by a separate, schema-constrained call)
+    private static func depthSection(_ depth: AnswerDepth) -> String {
+        switch depth {
+        case .quick:
+            return """
+            ## Answer depth
+            **Quick** — at most 2–3 short lines. Lead with the single most useful point; no preamble.
+            """
+        case .deep:
+            return """
+            ## Answer depth
+            **Deep** — thorough and specific (typically 4–8 short lines). Lead with the actionable conclusion, \
+            then the key reasoning. Do not pad or repeat the question.
+            """
+        }
+    }
 
-    /// System prompt for the dedicated suggestion pass. The model proposes the next questions
-    /// the user is most likely to ask about *this* screen, grounded, never generic.
+    // MARK: - Follow-up suggestions (separate schema-constrained pass)
+
     static let followUpSystemPrompt = """
     You generate follow-up question suggestions for a screen-aware assistant. \
     Given the screenshot, the conversation, and the latest answer, propose the 2–3 questions the \
@@ -102,8 +181,6 @@ enum PromptBuilder {
     static let followUpUserPrompt =
         "Suggest the 2–3 best follow-up questions for this screen and answer."
 
-    /// JSON schema handed to Ollama's `format` so generation is grammar-constrained to a clean
-    /// array, no string-marker parsing, reliable across models.
     static var followUpSchema: [String: Any] {
         [
             "type": "object",

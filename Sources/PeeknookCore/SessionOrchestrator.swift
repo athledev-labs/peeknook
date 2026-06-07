@@ -32,6 +32,14 @@ public final class SessionOrchestrator {
     private var lastInferenceAt: Date?
     private var turnCounter = 0
 
+    /// Sticky intent for the active chat — cleared on New chat. In-memory only (not archived).
+    public private(set) var sessionBrief: String = ""
+    /// Partial transcript while voice input is active.
+    public private(set) var voicePartialTranscript: String = ""
+    public private(set) var isListeningForVoice = false
+    /// Bumped when the brief hotkey (or another host action) should open the idle brief composer.
+    public private(set) var briefComposerFocusToken = 0
+
     public var settings: PeeknookSettings
     public weak var setup: SetupCoordinator?
     public var usage: UsageStore?
@@ -45,6 +53,8 @@ public final class SessionOrchestrator {
 
     private let capture: any CaptureProviding
     private let inference: any InferenceEngine
+    private let speechRecognizer: any SpeechRecognizing
+    private let speechSynthesizer: any SpeechSynthesizing
     private let webSearch = WebSearchClient()
     private var inferenceTask: Task<Void, Never>?
     private var suggestionTask: Task<Void, Never>?
@@ -120,11 +130,76 @@ public final class SessionOrchestrator {
     public init(
         settings: PeeknookSettings,
         capture: any CaptureProviding,
-        inference: any InferenceEngine
+        inference: any InferenceEngine,
+        speechRecognizer: any SpeechRecognizing = StubSpeechRecognizer(),
+        speechSynthesizer: any SpeechSynthesizing = StubSpeechSynthesizer()
     ) {
         self.settings = settings
         self.capture = capture
         self.inference = inference
+        self.speechRecognizer = speechRecognizer
+        self.speechSynthesizer = speechSynthesizer
+    }
+
+    public func setSessionBrief(_ text: String) {
+        sessionBrief = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    public func focusBriefComposer() {
+        briefComposerFocusToken += 1
+    }
+
+    /// Toggle on-device dictation for briefs and follow-ups. Returns the final transcript when stopping.
+    @discardableResult
+    public func toggleVoiceInput() async -> String? {
+        guard settings.voiceInputEnabled else { return nil }
+        if isListeningForVoice {
+            let final = speechRecognizer.stopListening()
+            isListeningForVoice = false
+            voicePartialTranscript = ""
+            return final.isEmpty ? nil : final
+        }
+        guard await speechRecognizer.requestAuthorization() else { return nil }
+        isListeningForVoice = true
+        voicePartialTranscript = ""
+        do {
+            try await speechRecognizer.startListening { [weak self] partial in
+                Task { @MainActor in
+                    self?.voicePartialTranscript = partial
+                }
+            }
+        } catch {
+            isListeningForVoice = false
+            voicePartialTranscript = ""
+        }
+        return nil
+    }
+
+    public func stopVoiceInput() {
+        guard isListeningForVoice else { return }
+        _ = speechRecognizer.stopListening()
+        isListeningForVoice = false
+        voicePartialTranscript = ""
+    }
+
+    public func speakLastAnswer() {
+        guard settings.speakAnswersEnabled else { return }
+        let text = lastAssistantText ?? streamedAnswer
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        let voice = settings.speechVoiceIdentifier.nilIfEmpty
+        speechSynthesizer.speak(text, voiceIdentifier: voice)
+    }
+
+    public func stopSpeaking() {
+        speechSynthesizer.stopSpeaking()
+    }
+
+    public var isSpeakingAnswer: Bool {
+        speechSynthesizer.isSpeaking
+    }
+
+    private func stopSpeechOutput() {
+        speechSynthesizer.stopSpeaking()
     }
 
     public func reloadSettings(from defaults: UserDefaults) {
@@ -247,11 +322,13 @@ public final class SessionOrchestrator {
         }
     }
 
-    /// Hotkey / compact affordance entry: capture → preview → infer (a fresh chat).
+    /// Hotkey / compact affordance entry: capture → preview → infer. Starts a fresh chat only when
+    /// there is no answered thread yet; otherwise appends the screenshot to the current session.
     public func beginCapture() {
         switch phase {
         case .idle, .result:
-            startCapture(intent: .fresh)
+            let intent: CaptureIntent = hasConversation ? .addToChat : .fresh
+            startCapture(intent: intent)
         default:
             return
         }
@@ -289,6 +366,7 @@ public final class SessionOrchestrator {
 
     /// Discard the current thread and return to idle.
     public func startNewChat() {
+        sessionBrief = ""
         dismissResult()
     }
 
@@ -313,6 +391,7 @@ public final class SessionOrchestrator {
         suggestionTask?.cancel()
         pendingIntent = intent
         streamedAnswer = ""
+        stopSpeechOutput()
         phase = .capturing
         captureGeneration += 1
         let generation = captureGeneration
@@ -387,6 +466,8 @@ public final class SessionOrchestrator {
         inferenceTask = nil
         suggestionTask?.cancel()
         streamedAnswer = ""
+        stopVoiceInput()
+        stopSpeechOutput()
         // Stopping mid-extension (a follow-up or an added image) keeps the answered thread -
         // drop only the unanswered tail and return to the last answer.
         if hasConversation {
@@ -407,6 +488,7 @@ public final class SessionOrchestrator {
         streamedAnswer = ""
         pendingPreview = nil
         pendingCapture = nil
+        sessionBrief = ""
         discardActiveThread()
         resetConversation()
         phase = .idle
@@ -424,6 +506,8 @@ public final class SessionOrchestrator {
         lastPromptTokens = nil
         activeThreadID = nil
         activeThreadCreatedAt = nil
+        stopVoiceInput()
+        stopSpeechOutput()
     }
 
     private var lastAssistantText: String? {
@@ -557,6 +641,7 @@ public final class SessionOrchestrator {
             conversation.append(ChatTurn(id: turnCounter, kind: .assistant(answer), turnUsage: usage))
             phase = .result(answer)
             persistConversationNow()
+            speakLastAnswer()
             // Suggestions are a separate, schema-constrained pass, kick it off without
             // blocking the answer; pills pop in a moment later.
             fetchSuggestions()
@@ -568,26 +653,45 @@ public final class SessionOrchestrator {
         }
     }
 
+    private func promptAssembly(continuingSession: Bool) -> PromptAssembly {
+        PromptAssembly(
+            answerDepth: AnswerDepth(quickMode: settings.quickMode),
+            sessionBrief: sessionBrief.nilIfEmpty,
+            continuingSession: continuingSession
+        )
+    }
+
     /// Maps the display conversation to the model's message list: each image turn becomes a
     /// grounded user message carrying its screenshot; questions and answers pass through.
-    private func inferenceMessages(from conversation: [ChatTurn], webLookup: WebLookupSnapshot? = nil) -> [InferenceMessage] {
-        let lastImageID = conversation.last(where: { if case .image = $0.kind { return true }; return false })?.id
+    private func inferenceMessages(
+        from conversation: [ChatTurn],
+        webLookup: WebLookupSnapshot? = nil
+    ) -> [InferenceMessage] {
+        let imageTurns = conversation.filter(\.isImage)
+        let lastImageID = conversation.last(where: \.isImage)?.id
         return conversation.map { turn in
             switch turn.kind {
             case .image(let capture):
                 let lookup = turn.id == lastImageID ? webLookup : nil
+                let imageIndex = imageTurns.firstIndex(where: { $0.id == turn.id }) ?? 0
+                let assembly = promptAssembly(continuingSession: imageIndex > 0)
                 return InferenceMessage(
                     role: .user,
-                    text: PromptBuilder.userMessage(
+                    text: PromptBuilder.captureUserMessage(
                         capture: capture,
-                        mode: settings.mode,
-                        quick: settings.quickMode,
+                        assembly: assembly,
                         webLookup: lookup
                     ),
                     imageBase64: capture.screenshotBase64
                 )
             case .user(let text):
-                return InferenceMessage(role: .user, text: text)
+                return InferenceMessage(
+                    role: .user,
+                    text: PromptBuilder.followUpUserMessage(
+                        question: text,
+                        assembly: promptAssembly(continuingSession: false)
+                    )
+                )
             case .assistant(let text):
                 return InferenceMessage(role: .assistant, text: text)
             }
@@ -652,4 +756,11 @@ public final class SessionOrchestrator {
         }
     }
 
+}
+
+private extension String {
+    var nilIfEmpty: String? {
+        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
 }

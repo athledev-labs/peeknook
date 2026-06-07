@@ -37,10 +37,12 @@ final class SettingsAndPromptTests: XCTestCase {
 
     func testQuickPromptAddsTerseInstruction() {
         let capture = CaptureResult(text: nil, sourceLabel: "Front window (vision)", screenshotBase64: "x")
-        let normal = PromptBuilder.userMessage(capture: capture, mode: .general, quick: false)
-        let quick = PromptBuilder.userMessage(capture: capture, mode: .general, quick: true)
-        XCTAssertFalse(normal.contains("Quick mode"))
-        XCTAssertTrue(quick.contains("Quick mode"))
+        let assembly = PromptAssembly(answerDepth: .deep)
+        let quickAssembly = PromptAssembly(answerDepth: .quick)
+        let normal = PromptBuilder.captureUserMessage(capture: capture, assembly: assembly)
+        let quick = PromptBuilder.captureUserMessage(capture: capture, assembly: quickAssembly)
+        XCTAssertTrue(normal.contains("**Deep**"))
+        XCTAssertTrue(quick.contains("**Quick**"))
     }
 
     func testWebLookupPromptAddsSearchContext() {
@@ -49,7 +51,11 @@ final class SettingsAndPromptTests: XCTestCase {
             query: "Swift actors",
             results: [WebSearchResult(title: "Actors", url: URL(string: "https://example.com")!, snippet: "Docs")]
         )
-        let message = PromptBuilder.userMessage(capture: capture, mode: .general, webLookup: snapshot)
+        let message = PromptBuilder.captureUserMessage(
+            capture: capture,
+            assembly: PromptAssembly(answerDepth: .deep),
+            webLookup: snapshot
+        )
         XCTAssertTrue(message.contains("Live web lookup"))
         XCTAssertTrue(message.contains("Actors"))
     }
@@ -189,5 +195,82 @@ final class SettingsAndPromptTests: XCTestCase {
         XCTAssertEqual(back.displayName, "Alex")
         XCTAssertFalse(back.showGreeting)
         XCTAssertFalse(back.renderAnswerMarkdown)
+    }
+
+    func testSessionBriefPromptIncludesUserIntent() {
+        let capture = CaptureResult(text: nil, sourceLabel: "Front window (vision)", screenshotBase64: "x")
+        let message = PromptBuilder.captureUserMessage(
+            capture: capture,
+            assembly: PromptAssembly(
+                answerDepth: .deep,
+                sessionBrief: "Recommend the best move with one line why"
+            )
+        )
+        XCTAssertTrue(message.contains("## Session brief"))
+        XCTAssertTrue(message.contains("Recommend the best move with one line why"))
+    }
+
+    func testSystemPromptDefinesPriorityOrder() {
+        let prompt = PromptBuilder.systemPrompt()
+        XCTAssertTrue(prompt.contains("## Priority"))
+        XCTAssertTrue(prompt.contains("Session brief"))
+        XCTAssertTrue(prompt.contains("Answer depth"))
+    }
+
+    func testSystemPromptAcceptsAgentAppendix() {
+        let prompt = PromptBuilder.systemPrompt(agentAppendix: "Always respond in bullet points.")
+        XCTAssertTrue(prompt.contains("## Custom agent"))
+        XCTAssertTrue(prompt.contains("Always respond in bullet points."))
+    }
+
+    func testFollowUpMessageRemindsSessionBrief() {
+        let message = PromptBuilder.followUpUserMessage(
+            question: "What next?",
+            assembly: PromptAssembly(
+                answerDepth: .deep,
+                sessionBrief: "Themes only, no engine lines"
+            )
+        )
+        XCTAssertTrue(message.contains("## Session brief (reminder)"))
+        XCTAssertTrue(message.contains("Themes only"))
+        XCTAssertTrue(message.contains("What next?"))
+    }
+
+    func testContinuingSessionMessageOnLaterCapture() {
+        let capture = CaptureResult(text: nil, sourceLabel: "Front window (vision)", screenshotBase64: "x")
+        let message = PromptBuilder.captureUserMessage(
+            capture: capture,
+            assembly: PromptAssembly(answerDepth: .deep, continuingSession: true)
+        )
+        XCTAssertTrue(message.contains("## Session context"))
+        XCTAssertTrue(message.contains("Continuing chat"))
+    }
+
+    func testVoiceSettingsDefaultOffAndRoundTrip() throws {
+        let legacy = Data(#"{"mode":"general","textModel":"gemma4:e4b"}"#.utf8)
+        let decoded = try JSONDecoder().decode(PeeknookSettings.self, from: legacy)
+        XCTAssertFalse(decoded.voiceInputEnabled)
+        XCTAssertFalse(decoded.speakAnswersEnabled)
+        XCTAssertEqual(decoded.speechVoiceIdentifier, "")
+        XCTAssertEqual(decoded.briefHotkey, .defaultBrief)
+
+        let on = PeeknookSettings(
+            textModel: "gemma4:e4b",
+            voiceInputEnabled: true,
+            speakAnswersEnabled: true,
+            speechVoiceIdentifier: "com.apple.voice.enhanced.en-US.Ava",
+            briefHotkey: CaptureHotkey(keyCode: 9, carbonModifiers: 256, keySymbol: "V")
+        )
+        let back = try JSONDecoder().decode(PeeknookSettings.self, from: JSONEncoder().encode(on))
+        XCTAssertTrue(back.voiceInputEnabled)
+        XCTAssertTrue(back.speakAnswersEnabled)
+        XCTAssertEqual(back.speechVoiceIdentifier, "com.apple.voice.enhanced.en-US.Ava")
+        XCTAssertEqual(back.briefHotkey.keySymbol, "V")
+    }
+
+    func testSpeechVoiceOptionMenuLabelIncludesQuality() {
+        let enhanced = SpeechVoiceOption(identifier: "x", displayName: "Ava", qualityLabel: "Enhanced")
+        XCTAssertEqual(enhanced.menuLabel, "Ava · Enhanced")
+        XCTAssertEqual(SpeechVoiceOption(identifier: "", displayName: "Automatic").menuLabel, "Automatic")
     }
 }

@@ -32,6 +32,14 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     public var showGreeting: Bool
     /// When false, answers render as plain text instead of lightweight inline Markdown.
     public var renderAnswerMarkdown: Bool
+    /// Opt-in: dictate briefs and follow-ups with on-device speech recognition.
+    public var voiceInputEnabled: Bool
+    /// Opt-in: read assistant answers aloud with on-device text-to-speech.
+    public var speakAnswersEnabled: Bool
+    /// AVSpeechSynthesisVoice identifier, or empty for the system default voice.
+    public var speechVoiceIdentifier: String
+    /// Global shortcut to focus the session-brief composer (default ⌘⇧B).
+    public var briefHotkey: CaptureHotkey
 
     public init(
         mode: PracticeMode = .general,
@@ -47,7 +55,11 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         customModels: [CustomModelEntry] = [],
         displayName: String = "",
         showGreeting: Bool = true,
-        renderAnswerMarkdown: Bool = true
+        renderAnswerMarkdown: Bool = true,
+        voiceInputEnabled: Bool = false,
+        speakAnswersEnabled: Bool = false,
+        speechVoiceIdentifier: String = "",
+        briefHotkey: CaptureHotkey = .defaultBrief
     ) {
         self.mode = mode
         self.previewBeforeInfer = previewBeforeInfer
@@ -63,6 +75,10 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.displayName = displayName
         self.showGreeting = showGreeting
         self.renderAnswerMarkdown = renderAnswerMarkdown
+        self.voiceInputEnabled = voiceInputEnabled
+        self.speakAnswersEnabled = speakAnswersEnabled
+        self.speechVoiceIdentifier = speechVoiceIdentifier
+        self.briefHotkey = briefHotkey
     }
 
     /// True when inference is configured to a host other than the default local Ollama loopback.
@@ -76,7 +92,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, customModels, displayName, showGreeting, renderAnswerMarkdown
+        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, customModels, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, speechVoiceIdentifier, briefHotkey
     }
 
     // Tolerant decode, a saved blob missing a newer key keeps the rest of the user's
@@ -98,6 +114,10 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.displayName = try c.decodeIfPresent(String.self, forKey: .displayName) ?? ""
         self.showGreeting = try c.decodeIfPresent(Bool.self, forKey: .showGreeting) ?? true
         self.renderAnswerMarkdown = try c.decodeIfPresent(Bool.self, forKey: .renderAnswerMarkdown) ?? true
+        self.voiceInputEnabled = try c.decodeIfPresent(Bool.self, forKey: .voiceInputEnabled) ?? false
+        self.speakAnswersEnabled = try c.decodeIfPresent(Bool.self, forKey: .speakAnswersEnabled) ?? false
+        self.speechVoiceIdentifier = try c.decodeIfPresent(String.self, forKey: .speechVoiceIdentifier) ?? ""
+        self.briefHotkey = try c.decodeIfPresent(CaptureHotkey.self, forKey: .briefHotkey) ?? .defaultBrief
     }
 
     public static let `default` = PeeknookSettings(

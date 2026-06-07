@@ -24,7 +24,10 @@ struct PeekShortcutKeySquircle: View {
     }
 }
 
-struct PeekCaptureShortcutRow: View {
+struct PeekShortcutRow: View {
+    let icon: String
+    let title: String
+    let detail: String
     let hotkey: CaptureHotkey
     let onChange: (CaptureHotkey) -> Void
 
@@ -35,16 +38,16 @@ struct PeekCaptureShortcutRow: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 10) {
-            Image(systemName: "keyboard")
+            Image(systemName: icon)
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(theme.headerInactiveIcon)
                 .frame(width: 18)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("Capture shortcut")
+                Text(title)
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(theme.primaryLabel.opacity(0.95))
-                Text(isRecording ? "Press a shortcut. Esc to cancel." : "Tap the keys on the right to rebind.")
+                Text(isRecording ? "Press a shortcut. Esc to cancel." : detail)
                     .font(.system(size: 9, weight: .regular))
                     .foregroundStyle(theme.tertiaryLabel)
             }
@@ -59,7 +62,7 @@ struct PeekCaptureShortcutRow: View {
         }
         .padding(.vertical, 4)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Capture shortcut, currently \(hotkey.displaySymbols.joined(separator: " "))")
+        .accessibilityLabel("\(title), currently \(hotkey.displaySymbols.joined(separator: " "))")
         .accessibilityHint("Activates to record a new shortcut")
         .onDisappear { stopRecording() }
     }
@@ -133,5 +136,29 @@ struct PeekCaptureShortcutRow: View {
         }
         eventMonitor = nil
         isRecording = false
+    }
+}
+
+typealias PeekCaptureShortcutRow = PeekShortcutRow
+
+extension PeekShortcutRow {
+    static func capture(hotkey: CaptureHotkey, onChange: @escaping (CaptureHotkey) -> Void) -> PeekShortcutRow {
+        PeekShortcutRow(
+            icon: "keyboard",
+            title: "Capture shortcut",
+            detail: "Tap the keys on the right to rebind.",
+            hotkey: hotkey,
+            onChange: onChange
+        )
+    }
+
+    static func brief(hotkey: CaptureHotkey, onChange: @escaping (CaptureHotkey) -> Void) -> PeekShortcutRow {
+        PeekShortcutRow(
+            icon: "text.alignleft",
+            title: "Brief shortcut",
+            detail: "Opens the session-brief composer from anywhere.",
+            hotkey: hotkey,
+            onChange: onChange
+        )
     }
 }

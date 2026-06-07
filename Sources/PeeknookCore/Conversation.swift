@@ -30,6 +30,11 @@ public struct ChatTurn: Identifiable, Equatable, Sendable, Codable {
         if case .assistant = kind { return true }
         return false
     }
+
+    public var isImage: Bool {
+        if case .image = kind { return true }
+        return false
+    }
 }
 
 /// Per-turn inference footprint shown in History (and the thread usage chart).

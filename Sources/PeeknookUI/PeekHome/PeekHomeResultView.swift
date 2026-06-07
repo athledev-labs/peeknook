@@ -10,7 +10,10 @@ struct PeekHomeResultView: View {
     @Binding var showsFullConversation: Bool
     @Binding var followUpText: String
     @Binding var isFollowUpComposerVisible: Bool
+    @Binding var isBriefComposerVisible: Bool
+    @Binding var briefDraft: String
     var focusFollowUpField: FocusState<Bool>.Binding
+    var focusBriefField: FocusState<Bool>.Binding
     var onToggleHistory: () -> Void
     var onFinishChat: () -> Void
     var onRequestNewChat: () -> Void
@@ -19,6 +22,17 @@ struct PeekHomeResultView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
+            if isBriefComposerVisible {
+                PeekSessionBriefStrip(
+                    orchestrator: orchestrator,
+                    isComposerVisible: $isBriefComposerVisible,
+                    draft: $briefDraft,
+                    focusField: focusBriefField
+                )
+            }
+            if let usage = orchestrator.contextUsage {
+                PeekContextMeter(used: usage.used, total: usage.total)
+            }
             if showsFullConversation {
                 fullConversationScroll
             } else {
@@ -60,6 +74,7 @@ struct PeekHomeResultView: View {
             SuggestionPillsRow(
                 isLoading: orchestrator.isFetchingSuggestions,
                 suggestions: orchestrator.suggestedFollowUps,
+                refreshSeed: suggestionRefreshSeed,
                 onSelect: { orchestrator.sendFollowUp($0) }
             )
         }
@@ -82,10 +97,11 @@ struct PeekHomeResultView: View {
             resultCommandBar
         }
         .animation(.spring(response: 0.34, dampingFraction: 0.86), value: isFollowUpComposerVisible)
+        .animation(.spring(response: 0.34, dampingFraction: 0.86), value: isBriefComposerVisible)
         .animation(.easeOut(duration: 0.2), value: orchestrator.contextPressure)
     }
 
-    /// Revealed by the Follow command pill, then auto-focused. Enter (or the send button) asks.
+    /// Revealed by the Follow up command pill, then auto-focused. Enter (or the send button) asks.
     private var followUpComposer: some View {
         HStack(spacing: 8) {
             TextField("Ask a follow-up…", text: $followUpText)
@@ -97,6 +113,12 @@ struct PeekHomeResultView: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 7)
                 .background(theme.tertiaryLabel.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+            if orchestrator.settings.voiceInputEnabled {
+                PeekVoiceInputButton(orchestrator: orchestrator) { transcript in
+                    followUpText = transcript
+                    submitFollowUp()
+                }
+            }
             Button(action: submitFollowUp) {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.system(size: 18))
@@ -109,10 +131,8 @@ struct PeekHomeResultView: View {
     }
 
     private var resultCommandBar: some View {
-        HStack(alignment: .center, spacing: 6) {
-            contextMeter
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 4) {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 4) {
                     if orchestrator.hasConversationHistory {
                         NookToolbarButton(
                             title: "History",
@@ -135,29 +155,50 @@ struct PeekHomeResultView: View {
                         }
                     }
                     NookToolbarButton(
+                        title: "Brief",
+                        symbol: orchestrator.sessionBrief.isEmpty ? "text.alignleft" : "text.alignleft.fill",
+                        hotkey: orchestrator.settings.briefHotkey,
+                        help: PeekSessionBriefStrip.buttonHelp(for: orchestrator),
+                        prominent: isBriefComposerVisible || !orchestrator.sessionBrief.isEmpty
+                    ) {
+                        PeekSessionBriefStrip.toggleComposer(
+                            orchestrator: orchestrator,
+                            isComposerVisible: $isBriefComposerVisible,
+                            draft: $briefDraft,
+                            focusField: focusBriefField
+                        )
+                    }
+                    NookToolbarButton(
                         title: "Capture",
                         symbol: "camera.viewfinder",
                         hotkey: orchestrator.settings.captureHotkey,
-                        help: "Capture again from anywhere on your Mac"
+                        help: orchestrator.hasConversation
+                            ? "Capture the latest screen and continue this chat"
+                            : "Capture again from anywhere on your Mac"
                     ) {
-                        orchestrator.retake()
+                        orchestrator.beginCapture()
                     }
                     .disabled(!setup.isReady)
                     NookToolbarButton(
-                        title: "Add",
-                        symbol: "photo.badge.plus",
-                        help: "Add another screenshot to this chat"
-                    ) {
-                        orchestrator.addImage()
-                    }
-                    .disabled(!setup.isReady)
-                    NookToolbarButton(
-                        title: "Follow",
+                        title: "Follow up",
                         symbol: "bubble.left.and.bubble.right",
                         help: "Ask a follow-up about this answer",
                         prominent: isFollowUpComposerVisible
                     ) {
                         toggleFollowUpComposer()
+                    }
+                    if orchestrator.settings.speakAnswersEnabled {
+                        NookToolbarButton(
+                            title: orchestrator.isSpeakingAnswer ? "Stop" : "Speak",
+                            symbol: orchestrator.isSpeakingAnswer ? "stop.fill" : "speaker.wave.2",
+                            help: "Read the answer aloud"
+                        ) {
+                            if orchestrator.isSpeakingAnswer {
+                                orchestrator.stopSpeaking()
+                            } else {
+                                orchestrator.speakLastAnswer()
+                            }
+                        }
                     }
                     NookToolbarButton(
                         title: "Done",
@@ -174,31 +215,12 @@ struct PeekHomeResultView: View {
                     ) {
                         onRequestNewChat()
                     }
-                }
             }
         }
     }
 
-    @ViewBuilder
-    private var contextMeter: some View {
-        if let usage = orchestrator.contextUsage {
-            let fraction = min(1, Double(usage.used) / Double(usage.total))
-            HStack(spacing: 5) {
-                Image(systemName: "gauge.with.dots.needle.33percent")
-                    .font(.system(size: 9))
-                    .foregroundStyle(theme.tertiaryLabel)
-                ProgressView(value: fraction)
-                    .progressViewStyle(.linear)
-                    .frame(width: 36)
-                    .tint(PeekContextTint.color(for: fraction))
-                Text("\(compactTokens(usage.used))/\(compactTokens(usage.total))")
-                    .font(.system(size: 9))
-                    .foregroundStyle(theme.tertiaryLabel)
-                    .lineLimit(1)
-            }
-            .fixedSize(horizontal: true, vertical: false)
-            .help("\(usage.used) / \(usage.total) tokens in context for this chat")
-        }
+    private var suggestionRefreshSeed: Int {
+        orchestrator.conversation.last(where: \.isAssistant)?.id ?? 0
     }
 
     private var followUpIsEmpty: Bool {
@@ -227,11 +249,5 @@ struct PeekHomeResultView: View {
         } else {
             focusFollowUpField.wrappedValue = false
         }
-    }
-
-    private func compactTokens(_ n: Int) -> String {
-        let k = Double(n) / 1024
-        if k < 1 { return "\(n)" }
-        return k >= 10 ? String(format: "%.0fK", k) : String(format: "%.1fK", k)
     }
 }

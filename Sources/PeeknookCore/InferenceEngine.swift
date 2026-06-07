@@ -4,6 +4,8 @@ import Foundation
 
 public struct InferenceRequest: Sendable, Equatable {
     public var mode: PracticeMode
+    /// Optional system-prompt appendix for future user-defined agents.
+    public var agentSystemAppendix: String?
     /// Full user/assistant sequence for this turn (oldest first), images attached to the user
     /// messages that introduced them. The engine prepends the system prompt.
     public var messages: [InferenceMessage]
@@ -13,12 +15,14 @@ public struct InferenceRequest: Sendable, Equatable {
 
     public init(
         mode: PracticeMode,
+        agentSystemAppendix: String? = nil,
         messages: [InferenceMessage],
         model: String,
         ollamaBaseURL: String,
         quickMode: Bool = false
     ) {
         self.mode = mode
+        self.agentSystemAppendix = agentSystemAppendix
         self.messages = messages
         self.model = model
         self.ollamaBaseURL = ollamaBaseURL

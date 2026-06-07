@@ -51,41 +51,180 @@ enum PeekPersonalGreeting {
     }
 }
 
-// MARK: - Idle command bar: thread actions + preflight (left) · Capture (right)
+// MARK: - Session brief (idle + result)
+
+struct PeekSessionBriefStrip: View {
+    var orchestrator: SessionOrchestrator
+    @Binding var isComposerVisible: Bool
+    @Binding var draft: String
+    var focusField: FocusState<Bool>.Binding
+
+    @Environment(\.nookResolvedTheme) private var theme
+
+    var body: some View {
+        if isComposerVisible {
+            briefComposer
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
+    }
+
+    static func buttonHelp(for orchestrator: SessionOrchestrator) -> String {
+        let base = "Tell Peeknook what you're about to study"
+        let brief = orchestrator.sessionBrief.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !brief.isEmpty else { return base }
+        return "\(base). Current brief: \(brief)"
+    }
+
+    private var briefComposer: some View {
+        HStack(spacing: 8) {
+            TextField("Brief this session…", text: $draft)
+                .textFieldStyle(.plain)
+                .font(.system(size: 12))
+                .focused(focusField)
+                .onSubmit(saveBrief)
+                .accessibilityLabel(Text("Session brief"))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(theme.tertiaryLabel.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+            if orchestrator.settings.voiceInputEnabled {
+                PeekVoiceInputButton(orchestrator: orchestrator) { transcript in
+                    draft = transcript
+                    saveBrief()
+                }
+            }
+            Button(action: saveBrief) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 18))
+                    .foregroundStyle(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        ? theme.tertiaryLabel
+                        : theme.accent)
+            }
+            .buttonStyle(.plain)
+            .peekAction(label: "Save brief")
+        }
+        .onChange(of: orchestrator.voicePartialTranscript) { _, partial in
+            if orchestrator.isListeningForVoice, !partial.isEmpty {
+                draft = partial
+            }
+        }
+    }
+
+    func saveBrief() {
+        orchestrator.setSessionBrief(draft)
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+            isComposerVisible = false
+        }
+        focusField.wrappedValue = false
+    }
+
+    func toggleComposer() {
+        Self.toggleComposer(
+            orchestrator: orchestrator,
+            isComposerVisible: $isComposerVisible,
+            draft: $draft,
+            focusField: focusField
+        )
+    }
+
+    static func toggleComposer(
+        orchestrator: SessionOrchestrator,
+        isComposerVisible: Binding<Bool>,
+        draft: Binding<String>,
+        focusField: FocusState<Bool>.Binding
+    ) {
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+            isComposerVisible.wrappedValue.toggle()
+        }
+        if isComposerVisible.wrappedValue {
+            draft.wrappedValue = orchestrator.sessionBrief
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                focusField.wrappedValue = true
+            }
+        } else {
+            focusField.wrappedValue = false
+        }
+    }
+
+    static func openComposer(
+        orchestrator: SessionOrchestrator,
+        isComposerVisible: Binding<Bool>,
+        draft: Binding<String>,
+        focusField: FocusState<Bool>.Binding
+    ) {
+        draft.wrappedValue = orchestrator.sessionBrief
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+            isComposerVisible.wrappedValue = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            focusField.wrappedValue = true
+        }
+    }
+}
+
+// MARK: - Idle command bar: Resume · Brief · preflight · Capture
 
 struct PeekIdleCommandBar: View {
     var orchestrator: SessionOrchestrator
     var setup: SetupCoordinator
     var settings: PeekSettingsController
     @Binding var pendingDownload: InferenceModelOption?
+    @Binding var isBriefComposerVisible: Bool
+    @Binding var briefDraft: String
+    var focusBriefField: FocusState<Bool>.Binding
     var onBrowseModels: () -> Void
     var onCapture: () -> Void
     var onResume: () -> Void
 
+    @Environment(\.nookResolvedTheme) private var theme
+
     var body: some View {
-        HStack(alignment: .center, spacing: 8) {
-            if let preview = IdleResumePreview.from(orchestrator) {
-                PeekResumeButton(preview: preview, onResume: onResume)
+        VStack(alignment: .leading, spacing: 8) {
+            if isBriefComposerVisible {
+                PeekSessionBriefStrip(
+                    orchestrator: orchestrator,
+                    isComposerVisible: $isBriefComposerVisible,
+                    draft: $briefDraft,
+                    focusField: focusBriefField
+                )
             }
-            ScrollView(.horizontal, showsIndicators: false) {
+            HStack(alignment: .center, spacing: 8) {
+                if let preview = IdleResumePreview.from(orchestrator) {
+                    PeekResumeButton(preview: preview, onResume: onResume)
+                }
+                NookToolbarButton(
+                    title: "Brief",
+                    symbol: orchestrator.sessionBrief.isEmpty ? "text.alignleft" : "text.alignleft.fill",
+                    hotkey: orchestrator.settings.briefHotkey,
+                    help: PeekSessionBriefStrip.buttonHelp(for: orchestrator),
+                    prominent: isBriefComposerVisible || !orchestrator.sessionBrief.isEmpty
+                ) {
+                    PeekSessionBriefStrip.toggleComposer(
+                        orchestrator: orchestrator,
+                        isComposerVisible: $isBriefComposerVisible,
+                        draft: $briefDraft,
+                        focusField: focusBriefField
+                    )
+                }
+                .fixedSize()
                 HStack(spacing: 6) {
                     modelMenu
                     depthMenu
                     scopeMenu
                 }
-                .padding(.trailing, 2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                NookToolbarButton(
+                    title: "Capture",
+                    symbol: "camera.viewfinder",
+                    hotkey: orchestrator.settings.captureHotkey,
+                    help: "Instant capture from anywhere on your Mac",
+                    prominent: true,
+                    action: onCapture
+                )
+                .disabled(!setup.isReady)
+                .fixedSize()
             }
-            NookToolbarButton(
-                title: "Capture",
-                symbol: "camera.viewfinder",
-                hotkey: orchestrator.settings.captureHotkey,
-                help: "Instant capture from anywhere on your Mac",
-                prominent: true,
-                action: onCapture
-            )
-            .disabled(!setup.isReady)
-            .fixedSize()
         }
+        .animation(.spring(response: 0.34, dampingFraction: 0.86), value: isBriefComposerVisible)
     }
 
     private var modelMenu: some View {

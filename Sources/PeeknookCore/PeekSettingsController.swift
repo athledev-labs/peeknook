@@ -94,6 +94,29 @@ public final class PeekSettingsController {
         update { $0.renderAnswerMarkdown = enabled }
     }
 
+    public func setVoiceInputEnabled(_ enabled: Bool) {
+        guard settings.voiceInputEnabled != enabled else { return }
+        update { $0.voiceInputEnabled = enabled }
+        if !enabled { orchestrator.stopVoiceInput() }
+    }
+
+    public func setSpeakAnswersEnabled(_ enabled: Bool) {
+        guard settings.speakAnswersEnabled != enabled else { return }
+        update { $0.speakAnswersEnabled = enabled }
+        if !enabled { orchestrator.stopSpeaking() }
+    }
+
+    public func setSpeechVoiceIdentifier(_ identifier: String) {
+        let trimmed = identifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard settings.speechVoiceIdentifier != trimmed else { return }
+        update { $0.speechVoiceIdentifier = trimmed }
+    }
+
+    public func setBriefHotkey(_ hotkey: CaptureHotkey) {
+        guard settings.briefHotkey != hotkey else { return }
+        update { $0.briefHotkey = hotkey }
+    }
+
     public func setOllamaBaseURL(_ url: String) {
         guard settings.ollamaBaseURL != url else { return }
         update { $0.ollamaBaseURL = url }

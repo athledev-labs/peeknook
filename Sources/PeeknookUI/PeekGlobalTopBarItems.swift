@@ -24,7 +24,7 @@ enum PeekHomeBreadcrumb {
 /// phase *and* doesn't act on the current answer/thread; it belongs at the **bottom** if its
 /// availability or meaning depends on the current phase, capture, or thread. "Stats" and "Past
 /// chats" (browse the archive) are global, so they live here. Phase/thread-specific actions -
-/// Capture, Add, Follow,
+/// Capture, Add, Follow up,
 /// Done, New chat, the in-thread History toggle, Confirm/Cancel, the per-capture preflight pills -
 /// stay in the in-content bottom command bars.
 public struct PeekGlobalTopBarItems: View {

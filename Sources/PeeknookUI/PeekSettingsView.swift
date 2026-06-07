@@ -11,6 +11,7 @@ public struct PeekSettingsView: View {
     public var settings: PeekSettingsController
     public var usage: UsageStore
     public var onCaptureHotkeyChange: ((CaptureHotkey) -> Void)?
+    public var onBriefHotkeyChange: ((CaptureHotkey) -> Void)?
 
     @Environment(\.nookContentInsets) private var contentInsets
     @EnvironmentObject private var appState: AppState
@@ -28,13 +29,15 @@ public struct PeekSettingsView: View {
         setup: SetupCoordinator,
         settings: PeekSettingsController,
         usage: UsageStore,
-        onCaptureHotkeyChange: ((CaptureHotkey) -> Void)? = nil
+        onCaptureHotkeyChange: ((CaptureHotkey) -> Void)? = nil,
+        onBriefHotkeyChange: ((CaptureHotkey) -> Void)? = nil
     ) {
         self.orchestrator = orchestrator
         self.setup = setup
         self.settings = settings
         self.usage = usage
         self.onCaptureHotkeyChange = onCaptureHotkeyChange
+        self.onBriefHotkeyChange = onBriefHotkeyChange
     }
 
     public var body: some View {
@@ -46,11 +49,23 @@ public struct PeekSettingsView: View {
                         PeekSettingsSetupSection(setup: setup, onOpenSetup: openSetup)
                     }
 
+                    section(PeekSettingsSectionTitle.appearance) {
+                        NookAppearanceSettingsSection(appState: appState)
+                    }
+
                     section(PeekSettingsSectionTitle.capture) {
                         PeekSettingsCaptureSection(
                             orchestrator: orchestrator,
                             settings: settings,
-                            onCaptureHotkeyChange: onCaptureHotkeyChange
+                            onCaptureHotkeyChange: onCaptureHotkeyChange,
+                            onBriefHotkeyChange: onBriefHotkeyChange
+                        )
+                    }
+
+                    section(PeekSettingsSectionTitle.interaction) {
+                        PeekSettingsInteractionSection(
+                            orchestrator: orchestrator,
+                            settings: settings
                         )
                     }
 

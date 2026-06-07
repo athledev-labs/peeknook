@@ -75,7 +75,11 @@ public final class PeeknookModule: NookModule {
                 usage: self.usage,
                 onCaptureHotkeyChange: { [weak self] _ in
                     guard let self, let coordinator = self.appCoordinator else { return }
-                    self.registerCaptureHotkey(on: coordinator)
+                    self.registerHotkeys(on: coordinator)
+                },
+                onBriefHotkeyChange: { [weak self] _ in
+                    guard let self, let coordinator = self.appCoordinator else { return }
+                    self.registerHotkeys(on: coordinator)
                 }
             )
         }
@@ -91,7 +95,7 @@ public final class PeeknookModule: NookModule {
         }
         // Peeknook's module glyph, not the default OpenNook notch mark (see NookMarkView).
         configuration.topBar.leadingIcon = Self.moduleDescriptor.icon
-        configuration.expandedWidth = 480
+        configuration.expandedWidth = 600
         // Seat the in-content command row close to the panel's rounded bottom. The chrome
         // reserves an expanded-content safe-area strip (8pt on three edges by default) that
         // stacks on top of the framework edge padding, leaving a dead band below our last
@@ -102,6 +106,13 @@ public final class PeeknookModule: NookModule {
             bottomCornerRadius: 24,
             expandedContentInsets: NookEdgeInsets(top: 0, bottom: 2, leading: 8, trailing: 8)
         )
+        configuration.theme = { appState in
+            var theme = NookResolvedTheme.live(appState: appState)
+            if appState.appearancePreferences.accentPreset == .system {
+                theme.accent = Self.moduleDescriptor.accent
+            }
+            return theme
+        }
         // Global (always-available, app-level) actions live in the chrome's trailing top-bar
         // cluster next to the lock/gear; phase- and thread-specific actions stay in the in-content
         // bottom command bars. See PeekGlobalTopBarItems for the top/bottom placement rule.
@@ -109,7 +120,7 @@ public final class PeeknookModule: NookModule {
             PeekGlobalTopBarItems(orchestrator: self.orchestrator)
         }
         configuration.onReady = { [weak self] coordinator in
-            self?.registerCaptureHotkey(on: coordinator)
+            self?.registerHotkeys(on: coordinator)
             self?.startPreviewPhaseHandling(on: coordinator)
             // Accessory apps have no main menu, so ⌘A/⌘C/⌘V/⌘X/⌘Z don't reach text fields.
             StandardEditMenu.installIfNeeded()
@@ -117,8 +128,13 @@ public final class PeeknookModule: NookModule {
         return configuration
     }
 
-    private func registerCaptureHotkey(on coordinator: AppCoordinator) {
+    private func registerHotkeys(on coordinator: AppCoordinator) {
         appCoordinator = coordinator
+        registerCaptureHotkey(on: coordinator)
+        registerBriefHotkey(on: coordinator)
+    }
+
+    private func registerCaptureHotkey(on coordinator: AppCoordinator) {
         let captureID = "peeknook.capture"
         let stored = orchestrator.settings.captureHotkey
         _ = coordinator.hotkeyController.register(
@@ -134,6 +150,23 @@ public final class PeeknookModule: NookModule {
                 if self.setup.isReady {
                     self.orchestrator.beginCapture()
                 }
+            }
+        }
+    }
+
+    private func registerBriefHotkey(on coordinator: AppCoordinator) {
+        let briefID = "peeknook.brief"
+        let stored = orchestrator.settings.briefHotkey
+        _ = coordinator.hotkeyController.register(
+            briefID,
+            keyCode: stored.keyCode,
+            modifiers: stored.carbonModifiers
+        ) { [weak self] in
+            Task { @MainActor in
+                guard let self else { return }
+                coordinator.showHome()
+                coordinator.showNook()
+                self.orchestrator.focusBriefComposer()
             }
         }
     }

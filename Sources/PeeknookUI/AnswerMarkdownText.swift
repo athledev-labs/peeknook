@@ -10,11 +10,12 @@ struct AnswerMarkdownText: View {
     var renderMarkdown: Bool = true
 
     var body: some View {
+        let displayText = Self.sanitizedForDisplay(text)
         Group {
-            if renderMarkdown, let attributed = Self.attributedMarkdown(from: text) {
+            if renderMarkdown, let attributed = Self.attributedMarkdown(from: displayText) {
                 Text(attributed)
             } else {
-                Text(text)
+                Text(displayText)
             }
         }
         .font(.system(size: 12))
@@ -27,5 +28,23 @@ struct AnswerMarkdownText: View {
         var options = AttributedString.MarkdownParsingOptions()
         options.interpretedSyntax = .inlineOnlyPreservingWhitespace
         return try? AttributedString(markdown: text, options: options)
+    }
+
+    /// Models sometimes emit LaTeX even when asked not to; strip common delimiters before render.
+    static func sanitizedForDisplay(_ text: String) -> String {
+        var output = text
+        let patterns: [(String, String)] = [
+            (#"\$\s*\\text\{([^}]*)\}\s*\$"#, "$1"),
+            (#"\$\s*([^$]+?)\s*\$"#, "$1"),
+            (#"\\text\{([^}]*)\}"#, "$1"),
+        ]
+        for (pattern, template) in patterns {
+            output = output.replacingOccurrences(
+                of: pattern,
+                with: template,
+                options: .regularExpression
+            )
+        }
+        return output
     }
 }

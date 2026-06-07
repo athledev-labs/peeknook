@@ -60,6 +60,17 @@ final class ConversationTests: XCTestCase {
         )
     }
 
+    func testSessionBriefClearsOnNewChatAndReachesPrompt() async {
+        let engine = ScriptedEngine(responsesPerCall: [["answer"]])
+        let orchestrator = makeOrchestrator(engine)
+        orchestrator.setSessionBrief("Chess themes only")
+        orchestrator.beginCapture()
+        try? await Task.sleep(nanoseconds: 200_000_000)
+        XCTAssertTrue(engine.requests.first?.messages.first?.text.contains("Session brief") ?? false)
+        orchestrator.startNewChat()
+        XCTAssertEqual(orchestrator.sessionBrief, "")
+    }
+
     func testFirstCaptureRecordsImageTurnAndAnswer() async {
         let engine = ScriptedEngine(responsesPerCall: [["first ", "answer"]])
         let orchestrator = makeOrchestrator(engine)
@@ -99,7 +110,9 @@ final class ConversationTests: XCTestCase {
         XCTAssertEqual(msgs.count, 3)
         XCTAssertEqual(msgs[0].role, .user)
         XCTAssertEqual(msgs[1], InferenceMessage(role: .assistant, text: "first answer"))
-        XCTAssertEqual(msgs[2], InferenceMessage(role: .user, text: "why?"))
+        XCTAssertEqual(msgs[2].role, .user)
+        XCTAssertTrue(msgs[2].text.contains("why?"))
+        XCTAssertTrue(msgs[2].text.contains("## Follow-up"))
     }
 
     func testAddImageExtendsChatWithSecondScreenshot() async {
@@ -137,6 +150,19 @@ final class ConversationTests: XCTestCase {
         // Retake starts over: just the new image + its answer.
         XCTAssertEqual(orchestrator.conversation.count, 2)
         XCTAssertEqual(orchestrator.conversation.last?.assistantText, "second answer")
+    }
+
+    func testBeginCaptureFromResultExtendsChat() async {
+        let engine = ScriptedEngine(responsesPerCall: [["first answer"], ["second answer"]])
+        let orchestrator = makeOrchestrator(engine)
+
+        orchestrator.beginCapture()
+        try? await Task.sleep(nanoseconds: 200_000_000)
+        orchestrator.beginCapture()
+        try? await Task.sleep(nanoseconds: 200_000_000)
+
+        XCTAssertEqual(orchestrator.conversation.count, 4)
+        XCTAssertEqual(orchestrator.conversation.compactMap(\.assistantText), ["first answer", "second answer"])
     }
 
     func testAddImageCountsAsACaptureButFollowUpDoesNot() async {

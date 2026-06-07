@@ -45,13 +45,6 @@ struct PeekHomeConversationView: View {
                     isLoading: orchestrator.isFetchingWebLookup
                 )
             }
-            if !showsFullConversation, let capture = orchestrator.latestAnswerCapture {
-                Label(capture.targetLabel, systemImage: "viewfinder")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(theme.tertiaryLabel)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
             ForEach(displayTurns) { turn in
                 turnView(
                     turn,

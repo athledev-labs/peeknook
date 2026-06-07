@@ -22,6 +22,13 @@ public struct CaptureHotkey: Codable, Equatable, Sendable {
         keySymbol: "P"
     )
 
+    /// Default: ⌘⇧B — focus the session-brief composer before capture.
+    public static let defaultBrief = CaptureHotkey(
+        keyCode: 11,
+        carbonModifiers: 256 | 512,
+        keySymbol: "B"
+    )
+
     public var modifierSymbols: [String] {
         var symbols: [String] = []
         if carbonModifiers & 4096 != 0 { symbols.append("⌃") }

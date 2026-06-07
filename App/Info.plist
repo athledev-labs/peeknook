@@ -34,5 +34,9 @@
     <string>Peeknook captures only when you press the capture hotkey, to answer practice questions about on-screen text.</string>
     <key>NSAccessibilityUsageDescription</key>
     <string>Peeknook can read selected text to supplement a screenshot. Accessibility is optional; Screen Recording alone is enough to capture.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Peeknook uses the microphone only when you turn on voice input to dictate session briefs and follow-ups.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Peeknook uses on-device speech recognition only when you turn on voice input. Audio is not sent to a cloud service.</string>
 </dict>
 </plist>

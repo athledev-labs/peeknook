@@ -47,6 +47,8 @@ You control the following opt-in features:
 | Remote Ollama URL | Off (local default) | Screenshots and chat sent to the server you configure |
 | Model library catalog browse | On when used | Tag metadata requests to the Ollama catalog API |
 | Save conversations | Off | Nothing leaves your Mac; files stay local |
+| Voice input | Off | On-device speech recognition (Microphone + Speech Recognition permissions) |
+| Read answers aloud | Off | On-device text-to-speech; no network |
 
 ## Data retention and deletion
 

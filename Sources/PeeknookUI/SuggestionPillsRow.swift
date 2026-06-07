@@ -3,11 +3,40 @@
 import NookApp
 import SwiftUI
 
+/// Rotating section copy so the suggestion row stays fresh without hardcoding domain labels.
+enum SuggestionRowCopy {
+    static let loadingPhrases = [
+        "Finding follow-ups…",
+        "Drafting next steps…",
+        "Scouting actions…",
+        "Thinking of what to ask…",
+        "Spinning up ideas…",
+    ]
+
+    static let readyHeaders = [
+        "Suggested next steps",
+        "Try asking",
+        "Quick actions",
+        "What to explore",
+        "Ideas to try",
+    ]
+
+    static func loadingPhrase(seed: Int) -> String {
+        loadingPhrases[abs(seed) % loadingPhrases.count]
+    }
+
+    static func readyHeader(seed: Int) -> String {
+        readyHeaders[abs(seed) % readyHeaders.count]
+    }
+}
+
 /// Horizontal follow-up suggestions, skeleton while loading, pills with hover when ready.
 struct SuggestionPillsRow: View {
     @Environment(\.nookResolvedTheme) private var theme
     let isLoading: Bool
     let suggestions: [String]
+    /// Stable per-answer seed so loading/ready headers vary between turns but not every redraw.
+    var refreshSeed: Int = 0
     let onSelect: (String) -> Void
 
     var body: some View {
@@ -28,7 +57,7 @@ struct SuggestionPillsRow: View {
 
     private var loadingRow: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label("Suggesting next questions…", systemImage: "sparkles")
+            Label(SuggestionRowCopy.loadingPhrase(seed: refreshSeed), systemImage: "sparkles")
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(theme.tertiaryLabel)
             ScrollView(.horizontal, showsIndicators: false) {
@@ -43,15 +72,20 @@ struct SuggestionPillsRow: View {
             }
             .peekDecorative()
         }
-        .peekLoading("Suggesting follow-up questions")
+        .peekLoading(SuggestionRowCopy.loadingPhrase(seed: refreshSeed))
     }
 
     private var pillsRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                ForEach(suggestions, id: \.self) { suggestion in
-                    SuggestionPillButton(title: suggestion) {
-                        onSelect(suggestion)
+        VStack(alignment: .leading, spacing: 6) {
+            Text(SuggestionRowCopy.readyHeader(seed: refreshSeed))
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(theme.tertiaryLabel)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(suggestions, id: \.self) { suggestion in
+                        SuggestionPillButton(title: suggestion) {
+                            onSelect(suggestion)
+                        }
                     }
                 }
             }

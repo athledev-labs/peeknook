@@ -12,6 +12,9 @@ public enum PeeknookHostConfiguration {
             hostName: "Peeknook",
             hostTagline: "Local practice copilot in the notch."
         )
+        host.preferenceDefaults = NookPreferenceDefaults(
+            appearance: NookAppearancePreferences(surfaceStyle: .translucent, accentPreset: .teal)
+        )
 
         host.register(PeeknookModule.moduleDescriptor) { context in
             PeeknookModule(context: context)

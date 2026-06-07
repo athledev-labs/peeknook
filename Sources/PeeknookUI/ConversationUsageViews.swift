@@ -269,3 +269,29 @@ enum PeekContextTint {
         }
     }
 }
+
+/// Live context window meter for the active chat, shown above result content (not in the command bar).
+struct PeekContextMeter: View {
+    @Environment(\.nookResolvedTheme) private var theme
+    let used: Int
+    let total: Int
+
+    var body: some View {
+        let fraction = min(1, Double(used) / Double(max(total, 1)))
+        HStack(spacing: 6) {
+            Image(systemName: "gauge.with.dots.needle.33percent")
+                .font(.system(size: 9))
+                .foregroundStyle(theme.quaternaryLabel)
+            ProgressView(value: fraction)
+                .progressViewStyle(.linear)
+                .frame(maxWidth: 72)
+                .tint(PeekContextTint.color(for: fraction))
+            Text("\(TokenFormat.compact(used)) / \(TokenFormat.compact(total)) context")
+                .font(.system(size: 9))
+                .foregroundStyle(theme.tertiaryLabel)
+                .lineLimit(1)
+            Spacer(minLength: 0)
+        }
+        .help("\(used) / \(total) tokens in context for this chat")
+    }
+}

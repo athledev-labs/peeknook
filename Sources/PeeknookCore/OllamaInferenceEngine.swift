@@ -93,7 +93,7 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
         // Each user message carries the screenshot it introduced; Ollama keeps earlier images in
         // context, so a chat can span several captures.
         var messages: [OllamaChatRequest.Message] = [
-            .init(role: "system", content: PromptBuilder.systemPrompt(for: request.mode), images: nil)
+            .init(role: "system", content: PromptBuilder.systemPrompt(agentAppendix: request.agentSystemAppendix), images: nil)
         ]
         for turn in request.messages {
             messages.append(.init(role: turn.role.rawValue, content: turn.text, images: turn.imageBase64.map { [$0] }))

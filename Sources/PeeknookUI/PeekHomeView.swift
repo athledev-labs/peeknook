@@ -19,11 +19,14 @@ public struct PeekHomeView: View {
     @State private var showsStats = false
     @State private var showsModelLibrary = false
     @State private var pendingDownload: InferenceModelOption?
+    @State private var isBriefComposerVisible = false
+    @State private var briefDraft = ""
     /// Transient pin that bridges a panel resize when entering a History drill-in, then releases so
     /// normal hover-to-dismiss resumes (no forced Close).
     @State private var keepOpenGrace = false
     @State private var keepOpenGraceTask: Task<Void, Never>?
     @FocusState private var isFollowUpFieldFocused: Bool
+    @FocusState private var isBriefFieldFocused: Bool
 
     public init(
         orchestrator: SessionOrchestrator,
@@ -88,6 +91,20 @@ public struct PeekHomeView: View {
             followUpText = ""
             if case .result = newPhase { return }
             setHistoryVisible(false)
+        }
+        .onChange(of: orchestrator.briefComposerFocusToken) { _, _ in
+            switch orchestrator.phase {
+            case .idle, .result:
+                break
+            default:
+                return
+            }
+            PeekSessionBriefStrip.openComposer(
+                orchestrator: orchestrator,
+                isComposerVisible: $isBriefComposerVisible,
+                draft: $briefDraft,
+                focusField: $isBriefFieldFocused
+            )
         }
         .onChange(of: appState.moduleBreadcrumb, initial: true) { _, breadcrumb in
             // Breadcrumb lives in AppState (survives compact/re-expand); drill-in flags are
@@ -228,7 +245,10 @@ public struct PeekHomeView: View {
                 showsFullConversation: $showsFullConversation,
                 followUpText: $followUpText,
                 isFollowUpComposerVisible: $isFollowUpComposerVisible,
+                isBriefComposerVisible: $isBriefComposerVisible,
+                briefDraft: $briefDraft,
                 focusFollowUpField: $isFollowUpFieldFocused,
+                focusBriefField: $isBriefFieldFocused,
                 onToggleHistory: { setHistoryVisible(!showsFullConversation) },
                 onFinishChat: finishChat,
                 onRequestNewChat: requestNewChat
@@ -248,6 +268,9 @@ public struct PeekHomeView: View {
                         setup: setup,
                         settings: settings,
                         pendingDownload: $pendingDownload,
+                        isBriefComposerVisible: $isBriefComposerVisible,
+                        briefDraft: $briefDraft,
+                        focusBriefField: $isBriefFieldFocused,
                         onBrowseModels: openModelLibrary,
                         onCapture: { orchestrator.beginCapture() },
                         onResume: resumeChat
