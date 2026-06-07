@@ -1,0 +1,16 @@
+---
+// SPDX-License-Identifier: Apache-2.0
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { renderRepoMarkdown } from "../../lib/markdown";
+
+const html = renderRepoMarkdown("PRIVACY.md");
+---
+
+<BaseLayout
+  title="Privacy"
+  description="Peeknook privacy policy. Local-first capture, no cloud inference by default."
+  current="privacy"
+  wide={true}
+>
+  <article class="prose" set:html={html} />
+</BaseLayout>

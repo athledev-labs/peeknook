@@ -1,0 +1,67 @@
+---
+// SPDX-License-Identifier: Apache-2.0
+import "../styles/global.css";
+import { release } from "../data/release";
+
+interface Props {
+  title: string;
+  description?: string;
+  current?: "home" | "install" | "privacy" | "licenses";
+  wide?: boolean;
+}
+
+const {
+  title,
+  description = "Local-first practice copilot in the MacBook notch.",
+  current,
+} = Astro.props;
+
+const nav = [
+  { href: import.meta.env.BASE_URL, label: "Home", id: "home" as const },
+  { href: `${import.meta.env.BASE_URL}install/`, label: "Install", id: "install" as const },
+  { href: `${import.meta.env.BASE_URL}privacy/`, label: "Privacy", id: "privacy" as const },
+  { href: `${import.meta.env.BASE_URL}licenses/`, label: "Licenses", id: "licenses" as const },
+];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta name="color-scheme" content="dark" />
+    <title>{title} · Peeknook</title>
+    <link rel="icon" href={`${import.meta.env.BASE_URL}favicon.svg`} type="image/svg+xml" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="site-header">
+        <a class="site-logo" href={import.meta.env.BASE_URL}>Peeknook</a>
+        <nav class="site-nav" aria-label="Primary">
+          {
+            nav.map((item) => (
+              <a
+                href={item.href}
+                aria-current={current === item.id ? "page" : undefined}
+              >
+                {item.label}
+              </a>
+            ))
+          }
+        </nav>
+      </header>
+
+      <main class:list={["page-main", Astro.props.wide && "page-main--wide"]}>
+        <slot />
+      </main>
+
+      <footer class="site-footer">
+        <a href="https://github.com/glendonC/peeknook">GitHub</a>
+        <a href="https://github.com/glendonC/peeknook/issues">Issues</a>
+        <a href={release.latestReleasesURL}>Releases</a>
+        <span>Version {release.version}</span>
+      </footer>
+    </div>
+  </body>
+</html>

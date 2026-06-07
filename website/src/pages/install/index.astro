@@ -1,0 +1,82 @@
+---
+// SPDX-License-Identifier: Apache-2.0
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { release } from "../../data/release";
+---
+
+<BaseLayout
+  title="Install"
+  description="Install Peeknook from the release DMG, set up Ollama and Gemma 4, and grant Screen Recording."
+  current="install"
+>
+  <h1 class="page-title">Install Peeknook</h1>
+  <p class="page-intro">
+    Production installs use the signed app from GitHub Releases, not
+    <code>swift run</code>. macOS ties Screen Recording to the app bundle ID.
+  </p>
+
+  <ol class="steps">
+    <li>
+      <h2>1. Download the DMG</h2>
+      <p>
+        Get <a href={release.dmgURL}>Peeknook-{release.version}.dmg</a> from this
+        site or
+        <a href={release.latestReleasesURL}>GitHub Releases</a>.
+      </p>
+    </li>
+    <li>
+      <h2>2. Move Peeknook to Applications</h2>
+      <p>
+        Open the DMG and drag <strong>Peeknook</strong> into
+        <strong>Applications</strong>. Eject the disk image when you are done.
+      </p>
+    </li>
+    <li>
+      <h2>3. First launch</h2>
+      <p>
+        Open Peeknook from Applications. If macOS shows a Gatekeeper prompt,
+        choose Open. The app identity is <code>com.peeknook.app</code>.
+      </p>
+    </li>
+    <li>
+      <h2>4. Get ready (in-app setup)</h2>
+      <p>Peeknook walks you through three prerequisites:</p>
+      <ul>
+        <li>
+          <strong>Ollama</strong>: install the
+          <a href="https://formulae.brew.sh/cask/ollama-app">ollama-app</a> cask,
+          not the Homebrew formula. The cask includes the runner Peeknook needs.
+        </li>
+        <li>
+          <strong>Gemma 4</strong>: pull a tag that fits your RAM, for example
+          <code>gemma4:e2b</code>, <code>gemma4:e4b</code>, or
+          <code>gemma4:26b</code>.
+        </li>
+        <li>
+          <strong>Screen Recording</strong>: grant permission to
+          <strong>Peeknook</strong> in System Settings. This is required for
+          vision capture.
+        </li>
+      </ul>
+    </li>
+    <li>
+      <h2>5. Capture and answer</h2>
+      <p>
+        Toggle the nook with ⌘⌥; and capture with ⌘⇧P. Optional Accessibility
+        permission adds selected text from the focused field.
+      </p>
+    </li>
+  </ol>
+
+  <div class="callout">
+    <strong>Developing from source?</strong> <code>swift run Peeknook</code> is
+    for contributors only. macOS may list a separate Screen Recording entry
+    (Terminal, Swift, or the debug binary). Granting permission there does not
+    grant it to the shipped <strong>Peeknook</strong> app in Applications.
+  </div>
+
+  <div class="cta-row" style="margin-top: 2rem">
+    <a class="btn btn-primary" href={release.dmgURL}>Download for Mac</a>
+    <a class="btn btn-ghost" href={`${import.meta.env.BASE_URL}`}>Back to home</a>
+  </div>
+</BaseLayout>
