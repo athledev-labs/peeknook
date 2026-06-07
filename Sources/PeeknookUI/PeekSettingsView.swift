@@ -103,6 +103,7 @@ public struct PeekSettingsView: View {
                 applyDefaultExpandedSections()
                 didApplyDefaultExpansion = true
             }
+            applyPendingFocusIfNeeded()
         }
         .task {
             // Light periodic refresh while the panel is open so a server dying, or coming back -
@@ -162,6 +163,16 @@ public struct PeekSettingsView: View {
 
     private var inferenceCheckKey: String {
         "\(orchestrator.settings.ollamaBaseURL)|\(orchestrator.settings.textModel)"
+    }
+
+    private func applyPendingFocusIfNeeded() {
+        guard let focus = PeekSettingsNavigation.consumePendingFocus() else { return }
+        switch focus {
+        case .visionServer:
+            expandedSections.insert(PeekSettingsSectionTitle.visionModel)
+            visionModelAdvancedExpanded = true
+            scrollToSectionID = PeekSettingsSectionTitle.visionModel
+        }
     }
 
     private func openSetup() {

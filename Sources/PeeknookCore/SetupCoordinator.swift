@@ -47,6 +47,12 @@ public final class SetupCoordinator {
 
     public var isReady: Bool {
         ollamaStep == .complete && modelStep == .complete && captureStep == .complete
+            && CapturePermissionStatus.current().screenRecordingGranted
+    }
+
+    /// Cheap sync refresh for Screen Recording only, used before capture and on a fast poll.
+    public func refreshCapturePermission() {
+        captureStep = evaluateCaptureStep()
     }
 
     public var suggestedModelDiskHint: String {

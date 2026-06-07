@@ -4,13 +4,9 @@ import Foundation
 
 enum PeekAppMetadata {
     static let repositoryURL = URL(string: "https://github.com/glendonC/peeknook")!
-    /// Public summary until a dedicated policy URL ships with the website.
-    static var privacyPolicyURL: URL {
-        repositoryURL.appendingPathComponent("blob/main/README.md")
-    }
-    static var licensesURL: URL {
-        repositoryURL.appendingPathComponent("blob/main/README.md")
-    }
+    static let privacyPolicyURL = URL(string: "https://github.com/glendonC/peeknook/blob/main/PRIVACY.md")!
+    static let licensesURL = URL(string: "https://github.com/glendonC/peeknook/blob/main/NOTICE")!
+    static let releasesURL = URL(string: "https://github.com/glendonC/peeknook/releases/latest")!
     static var issuesURL: URL {
         URL(string: "https://github.com/glendonC/peeknook/issues/new/choose")!
     }

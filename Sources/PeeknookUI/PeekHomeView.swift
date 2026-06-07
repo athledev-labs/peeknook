@@ -105,7 +105,13 @@ public struct PeekHomeView: View {
                 appState.moduleBreadcrumb = nil
             }
         }
-        .task(id: setupRefreshKey) {
+        .task {
+            while !Task.isCancelled {
+                setup.refreshCapturePermission()
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+            }
+        }
+        .task {
             while !Task.isCancelled {
                 await setup.refresh()
                 if setup.isReady {
@@ -128,8 +134,6 @@ public struct PeekHomeView: View {
             Text("This clears the current conversation. You can't undo it.")
         }
     }
-
-    private var setupRefreshKey: Bool { setup.isReady }
 
     private static let historyBreadcrumb = PeekHomeBreadcrumb.history
     private static let archiveBreadcrumb = PeekHomeBreadcrumb.pastChats
@@ -262,14 +266,14 @@ public struct PeekHomeView: View {
     }
 
     private var setupBanner: some View {
-        Button(action: onOpenSetup) {
+        Button(action: setupBannerAction) {
             HStack(spacing: 4) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 8))
                     .foregroundStyle(.orange.opacity(0.9))
                 Text("\(setupStatusDetail)")
                     .foregroundStyle(theme.tertiaryLabel)
-                Text("Get ready")
+                Text(setupBannerActionLabel)
                     .foregroundStyle(.orange)
                     .underline()
                 Image(systemName: "chevron.right")
@@ -279,8 +283,28 @@ public struct PeekHomeView: View {
             .font(.system(size: 10, weight: .regular))
         }
         .buttonStyle(.plain)
-        .help("Open setup to finish before capturing")
-        .accessibilityLabel("\(setupStatusDetail). Open setup to finish before capturing.")
+        .help(setupBannerHelp)
+        .accessibilityLabel("\(setupStatusDetail). \(setupBannerHelp)")
+    }
+
+    private var setupBannerActionLabel: String {
+        if case .failed = setup.captureStep { return "Open settings" }
+        return "Get ready"
+    }
+
+    private var setupBannerHelp: String {
+        if case .failed = setup.captureStep {
+            return "Open Screen Recording settings"
+        }
+        return "Open setup to finish before capturing"
+    }
+
+    private func setupBannerAction() {
+        if case .failed = setup.captureStep {
+            CapturePermissionStatus.requestScreenRecording()
+        } else {
+            onOpenSetup()
+        }
     }
 
     /// The most pressing missing prerequisite, surfaced inline so the user knows *what's* incomplete
@@ -332,7 +356,7 @@ public struct PeekHomeView: View {
             onOpenSetup()
         case .checkOllama:
             if orchestrator.settings.usesRemoteOllama {
-                onOpenSetup()
+                PeekSettingsNavigation.openVisionServer(appState: appState)
             } else {
                 SetupCoordinator.openOllamaApp()
             }

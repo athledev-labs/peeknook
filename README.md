@@ -29,6 +29,20 @@ For a signed `.app`:
 open Peeknook.xcodeproj
 ```
 
+## Developing vs using the shipped app
+
+`swift run Peeknook` is the fastest way to hack on the project. It is **not** the same macOS identity as the notarized **Peeknook.app** (`com.peeknook.app`) you distribute to users.
+
+macOS ties **Screen Recording** and **Accessibility** to the app bundle ID. If you build from source, System Settings may list a separate entry (often **Terminal**, **Swift**, or the debug binary path) from the **Peeknook** app in `/Applications`. Granting permission to one does **not** grant it to the other.
+
+| Goal | Use |
+|------|-----|
+| Day-to-day development | `swift build` / `swift run Peeknook` — grant TCC to the binary System Settings shows |
+| Pre-release / user-like testing | `./Scripts/release.sh` (or Xcode Release archive) → install the exported `.app` — grant TCC to **Peeknook** |
+| What you ship | Notarized `.app` from [Releases](https://github.com/glendonC/peeknook/releases/latest) |
+
+> For permission or Gatekeeper issues while developing, prefer testing the **signed `.app`** before filing bugs. Production users should install from the website or GitHub Releases, not `swift run`.
+
 ## Add another nook module
 
 Edit `Sources/PeeknookHost/HostModuleRegistry.swift`:
@@ -102,7 +116,7 @@ Peeknook does not ship model weights. You download them through Ollama. Applicab
 
 ## Privacy
 
-Peeknook is local-first by default: capture runs only when you trigger it, inference goes to your Ollama instance, and conversation archive is off unless you turn it on. Opt-in web lookup sends queries to DuckDuckGo. A full privacy policy ships with the downloadable app and website.
+Peeknook is local-first by default: capture runs only when you trigger it, inference goes to your Ollama instance, and conversation archive is off unless you turn it on. Opt-in web lookup sends queries to DuckDuckGo. See [PRIVACY.md](PRIVACY.md) for the full policy.
 
 ## License
 

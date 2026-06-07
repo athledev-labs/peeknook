@@ -28,7 +28,12 @@ struct PeekHomePhaseContent: View {
         case .result:
             EmptyView()
         case .failed(let failure):
-            PeekFailureView(failure: failure, canRetry: canRetry, onRecover: onRecover)
+            PeekFailureView(
+                failure: failure,
+                canRetry: canRetry,
+                usesRemoteOllama: orchestrator.settings.usesRemoteOllama,
+                onRecover: onRecover
+            )
         }
     }
 

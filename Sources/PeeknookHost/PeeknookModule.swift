@@ -130,6 +130,7 @@ public final class PeeknookModule: NookModule {
                 guard let self else { return }
                 coordinator.showHome()
                 coordinator.showNook()
+                self.setup.refreshCapturePermission()
                 if self.setup.isReady {
                     self.orchestrator.beginCapture()
                 }

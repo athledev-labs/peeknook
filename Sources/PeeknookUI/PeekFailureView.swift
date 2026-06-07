@@ -11,6 +11,7 @@ struct PeekFailureView: View {
     let failure: SessionFailure
     /// True when a "Try again" capture can run (setup ready). Disables retry-style actions otherwise.
     var canRetry: Bool = true
+    var usesRemoteOllama: Bool = false
     let onRecover: (RecoveryAction) -> Void
 
     @Environment(\.nookResolvedTheme) private var theme
@@ -71,8 +72,8 @@ struct PeekFailureView: View {
     private func action(_ recovery: RecoveryAction, prominent: Bool) -> some View {
         let isRetry = recovery == .tryAgain
         NookToolbarButton(
-            title: recovery.label,
-            symbol: recovery.symbol,
+            title: recovery.label(usesRemoteOllama: usesRemoteOllama),
+            symbol: recovery.symbol(usesRemoteOllama: usesRemoteOllama),
             prominent: prominent,
             action: { onRecover(recovery) }
         )
@@ -104,11 +105,11 @@ struct PeekFailureView: View {
 }
 
 private extension RecoveryAction {
-    var label: String {
+    func label(usesRemoteOllama: Bool) -> String {
         switch self {
         case .tryAgain: "Try again"
         case .openSetup: "Open setup"
-        case .checkOllama: "Open Ollama"
+        case .checkOllama: usesRemoteOllama ? "Check server" : "Open Ollama"
         case .downloadModel: "Download model"
         case .switchModel: "Switch model"
         case .openScreenRecordingSettings: "Open settings"
@@ -116,11 +117,12 @@ private extension RecoveryAction {
         }
     }
 
-    var symbol: String {
+    func symbol(usesRemoteOllama: Bool) -> String {
         switch self {
         case .tryAgain: "arrow.clockwise"
         case .openSetup: "arrow.right.circle"
-        case .checkOllama: "bolt.horizontal"
+        case .checkOllama:
+            usesRemoteOllama ? "point.3.connected.trianglepath.dotted" : "bolt.horizontal"
         case .downloadModel: "arrow.down.circle"
         case .switchModel: "cpu"
         case .openScreenRecordingSettings, .openAccessibilitySettings: "gearshape"

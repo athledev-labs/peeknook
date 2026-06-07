@@ -14,6 +14,7 @@ struct PeekSettingsAboutSection: View {
             PeekSettingsValueRow(label: "Memory", value: "\(profile.physicalMemoryGB) GB")
             linkRow(title: "Privacy policy", url: PeekAppMetadata.privacyPolicyURL)
             linkRow(title: "Licenses", url: PeekAppMetadata.licensesURL)
+            linkRow(title: "Check for updates", url: PeekAppMetadata.releasesURL)
             linkRow(title: "Report an issue", url: PeekAppMetadata.issuesURL)
         }
     }

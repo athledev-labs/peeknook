@@ -10,6 +10,7 @@ public struct PeekSetupView: View {
     public var settings: PeekSettingsController
     public var onContinue: () -> Void
     @Environment(\.nookResolvedTheme) private var theme
+    @EnvironmentObject private var appState: AppState
     @State private var pendingDownload: InferenceModelOption?
     @State private var showsModelLibrary = false
 
@@ -83,9 +84,10 @@ public struct PeekSetupView: View {
                 state: setup.ollamaStep,
                 theme: theme,
                 primaryEnabled: true,
-                primaryAction: { SetupCoordinator.openOllamaApp() },
-                secondaryAction: { SetupCoordinator.openOllamaDownload() },
-                secondaryLabel: "Get Ollama app"
+                primaryLabel: setup.settings.usesRemoteOllama ? "Check server" : "Open Ollama",
+                primaryAction: ollamaPrimaryAction,
+                secondaryAction: setup.settings.usesRemoteOllama ? nil : { SetupCoordinator.openOllamaDownload() },
+                secondaryLabel: setup.settings.usesRemoteOllama ? nil : "Get Ollama app"
             )
 
             SetupStepRow(
@@ -125,9 +127,20 @@ public struct PeekSetupView: View {
     }
 
     private var ollamaDetail: String {
+        if setup.settings.usesRemoteOllama {
+            return "Peeknook sends screenshots to your configured Ollama server. Check the address in Settings → Vision model → Advanced."
+        }
         let profile = SystemProfile.current()
         let model = TextModelCatalog.displayName(for: profile.suggestedTextModel)
         return "Runs vision models locally. Recommended model for \(profile.physicalMemoryGB) GB RAM: \(model)."
+    }
+
+    private func ollamaPrimaryAction() {
+        if setup.settings.usesRemoteOllama {
+            PeekSettingsNavigation.openVisionServer(appState: appState)
+        } else {
+            SetupCoordinator.openOllamaApp()
+        }
     }
 
     private var modelDetail: String {
@@ -194,6 +207,7 @@ private struct SetupStepRow: View {
     let state: SetupStepState
     let theme: NookResolvedTheme
     var primaryEnabled: Bool = true
+    var primaryLabel: String? = nil
     let primaryAction: () -> Void
     let secondaryAction: (() -> Void)?
     let secondaryLabel: String?
@@ -217,7 +231,7 @@ private struct SetupStepRow: View {
 
                 HStack(spacing: 8) {
                     if showsPrimary {
-                        Button(primaryLabel, action: primaryAction)
+                        Button(resolvedPrimaryLabel, action: primaryAction)
                             .buttonStyle(.borderedProminent)
                             .controlSize(.mini)
                             .disabled(!primaryEnabled)
@@ -284,7 +298,12 @@ private struct SetupStepRow: View {
         }
     }
 
-    private var primaryLabel: String {
+    private var resolvedPrimaryLabel: String {
+        if let primaryLabel { return primaryLabel }
+        return defaultPrimaryLabel
+    }
+
+    private var defaultPrimaryLabel: String {
         switch title {
         case "Test capture":
             return "Try now"

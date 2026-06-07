@@ -304,6 +304,7 @@ public final class SessionOrchestrator {
     }
 
     private func startCapture(intent: CaptureIntent) {
+        setup?.refreshCapturePermission()
         if let setup, !setup.isReady {
             phase = .failed(.setupIncomplete)
             return

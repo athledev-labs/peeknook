@@ -67,8 +67,12 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
 
     /// True when inference is configured to a host other than the default local Ollama loopback.
     public var usesRemoteOllama: Bool {
-        let lower = ollamaBaseURL.lowercased()
-        return !lower.contains("127.0.0.1") && !lower.contains("localhost")
+        guard let url = URL(string: ollamaBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)),
+              let host = url.host?.lowercased() else {
+            let lower = ollamaBaseURL.lowercased()
+            return !lower.contains("127.0.0.1") && !lower.contains("localhost")
+        }
+        return host != "127.0.0.1" && host != "localhost"
     }
 
     private enum CodingKeys: String, CodingKey {

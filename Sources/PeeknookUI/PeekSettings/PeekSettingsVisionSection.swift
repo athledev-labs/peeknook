@@ -101,7 +101,7 @@ struct PeekSettingsVisionSection: View {
 
     private var privacyBanner: some View {
         let webLookup = orchestrator.settings.webLookupEnabled
-        let remoteOllama = usesRemoteOllama
+        let remoteOllama = orchestrator.settings.usesRemoteOllama
         let icon = webLookup ? "globe.americas.fill" : (remoteOllama ? "point.3.connected.trianglepath.dotted" : "lock.fill")
         let tint: Color = webLookup ? .orange : (remoteOllama ? theme.accent : .green)
         let message: String = {
@@ -129,12 +129,6 @@ struct PeekSettingsVisionSection: View {
         .padding(.vertical, 2)
     }
 
-    private var usesRemoteOllama: Bool {
-        guard let url = URL(string: orchestrator.settings.ollamaBaseURL),
-              let host = url.host?.lowercased() else { return false }
-        return host != "127.0.0.1" && host != "localhost"
-    }
-
     /// Re-check vision support whenever the model or server changes.
     private var visionCheckKey: String {
         "\(orchestrator.settings.textModel)|\(orchestrator.settings.ollamaBaseURL)"
@@ -144,7 +138,10 @@ struct PeekSettingsVisionSection: View {
         if let ollamaStatusDetail { return ollamaStatusDetail }
         switch ollamaStatusTone {
         case .loading: return "Checking connection…"
-        case .ready: return "Runs vision models on this Mac"
+        case .ready:
+            return orchestrator.settings.usesRemoteOllama
+                ? "Connected to your Ollama server"
+                : "Runs vision models on this Mac"
         case .warning, .error: return nil
         }
     }
