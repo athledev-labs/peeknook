@@ -50,6 +50,8 @@ public struct PeekGlobalTopBarItems: View {
 
     private var statsButton: some View {
         Button {
+            // Home owns drill-in state; dismiss Settings (or any non-home surface) first.
+            appState.showHome()
             appState.moduleBreadcrumb = PeekHomeBreadcrumb.stats
         } label: {
             HStack(spacing: 5) {
@@ -87,10 +89,10 @@ public struct PeekGlobalTopBarItems: View {
 
     private var pastChatsButton: some View {
         Button {
-                // The top bar can't flip PeekHomeView's local state directly, so drive the home
-                // surface through the shared breadcrumb; PeekHomeView opens the archive in response.
-                appState.moduleBreadcrumb = PeekHomeBreadcrumb.pastChats
-            } label: {
+            // Home owns drill-in state; dismiss Settings (or any non-home surface) first.
+            appState.showHome()
+            appState.moduleBreadcrumb = PeekHomeBreadcrumb.pastChats
+        } label: {
                 HStack(spacing: 5) {
                     // Hover-reveal label, mirrors the chrome's leading cluster, which springs its
                     // title in next to the glyph. Reveals leftward (toward the notch gap) so it

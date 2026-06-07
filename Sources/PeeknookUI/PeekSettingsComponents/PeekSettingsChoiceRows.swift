@@ -22,13 +22,13 @@ struct PeekSettingsExpandableRow: View {
             HStack(alignment: .center, spacing: PeekSettingsRowMetrics.rowSpacing) {
                 Image(systemName: icon)
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(theme.headerInactiveIcon)
+                    .foregroundStyle(isHovering ? theme.accent : theme.headerInactiveIcon)
                     .frame(width: PeekSettingsRowMetrics.iconWidth)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(theme.primaryLabel.opacity(0.95))
+                        .foregroundStyle(isHovering ? theme.accent : theme.primaryLabel.opacity(0.95))
                     Text(subtitle)
                         .font(.system(size: 9, weight: .regular))
                         .foregroundStyle(theme.tertiaryLabel)
@@ -37,29 +37,13 @@ struct PeekSettingsExpandableRow: View {
 
                 Spacer(minLength: 0)
 
-                HStack(spacing: 4) {
-                    Text(isExpanded ? "Hide" : "Show")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(theme.secondaryLabel)
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundStyle(theme.tertiaryLabel)
-                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .peekGlass(cornerRadius: 7, isHovered: isHovering || isExpanded)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(isHovering ? theme.accent : theme.quaternaryLabel)
+                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                    .frame(width: PeekSettingsRowMetrics.trailingColumnWidth, alignment: .trailing)
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .background(
-                theme.subtleFill.opacity(isHovering || isExpanded ? 0.32 : 0.2),
-                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(theme.subtleStroke.opacity(0.35), lineWidth: 1)
-            )
+            .padding(.vertical, PeekSettingsRowMetrics.rowVerticalPadding)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
