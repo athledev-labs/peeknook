@@ -160,7 +160,7 @@ if [[ ! -d "$APP_PATH" ]]; then
 fi
 
 echo "==> Verifying code signature"
-codesign -dv --verbose=4 "$APP_PATH" 2>&1 | head -20
+codesign -dv --verbose=4 "$APP_PATH" 2>&1 | head -20 || true
 
 echo "==> Creating ZIP for notarization"
 ditto -c -k --keepParent "$APP_PATH" "$ZIP_PATH"
