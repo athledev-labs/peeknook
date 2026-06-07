@@ -8,6 +8,8 @@ on:
       - "PRIVACY.md"
       - "NOTICE"
       - ".github/workflows/pages.yml"
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -33,6 +35,8 @@ jobs:
 
       - name: Install and build
         working-directory: website
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           npm ci
           npm run build

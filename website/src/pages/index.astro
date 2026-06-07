@@ -1,7 +1,9 @@
 ---
 // SPDX-License-Identifier: Apache-2.0
 import BaseLayout from "../layouts/BaseLayout.astro";
-import { release } from "../data/release";
+import { getRelease } from "../lib/release";
+
+const release = await getRelease();
 ---
 
 <BaseLayout
@@ -13,7 +15,11 @@ import { release } from "../data/release";
   <section class="home-hero">
     <h1>Context in <span class="headline-keep">the Notch.</span></h1>
     <div class="home-actions">
-      <a class="btn-download" href={release.dmgURL}>
+      <a
+        class="btn-download"
+        href={release.dmgURL}
+        rel="noopener noreferrer"
+      >
         <svg
           class="btn-download-icon"
           viewBox="0 0 24 24"

@@ -165,7 +165,37 @@ codesign -dv --verbose=4 "$APP_PATH" 2>&1 | head -20 || true
 echo "==> Creating ZIP for notarization"
 ditto -c -k --keepParent "$APP_PATH" "$ZIP_PATH"
 
+package_release_artifacts() {
+  VERSION="$(
+    /usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$APP_PATH/Contents/Info.plist"
+  )"
+  DMG_VERSIONED="$BUILD_DIR/Peeknook-${VERSION}.dmg"
+  DMG_LATEST="$BUILD_DIR/Peeknook.dmg"
+  CHECKSUM_PATH="$BUILD_DIR/Peeknook.dmg.sha256"
+
+  echo "==> Packaging DMG (v${VERSION})"
+  rm -f "$DMG_VERSIONED" "$DMG_LATEST" "$CHECKSUM_PATH"
+  hdiutil create -volname Peeknook -srcfolder "$APP_PATH" -ov -format UDZO "$DMG_VERSIONED"
+  cp -f "$DMG_VERSIONED" "$DMG_LATEST"
+  shasum -a 256 "$DMG_LATEST" | awk '{print $1}' >"$CHECKSUM_PATH"
+
+  echo "==> Release artifacts"
+  echo "    App:      $APP_PATH"
+  echo "    ZIP:      $ZIP_PATH"
+  echo "    DMG:      $DMG_LATEST (stable name for /releases/latest/download/)"
+  echo "    DMG:      $DMG_VERSIONED"
+  echo "    SHA256:   $(cat "$CHECKSUM_PATH")"
+  echo ""
+  echo "Upload both DMGs plus Peeknook.zip to the GitHub release:"
+  echo "  gh release upload \"v${VERSION}\" \\"
+  echo "    \"$DMG_LATEST\" \"$DMG_VERSIONED\" \"$ZIP_PATH\" \\"
+  echo "    --clobber"
+  echo ""
+  echo "GitHub attaches sha256 digests to release assets automatically."
+}
+
 if [[ -z "$NOTARY_PROFILE" ]]; then
+  package_release_artifacts
   cat <<EOF
 
 ==> Notarization skipped (PEEKNOOK_NOTARY_KEYCHAIN_PROFILE not set)
@@ -185,16 +215,13 @@ To notarize after export:
 Or submit manually:
   xcrun notarytool submit "$ZIP_PATH" --keychain-profile "<profile>" --wait
   xcrun stapler staple "$APP_PATH"
-
-Exported app: $APP_PATH
-ZIP:          $ZIP_PATH
 EOF
   exit 0
 fi
 
 if [[ "$DISTRIBUTION_BUILD" == false ]]; then
   echo "warning: Skipping notarization for ad-hoc build." >&2
-  echo "Exported app: $APP_PATH"
+  package_release_artifacts
   exit 0
 fi
 
@@ -211,9 +238,4 @@ xcrun notarytool submit "$ZIP_PATH" \
 echo "==> Stapling notarization ticket"
 xcrun stapler staple "$APP_PATH"
 
-echo "==> Release complete"
-echo "    App: $APP_PATH"
-echo "    ZIP: $ZIP_PATH"
-echo ""
-echo "Optional DMG packaging:"
-echo "  hdiutil create -volname Peeknook -srcfolder \"$APP_PATH\" -ov -format UDZO \"$BUILD_DIR/Peeknook.dmg\""
+package_release_artifacts

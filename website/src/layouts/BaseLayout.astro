@@ -1,7 +1,9 @@
 ---
 // SPDX-License-Identifier: Apache-2.0
 import "../styles/global.css";
-import { release } from "../data/release";
+import { getRelease } from "../lib/release";
+
+const release = await getRelease();
 
 interface Props {
   title: string;
