@@ -246,16 +246,16 @@ struct PeekModelLibraryView: View {
             }
         case .ready(let vision):
             switch vision {
-            case true:
+            case .some(true):
                 Text("Supports vision, ready to add.")
                     .font(.system(size: 9))
                     .foregroundStyle(Color.green.opacity(0.9))
-            case false:
+            case .some(false):
                 Text("Text-only, it won't read your screenshots. You can still add it to test.")
                     .font(.system(size: 9))
                     .foregroundStyle(Color.orange.opacity(0.95))
                     .fixedSize(horizontal: false, vertical: true)
-            case nil:
+            case .none:
                 Text("Couldn't verify vision support. Peek will add it anyway.")
                     .font(.system(size: 9))
                     .foregroundStyle(theme.secondaryLabel)
