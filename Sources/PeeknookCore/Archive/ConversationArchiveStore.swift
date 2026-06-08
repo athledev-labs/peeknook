@@ -23,6 +23,7 @@ public actor ConversationArchiveStore {
     private let maxThreads: Int
     private let maxBytes: Int
     private let protection: any ConversationArchiveProtection
+    public let blobStore: CaptureBlobStore
     /// Sticky cache of the trusted "archive sealed at least once" marker. Once true it never flips
     /// back, so a single sealed write permanently enables fail-closed downgrade resistance for this
     /// actor's lifetime, even if the keychain later becomes transiently unavailable.
@@ -33,7 +34,8 @@ public actor ConversationArchiveStore {
         legacyFileURL: URL? = nil,
         maxThreads: Int = ConversationArchiveStore.defaultMaxThreads,
         maxBytes: Int = ConversationArchiveStore.defaultMaxBytes,
-        protection: any ConversationArchiveProtection
+        protection: any ConversationArchiveProtection,
+        blobStore: CaptureBlobStore? = nil
     ) {
         self.directory = directory
         self.indexURL = directory.appendingPathComponent("index.v2.json")
@@ -41,6 +43,7 @@ public actor ConversationArchiveStore {
         self.maxThreads = maxThreads
         self.maxBytes = maxBytes
         self.protection = protection
+        self.blobStore = blobStore ?? CaptureBlobStore.makeDefault(conversationsDirectory: directory)
     }
 
     public static func makeDefault() throws -> ConversationArchiveStore {
@@ -74,7 +77,9 @@ public actor ConversationArchiveStore {
 
     public func load(id: UUID) -> ConversationThread? {
         guard let raw = try? Data(contentsOf: threadURL(id)) else { return nil }
-        return decodeThread(from: raw)
+        guard var thread = decodeThread(from: raw) else { return nil }
+        migrateInlineScreenshotsIfNeeded(&thread)
+        return thread
     }
 
     /// Newest thread, used to resume the most recent chat at launch.
@@ -87,6 +92,9 @@ public actor ConversationArchiveStore {
 
     public func save(_ thread: ConversationThread) -> Result<Void, ConversationArchiveError> {
         guard !thread.turns.isEmpty else { return .success(()) }
+
+        var thread = thread
+        _ = CaptureBlobReferences.externalizeInlineScreenshots(in: &thread.turns, using: blobStore)
 
         let encoded: Data
         do {
@@ -134,6 +142,7 @@ public actor ConversationArchiveStore {
     }
 
     public func delete(id: UUID) {
+        deleteBlobsReferencedByThread(id: id)
         try? FileManager.default.removeItem(at: threadURL(id))
         var index = readIndex()
         index.summaries.removeAll { $0.id == id }
@@ -144,6 +153,7 @@ public actor ConversationArchiveStore {
 
     /// Wipe the whole archive, called when the user turns persistence off or taps Clear all.
     public func deleteAll() {
+        try? blobStore.deleteAll()
         try? FileManager.default.removeItem(at: directory)
         // Also drop any un-migrated legacy file so opting out truly leaves nothing behind.
         if let legacyFileURL { try? FileManager.default.removeItem(at: legacyFileURL) }
@@ -165,7 +175,7 @@ public actor ConversationArchiveStore {
 
         let mtime = (try? FileManager.default.attributesOfItem(atPath: legacyFileURL.path)[.modificationDate]) as? Date
             ?? Date()
-        let thread = ConversationThread(
+        var thread = ConversationThread(
             createdAt: mtime,
             updatedAt: mtime,
             turns: legacy.turns,
@@ -173,6 +183,7 @@ public actor ConversationArchiveStore {
             turnCounter: legacy.turnCounter,
             lastPromptTokens: legacy.lastPromptTokens
         )
+        _ = CaptureBlobReferences.externalizeInlineScreenshots(in: &thread.turns, using: blobStore)
         guard let encoded = try? JSONEncoder().encode(thread) else { return nil }
         let fileData: Data
         do {
@@ -372,6 +383,7 @@ public actor ConversationArchiveStore {
         index.summaries.sort { $0.updatedAt > $1.updatedAt }
 
         while index.summaries.count > maxThreads, let oldest = index.summaries.last {
+            deleteBlobsReferencedByThread(id: oldest.id)
             try? FileManager.default.removeItem(at: threadURL(oldest.id))
             index.summaries.removeLast()
         }
@@ -381,10 +393,24 @@ public actor ConversationArchiveStore {
         }
         while totalBytes > maxBytes, index.summaries.count > 1, let oldest = index.summaries.last {
             let removed = oldest.fileBytes ?? fileSize(for: oldest.id)
+            deleteBlobsReferencedByThread(id: oldest.id)
             try? FileManager.default.removeItem(at: threadURL(oldest.id))
             index.summaries.removeLast()
             totalBytes -= removed
         }
+    }
+
+    /// Upgrade legacy inline screenshots to blob files and re-save the thread when needed.
+    private func migrateInlineScreenshotsIfNeeded(_ thread: inout ConversationThread) {
+        guard CaptureBlobReferences.externalizeInlineScreenshots(in: &thread.turns, using: blobStore) else { return }
+        _ = save(thread)
+    }
+
+    private func deleteBlobsReferencedByThread(id: UUID) {
+        guard let raw = try? Data(contentsOf: threadURL(id)),
+              let thread = decodeThread(from: raw) else { return }
+        let ids = CaptureBlobReferences.blobIDs(in: thread.turns)
+        try? blobStore.delete(ids: ids)
     }
 
     private func fileSize(for id: UUID) -> Int {

@@ -36,9 +36,20 @@ extension SessionOrchestrator {
             maxImagePayloads: settings.inferenceImageReplay.maxImagePayloads
         )
         let budgeted = ContextBudgetPolicy.trimmedConversation(conversation, pressure: contextPressure)
+        let imageTurnIDs = budgeted.filter(\.isImage).map(\.id)
+        let replayImageIDs = Set(imageTurnIDs.suffix(inferencePolicy.maxImagePayloads))
+        var imageBase64ByTurnID = preloadImageBase64(for: budgeted, replayIDs: replayImageIDs)
+        if let capture, let latestImageID = imageTurnIDs.last, let base64 = capture.screenshotBase64 {
+            imageBase64ByTurnID[latestImageID] = base64
+        }
         let request = InferenceRequest(
             mode: settings.mode,
-            messages: inferenceMessages(from: budgeted, webLookup: webLookupSnapshot, policy: inferencePolicy),
+            messages: inferenceMessages(
+                from: budgeted,
+                webLookup: webLookupSnapshot,
+                policy: inferencePolicy,
+                imageBase64ByTurnID: imageBase64ByTurnID
+            ),
             model: settings.textModel,
             endpoint: .from(settings: settings),
             quickMode: settings.quickMode
@@ -102,7 +113,8 @@ extension SessionOrchestrator {
     private func inferenceMessages(
         from conversation: [ChatTurn],
         webLookup: WebLookupSnapshot? = nil,
-        policy: InferenceReplayPolicy = .inference
+        policy: InferenceReplayPolicy = .inference,
+        imageBase64ByTurnID: [Int: String] = [:]
     ) -> [InferenceMessage] {
         let imageTurnIDs = conversation.filter(\.isImage).map(\.id)
         let replayImageIDs = Set(imageTurnIDs.suffix(policy.maxImagePayloads))
@@ -121,7 +133,7 @@ extension SessionOrchestrator {
                         assembly: assembly,
                         webLookup: lookup
                     ),
-                    imageBase64: includeImage ? capture.screenshotBase64 : nil
+                    imageBase64: includeImage ? (imageBase64ByTurnID[turn.id] ?? capture.screenshotBase64) : nil
                 )
             case .user(let text):
                 return InferenceMessage(

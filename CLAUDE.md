@@ -91,7 +91,7 @@ Do not break the following without an explicit product decision and migration pl
 |---------|------|
 | Capture | `Sources/PeeknookCore/Capture/{CaptureProviding,MacCaptureProvider,CaptureImageEncoder,CapturePermissions}.swift` |
 | Session | `Sources/PeeknookCore/Session/{SessionOrchestrator,SessionOrchestrator+*,SessionPhase,Conversation}.swift` |
-| Persistence | `Sources/PeeknookCore/Archive/{ConversationModels,ConversationArchiveStore}.swift`; `ConversationStore.swift` (legacy reader) |
+| Persistence | `Sources/PeeknookCore/Archive/{ConversationModels,ConversationArchiveStore,CaptureBlobStore}.swift`; `ConversationStore.swift` (legacy reader) |
 | Model catalog | `Sources/PeeknookCore/Settings/ModelCatalogService.swift` (UI facade; Ollama clients stay in `Inference/Ollama/`) |
 | History switcher | `Sources/PeeknookUI/PeekConversationArchiveView.swift` (glass list of past chats) |
 | a11y / localization | `Sources/PeeknookUI/Design/{PeekAccessibility,PeekLocalization}.swift` + `Sources/PeeknookUI/Resources/Localizable.xcstrings` (route shared-component strings through `Text(peek:)`/`peekAction`) |

@@ -2,9 +2,9 @@
 
 import Foundation
 
-/// One archived chat: a stable identity, lifecycle timestamps, and the full turn list (screenshots
-/// included, base64). The on-disk unit of the conversation archive, one JSON file per thread so the
-/// list view never has to parse every screenshot just to show a row.
+/// One archived chat: a stable identity, lifecycle timestamps, and the full turn list (screenshot
+/// blob references, not inline base64). The on-disk unit of the conversation archive, one JSON file
+/// per thread so the list view never has to parse every screenshot just to show a row.
 public struct ConversationThread: Codable, Sendable, Identifiable, Equatable {
     public var id: UUID
     public var createdAt: Date

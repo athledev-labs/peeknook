@@ -115,7 +115,8 @@ extension SessionOrchestrator {
     func commitCapture(_ capture: CaptureResult, intent: CaptureIntent) {
         if intent == .fresh { resetConversation() }
         turnCounter += 1
-        conversation.append(ChatTurn(id: turnCounter, kind: .image(capture)))
+        let stored = storedCapture(capture)
+        conversation.append(ChatTurn(id: turnCounter, kind: .image(stored)))
         lifecycle.inferenceTask = Task { await runTurn(capturedNow: capture) }
     }
 
@@ -197,6 +198,7 @@ extension SessionOrchestrator {
     /// Clears the in-memory chat and forgets its archive identity (without deleting the archived
     /// thread) so the next answered chat is filed as a new entry.
     func resetConversation() {
+        purgeSessionBlobs()
         conversation = []
         suggestedFollowUps = []
         isFetchingSuggestions = false

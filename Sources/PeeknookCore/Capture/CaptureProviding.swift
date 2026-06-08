@@ -11,23 +11,54 @@ public struct CaptureResult: Sendable, Equatable, Codable {
     public var appName: String?
     /// Captured window title, e.g. "peeknook.com", preview trust.
     public var windowTitle: String?
-    /// JPEG base64 for multimodal models (Gemma 4, etc.).
+    /// JPEG base64 for multimodal models (Gemma 4, etc.). Cleared once a ``screenshotBlobID`` is set.
     public var screenshotBase64: String?
+    /// On-disk blob reference under the conversation archive's `blobs/` folder.
+    public var screenshotBlobID: UUID?
 
-    public var hasVision: Bool { screenshotBase64 != nil }
+    public var hasVision: Bool { screenshotBase64 != nil || screenshotBlobID != nil }
 
     public init(
         text: String?,
         sourceLabel: String,
         appName: String? = nil,
         windowTitle: String? = nil,
-        screenshotBase64: String? = nil
+        screenshotBase64: String? = nil,
+        screenshotBlobID: UUID? = nil
     ) {
         self.text = text?.trimmingCharacters(in: .whitespacesAndNewlines)
         self.sourceLabel = sourceLabel
         self.appName = appName.normalizedNonEmpty
         self.windowTitle = windowTitle.normalizedNonEmpty
         self.screenshotBase64 = screenshotBase64
+        self.screenshotBlobID = screenshotBlobID
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case text, sourceLabel, appName, windowTitle, screenshotBase64, screenshotBlobID
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.text = try container.decodeIfPresent(String.self, forKey: .text)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        self.sourceLabel = try container.decode(String.self, forKey: .sourceLabel)
+        self.appName = try container.decodeIfPresent(String.self, forKey: .appName).normalizedNonEmpty
+        self.windowTitle = try container.decodeIfPresent(String.self, forKey: .windowTitle).normalizedNonEmpty
+        self.screenshotBase64 = try container.decodeIfPresent(String.self, forKey: .screenshotBase64)
+        self.screenshotBlobID = try container.decodeIfPresent(UUID.self, forKey: .screenshotBlobID)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(text, forKey: .text)
+        try container.encode(sourceLabel, forKey: .sourceLabel)
+        try container.encodeIfPresent(appName, forKey: .appName)
+        try container.encodeIfPresent(windowTitle, forKey: .windowTitle)
+        try container.encodeIfPresent(screenshotBlobID, forKey: .screenshotBlobID)
+        if screenshotBlobID == nil {
+            try container.encodeIfPresent(screenshotBase64, forKey: .screenshotBase64)
+        }
     }
 
     /// *Which* window the model will see, the line the user must be able to trust.
@@ -201,6 +232,9 @@ public protocol CaptureProviding: Sendable {
 // MARK: - Test-only stub
 
 public struct StubCaptureProvider: CaptureProviding, Sendable {
+    /// Minimal valid JPEG bytes so blob externalization and vision stubs round-trip in tests.
+    public static let defaultScreenshotBase64 = Data([0xFF, 0xD8, 0xFF, 0xD9]).base64EncodedString()
+
     public var sampleText: String
     public var sourceLabel: String
     public var appName: String?
@@ -215,7 +249,7 @@ public struct StubCaptureProvider: CaptureProviding, Sendable {
         appName: String? = nil,
         windowTitle: String? = nil,
         captureDelayNanoseconds: UInt64? = nil,
-        screenshotBase64: String? = "stub-screenshot"
+        screenshotBase64: String? = StubCaptureProvider.defaultScreenshotBase64
     ) {
         self.sampleText = sampleText
         self.sourceLabel = sourceLabel

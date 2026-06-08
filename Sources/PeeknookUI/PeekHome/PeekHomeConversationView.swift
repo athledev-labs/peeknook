@@ -96,18 +96,7 @@ struct PeekHomeConversationView: View {
                         .foregroundStyle(theme.tertiaryLabel)
                         .lineLimit(1)
                         .truncationMode(.middle)
-                    if let thumb = capture.screenshotBase64.flatMap(CapturePreviewImage.nsImage(from:)) {
-                        Image(nsImage: thumb)
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .frame(maxHeight: 140)
-                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .strokeBorder(theme.tertiaryLabel.opacity(0.3), lineWidth: 1)
-                            )
-                    }
+                    CaptureTurnThumbnail(orchestrator: orchestrator, capture: capture)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -148,5 +137,37 @@ struct PeekHomeConversationView: View {
                 }
             }
         }
+    }
+}
+
+private struct CaptureTurnThumbnail: View {
+    @Environment(\.nookResolvedTheme) private var theme
+    var orchestrator: SessionOrchestrator
+    let capture: CaptureResult
+    @State private var image: NSImage?
+
+    var body: some View {
+        Group {
+            if let image {
+                Image(nsImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxHeight: 140)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .strokeBorder(theme.tertiaryLabel.opacity(0.3), lineWidth: 1)
+                    )
+                    .accessibilityLabel(Text(peek: "Screenshot preview"))
+                    .accessibilityAddTraits(.isImage)
+            }
+        }
+        .onAppear(perform: refresh)
+        .onChange(of: capture.screenshotBlobID) { _, _ in refresh() }
+    }
+
+    private func refresh() {
+        image = orchestrator.screenshotBase64(for: capture).flatMap(CapturePreviewImage.nsImage(from:))
     }
 }

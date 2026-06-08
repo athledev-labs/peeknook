@@ -58,6 +58,7 @@ extension SessionOrchestrator {
     }
 
     private func adopt(_ thread: ConversationThread) {
+        adoptBlobOwnership(from: thread)
         conversation = thread.turns
         contextWindow = thread.contextWindow
         lastPromptTokens = thread.lastPromptTokens

@@ -60,6 +60,10 @@ public final class SessionOrchestrator {
     /// Opt-in local conversation archive (see `PeeknookSettings.persistConversation`). Stores every
     /// answered chat as its own thread so the user can list, resume, and delete past chats.
     public var conversationArchive: ConversationArchiveStore?
+    var _captureBlobStore: CaptureBlobStore?
+    /// Blob ids written during the current in-memory session (purged on New chat when not archived).
+    var sessionBlobIDs = Set<UUID>()
+    var screenshotCache: [UUID: String] = [:]
     /// Identity of the chat currently on screen within the archive. Assigned on first save, carried
     /// across follow-ups, cleared when a fresh chat begins. Nil means "not yet archived".
     var activeThreadID: UUID?

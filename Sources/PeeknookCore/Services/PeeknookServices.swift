@@ -37,11 +37,15 @@ public enum PeeknookServices {
         orchestrator.usage = usage
         if let archive = dependencies.conversationArchive {
             orchestrator.conversationArchive = archive
+            orchestrator.captureBlobStore = archive.blobStore
         } else {
             do {
-                orchestrator.conversationArchive = try ConversationArchiveStore.makeDefault()
+                let archive = try ConversationArchiveStore.makeDefault()
+                orchestrator.conversationArchive = archive
+                orchestrator.captureBlobStore = archive.blobStore
             } catch {
                 orchestrator.conversationArchive = nil
+                orchestrator.captureBlobStore = try? defaultCaptureBlobStore()
                 if settings.persistConversation {
                     orchestrator.reportArchiveBootstrapFailure(.keyUnavailable)
                 }
@@ -67,5 +71,14 @@ public enum PeeknookServices {
     @MainActor
     public static func makeOrchestrator(settings: PeeknookSettings) -> SessionOrchestrator {
         makeStack(settings: settings, defaults: .standard).orchestrator
+    }
+
+    private static func defaultCaptureBlobStore() throws -> CaptureBlobStore {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
+        let conversations = base
+            .appendingPathComponent("Peeknook", isDirectory: true)
+            .appendingPathComponent("Conversations", isDirectory: true)
+        return CaptureBlobStore.makeDefault(conversationsDirectory: conversations)
     }
 }
