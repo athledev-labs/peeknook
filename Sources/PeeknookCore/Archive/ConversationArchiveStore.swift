@@ -23,6 +23,10 @@ public actor ConversationArchiveStore {
     private let maxThreads: Int
     private let maxBytes: Int
     private let protection: any ConversationArchiveProtection
+    /// Sticky cache of the trusted "archive sealed at least once" marker. Once true it never flips
+    /// back, so a single sealed write permanently enables fail-closed downgrade resistance for this
+    /// actor's lifetime, even if the keychain later becomes transiently unavailable.
+    private var sealedMarkerCache: Bool?
 
     public init(
         directory: URL,
@@ -168,6 +172,10 @@ public actor ConversationArchiveStore {
     /// Re-seal any legacy plaintext thread files. Returns how many were upgraded.
     @discardableResult
     public func reencryptPlaintextThreadsIfNeeded() -> Int {
+        // Anti-laundering: once the archive is known sealed, never adopt+reseal plaintext threads, or
+        // an attacker's forged plaintext would be laundered into a legitimately sealed file. During a
+        // genuine pre-encryption migration the marker is still false, so adoption proceeds normally.
+        if archiveIsSealed() { return 0 }
         guard let files = try? FileManager.default.contentsOfDirectory(
             at: directory,
             includingPropertiesForKeys: nil
@@ -190,6 +198,10 @@ public actor ConversationArchiveStore {
     /// index. No-op once the index is already sealed.
     @discardableResult
     public func reencryptPlaintextIndexIfNeeded() -> Bool {
+        // Anti-laundering: refuse to adopt+reseal a plaintext index once the archive is known sealed,
+        // so a downgraded/forged plaintext index can't be laundered into a sealed one. The marker is
+        // still false during a genuine pre-encryption migration, so that path is unaffected.
+        if archiveIsSealed() { return false }
         guard let raw = try? Data(contentsOf: indexURL),
               !ArchiveEnvelope.isEncrypted(raw),
               let index = try? JSONDecoder().decode(ConversationArchiveIndex.self, from: raw)
@@ -204,12 +216,71 @@ public actor ConversationArchiveStore {
         directory.appendingPathComponent("\(id.uuidString).json")
     }
 
+    /// Whether the archive is *known* to have been sealed at least once (fail-closed gate).
+    /// Returns true only when the trusted keychain marker says so (cached sticky). When the marker
+    /// store is unavailable (nil), this returns false — fail-soft, so plaintext is accepted rather
+    /// than risking History data loss during a transient keychain outage.
+    private func archiveIsSealed() -> Bool {
+        if sealedMarkerCache == true { return true }
+        switch protection.archiveHasBeenSealed() {
+        case .some(true):
+            sealedMarkerCache = true
+            return true
+        case .some(false):
+            return false
+        case .none:
+            return false // unavailable: fail soft, do NOT cache so a later check can still succeed
+        }
+    }
+
+    /// Record (best-effort) that the archive is now sealed, flipping the gate on. Self-defers until
+    /// the archive is fully encrypted on disk, so an interrupted migration (which seals threads one
+    /// at a time) never sets the marker while plaintext threads still remain — otherwise the next
+    /// launch would refuse those stranded legitimate threads (silent data loss).
+    private func recordSealed() {
+        if sealedMarkerCache == true { return }
+        guard isArchiveFullyEncrypted() else { return }
+        protection.markArchiveSealed()
+        sealedMarkerCache = true
+    }
+
+    /// True iff there is NO plaintext index AND NO plaintext thread file on disk. Reads only each
+    /// file's prefix (the envelope magic) via a `FileHandle`, never the multi-MB screenshot payloads.
+    /// A missing/unreadable index or empty directory counts as "no plaintext" (true).
+    private func isArchiveFullyEncrypted() -> Bool {
+        if fileExistsAndIsPlaintext(indexURL) { return false }
+        guard let files = try? FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: nil
+        ) else { return true }
+        for file in files where file.lastPathComponent.hasSuffix(".json") && file.lastPathComponent != "index.v2.json" {
+            if fileExistsAndIsPlaintext(file) { return false }
+        }
+        return true
+    }
+
+    /// Whether `url` exists and its leading bytes are NOT the encrypted-envelope magic. Reads only a
+    /// small prefix so it stays cheap regardless of file size. Unreadable/missing files count as not
+    /// plaintext (so a transient read error can't strand the marker forever).
+    private func fileExistsAndIsPlaintext(_ url: URL) -> Bool {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return false }
+        defer { try? handle.close() }
+        // Read a few bytes past the envelope magic so `isEncrypted` (which requires count > magic+1)
+        // can still recognize a sealed file from its prefix alone.
+        let prefix = (try? handle.read(upToCount: 16)) ?? Data()
+        guard !prefix.isEmpty else { return false }
+        return !ArchiveEnvelope.isEncrypted(prefix)
+    }
+
     /// Decrypt when protected, or decode legacy plaintext threads.
     private func decodeThread(from raw: Data) -> ConversationThread? {
         if ArchiveEnvelope.isEncrypted(raw) {
             guard let plaintext = try? protection.open(raw) else { return nil }
             return try? JSONDecoder().decode(ConversationThread.self, from: plaintext)
         }
+        // Fail-closed: once the archive is known sealed, a plaintext thread can only be tampering or
+        // corruption (every legitimate thread was sealed before the marker flipped on). Refuse it.
+        if archiveIsSealed() { return nil }
         if let thread = try? JSONDecoder().decode(ConversationThread.self, from: raw) {
             return thread
         }
@@ -220,19 +291,20 @@ public actor ConversationArchiveStore {
         let empty = ConversationArchiveIndex(version: Self.indexVersion, summaries: [])
         guard let raw = try? Data(contentsOf: indexURL) else { return empty }
         // The index holds derived titles (excerpts of the user's questions/answers), so it's sealed
-        // like the thread files. Plaintext is still accepted, deliberately: a pre-encryption archive
-        // not yet migrated (re-sealed at launch by `reencryptPlaintextIndexIfNeeded`), or a launch
-        // where the key was transiently unavailable. So the sealing guarantees confidentiality at
-        // rest — the Keychain key gates decrypting bodies and forging sealed data — but not
-        // tamper/downgrade resistance against an attacker who can already write local files (same
-        // posture as the plaintext-tolerant thread reads in `decodeThread`). Fail-closed downgrade
-        // resistance (a trusted "already sealed" marker, applied to index *and* threads) is a future
-        // hardening, intentionally not done here.
+        // like the thread files. Fail-closed downgrade resistance is NOW implemented (the same trusted
+        // "already sealed" marker gates index *and* threads): once `archiveIsSealed()` is true, a
+        // plaintext index is refused below. Plaintext is still accepted while the marker is false or
+        // unavailable, deliberately: a pre-encryption archive not yet migrated (re-sealed at launch by
+        // `reencryptPlaintextIndexIfNeeded`), or a launch where the keychain (key or marker) was
+        // transiently unavailable — fail-soft there preserves migration and avoids History data loss.
         let json: Data
         if ArchiveEnvelope.isEncrypted(raw) {
             guard let opened = try? protection.open(raw) else { return empty }
             json = opened
         } else {
+            // Refuse a downgraded plaintext index once the archive is known sealed (see invariant in
+            // `writeIndex`): by then no legitimate plaintext index can remain, so this is tampering.
+            if archiveIsSealed() { return empty }
             json = raw
         }
         return (try? JSONDecoder().decode(ConversationArchiveIndex.self, from: json)) ?? empty
@@ -267,6 +339,16 @@ public actor ConversationArchiveStore {
             return .failure(.indexWriteFailed)
         }
 
+        // CRITICAL INVARIANT: the trusted marker flips true ONLY once the archive is fully encrypted
+        // on disk — `recordSealed()` re-checks `isArchiveFullyEncrypted()` and self-defers while any
+        // plaintext index or thread remains. So by the time `archiveIsSealed()` is true, no legitimate
+        // plaintext file can exist, and every later plaintext read is tampering/corruption — safe to
+        // refuse (fail-closed). This is also what makes interrupted migrations recoverable: a
+        // `reencryptPlaintextThreadsIfNeeded` loop seals threads one at a time, and the per-save
+        // `recordSealed()` does NOT set the marker until the LAST thread seals everything. If the
+        // loop is interrupted, the marker stays unset, so the next launch's reencrypt runs again and
+        // recovers the stranded plaintext threads instead of refusing them.
+        recordSealed()
         return .success(())
     }
 

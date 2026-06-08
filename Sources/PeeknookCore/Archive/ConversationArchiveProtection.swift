@@ -14,6 +14,21 @@ public enum ArchiveProtectionError: Error, Sendable, Equatable {
 public protocol ConversationArchiveProtection: Sendable {
     func seal(_ plaintext: Data) throws -> Data
     func open(_ sealed: Data) throws -> Data
+
+    /// Trusted, tamper-resistant record that the archive has been sealed at least once.
+    /// `true` = sealed before; `false` = never sealed; `nil` = marker store unavailable
+    /// (caller must fail soft — accept plaintext — to avoid data loss).
+    func archiveHasBeenSealed() -> Bool?
+    /// Best-effort: record that the archive is now encrypted. Tolerates failure.
+    func markArchiveSealed()
+}
+
+/// Default marker behavior: no trusted store, so report "unknown" (nil) and do nothing. Conformers
+/// without a tamper-resistant marker (tests, in-memory protections) stay fail-soft — nil means the
+/// store accepts plaintext, preserving migration and never dropping History.
+public extension ConversationArchiveProtection {
+    func archiveHasBeenSealed() -> Bool? { nil }
+    func markArchiveSealed() {}
 }
 
 public enum ArchiveEnvelope {
@@ -62,6 +77,9 @@ struct AESGCMArchiveProtection: ConversationArchiveProtection {
 public struct KeychainArchiveProtection: ConversationArchiveProtection {
     private static let service = "com.peeknook.app.archive"
     private static let account = "conversation-v1"
+    /// Tamper-resistant "archive has been sealed at least once" marker. Keychain-backed so a
+    /// local-file-write attacker cannot forge it; only the OS keychain (gated on device unlock) holds it.
+    private static let sealedAccount = "archive-sealed-v1"
 
     private let inner: AESGCMArchiveProtection
 
@@ -76,6 +94,33 @@ public struct KeychainArchiveProtection: ConversationArchiveProtection {
 
     public func open(_ sealed: Data) throws -> Data {
         try inner.open(sealed)
+    }
+
+    public func archiveHasBeenSealed() -> Bool? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: Self.service,
+            kSecAttrAccount as String: Self.sealedAccount,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        let status = SecItemCopyMatching(query as CFDictionary, nil)
+        switch status {
+        case errSecSuccess: return true
+        case errSecItemNotFound: return false
+        default: return nil // keychain unavailable / locked: caller fails soft (accepts plaintext)
+        }
+    }
+
+    public func markArchiveSealed() {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: Self.service,
+            kSecAttrAccount as String: Self.sealedAccount,
+            kSecValueData as String: Data([1]),
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+        ]
+        // Best-effort: a duplicate just means it's already set, and any other failure must not block a save.
+        _ = SecItemAdd(query as CFDictionary, nil)
     }
 
     private static func loadOrCreateKey() throws -> SymmetricKey {

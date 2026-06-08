@@ -38,7 +38,7 @@ Your questions and the model's answers are kept in the active conversation threa
 
 `~/Library/Application Support/Peeknook/Conversations/`
 
-Each chat is one encrypted `<uuid>.json` file. A separate **`index.v2.json`** lists thread metadata for History: thread id, derived title, created/updated timestamps, turn count, and whether the thread includes a screenshot. The index is **encrypted** the same way as the thread files (AES-GCM with a device-local Keychain key) and contains no screenshot pixels or full message bodies; a plaintext index written by an earlier version is re-encrypted automatically on the next launch.
+Each chat is one encrypted `<uuid>.json` file. A separate **`index.v2.json`** lists thread metadata for History: thread id, derived title, created/updated timestamps, turn count, and whether the thread includes a screenshot. The index is **encrypted** the same way as the thread files (AES-GCM with a device-local Keychain key) and contains no screenshot pixels or full message bodies; a plaintext index written by an earlier version is re-encrypted automatically on the next launch. Once the archive has been sealed at least once (tracked by a tamper-resistant Keychain marker), a later plaintext index or thread is rejected on read, so a downgraded file planted on disk can't surface.
 
 The archive keeps at most **25 threads** and about **250 MB** total; when limits are exceeded, the **oldest** threads are deleted automatically.
 
