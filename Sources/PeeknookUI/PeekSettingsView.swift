@@ -117,7 +117,12 @@ public struct PeekSettingsView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: PeekPanelLayout.settingsMaxHeight, alignment: .leading)
         .task(id: inferenceCheckKey) {
-            await refreshOllamaStatus()
+            if setup.skipsLiveProbes {
+                ollamaStatusLabel = "Ready"
+                ollamaStatusTone = .ready
+            } else {
+                await refreshOllamaStatus()
+            }
             if !didApplyDefaultExpansion {
                 applyDefaultExpandedSections()
                 didApplyDefaultExpansion = true
@@ -125,6 +130,7 @@ public struct PeekSettingsView: View {
             applyPendingFocusIfNeeded()
         }
         .task {
+            guard !setup.skipsLiveProbes else { return }
             // Light periodic refresh while the panel is open so a server dying, or coming back -
             // mid-session updates the badge without waiting on a URL/model edit. Silent (no
             // "Checking" flicker) since it's a background poll, not a user-triggered check.

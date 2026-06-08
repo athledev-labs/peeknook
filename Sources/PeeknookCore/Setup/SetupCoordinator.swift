@@ -24,6 +24,8 @@ public final class SetupCoordinator {
 
     public var settings: PeeknookSettings
     public weak var orchestrator: SessionOrchestrator?
+    /// When true, ``refresh()`` is a no-op and ``isReady`` does not require live TCC probes.
+    public var skipsLiveProbes = false
     private let defaults: UserDefaults
     private let ollama = OllamaSetupClient()
     private var pullTask: Task<Void, Never>?
@@ -46,12 +48,14 @@ public final class SetupCoordinator {
     }
 
     public var isReady: Bool {
-        ollamaStep == .complete && modelStep == .complete && captureStep == .complete
-            && CapturePermissionStatus.current().screenRecordingGranted
+        let stepsReady = ollamaStep == .complete && modelStep == .complete && captureStep == .complete
+        if skipsLiveProbes { return stepsReady }
+        return stepsReady && CapturePermissionStatus.current().screenRecordingGranted
     }
 
     /// Cheap sync refresh for Screen Recording only, used before capture and on a fast poll.
     public func refreshCapturePermission() {
+        if skipsLiveProbes { return }
         captureStep = evaluateCaptureStep()
     }
 
@@ -78,7 +82,18 @@ public final class SetupCoordinator {
         refreshTask = nil
     }
 
+    /// Seeds setup steps as complete for deterministic UI tests and unit tests that inject mocks.
+    public func applyTestBypass() {
+        skipsLiveProbes = true
+        ollamaStep = .complete
+        modelStep = .complete
+        captureStep = .complete
+        installedModelNames = [settings.textModel]
+        markOnboardingComplete()
+    }
+
     public func refresh() async {
+        if skipsLiveProbes { return }
         isRefreshing = true
         defer { isRefreshing = false }
 
@@ -185,6 +200,7 @@ public final class SetupCoordinator {
     }
 
     private func evaluateCaptureStep() -> SetupStepState {
+        if skipsLiveProbes { return .complete }
         let permissions = CapturePermissionStatus.current()
         if permissions.screenRecordingGranted {
             return .complete

@@ -60,6 +60,7 @@ targets:
         Debug:
           CODE_SIGN_IDENTITY: "-"
           DEVELOPMENT_TEAM: ""
+          ENABLE_HARDENED_RUNTIME: NO
         Release:
           DEVELOPMENT_TEAM: ${PEEKNOOK_DEVELOPMENT_TEAM:}
     dependencies:
@@ -79,12 +80,13 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.peeknook.app.uitests
-        TEST_TARGET_NAME: Peeknook
+        TEST_TARGET_NAME: PeeknookHostApp
         GENERATE_INFOPLIST_FILE: YES
       configs:
         Debug:
           CODE_SIGN_IDENTITY: "-"
           DEVELOPMENT_TEAM: ""
+          ENABLE_HARDENED_RUNTIME: NO
 
 schemes:
   Peeknook:

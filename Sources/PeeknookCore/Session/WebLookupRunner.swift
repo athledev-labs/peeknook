@@ -7,6 +7,13 @@ public protocol WebLookupProviding: Sendable {
     func lookup(capture: CaptureResult) async -> WebLookupSnapshot?
 }
 
+/// No-network double for unit tests and the UI test host.
+public struct StubWebLookup: WebLookupProviding, Sendable {
+    public init() {}
+
+    public func lookup(capture: CaptureResult) async -> WebLookupSnapshot? { nil }
+}
+
 public struct WebLookupRunner: WebLookupProviding, Sendable {
     public var client: WebSearchClient
     public var policy: SensitiveContentPolicy

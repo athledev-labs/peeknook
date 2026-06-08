@@ -54,6 +54,17 @@ public actor ConversationArchiveStore {
         )
     }
 
+    /// Isolated temp-dir store for UI tests; avoids Keychain and Application Support side effects.
+    public static func makeForTesting(directory: URL? = nil) -> ConversationArchiveStore {
+        let root = directory
+            ?? FileManager.default.temporaryDirectory
+                .appendingPathComponent("PeeknookUITest-\(UUID().uuidString)", isDirectory: true)
+        return ConversationArchiveStore(
+            directory: root,
+            protection: FixedKeyArchiveProtection()
+        )
+    }
+
     // MARK: - Read
 
     /// Summaries for the switcher, newest first. Cheap, only the index file is read.

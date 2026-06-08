@@ -40,8 +40,26 @@ public final class PeeknookModule: NookModule {
 
     public init(context: NookModuleContext) {
         self.context = context
-        let loaded = PeeknookSettings.load(from: context.defaults)
-        let stack = PeeknookServices.makeStack(settings: loaded, defaults: context.defaults)
+        var loaded = PeeknookSettings.load(from: context.defaults)
+        let dependencies: PeeknookDependencies
+        if PeeknookTestMode.isEnabled {
+            loaded.previewBeforeInfer = false
+            dependencies = PeeknookDependencies.testing(
+                capture: StubCaptureProvider(sampleText: "uitest screen"),
+                inference: MockInferenceEngine(tokens: ["test", " answer"]),
+                conversationArchive: ConversationArchiveStore.makeForTesting()
+            )
+        } else {
+            dependencies = .production()
+        }
+        let stack = PeeknookServices.makeStack(
+            settings: loaded,
+            defaults: context.defaults,
+            dependencies: dependencies
+        )
+        if PeeknookTestMode.isEnabled {
+            stack.setup.applyTestBypass()
+        }
         self.orchestrator = stack.orchestrator
         self.setup = stack.setup
         self.usage = stack.usage
@@ -128,6 +146,16 @@ public final class PeeknookModule: NookModule {
             self?.startPreviewPhaseHandling(on: coordinator)
             // Accessory apps have no main menu, so ⌘A/⌘C/⌘V/⌘X/⌘Z don't reach text fields.
             StandardEditMenu.installIfNeeded()
+            if PeeknookTestMode.isEnabled {
+                coordinator.showHome()
+                coordinator.showNook()
+                if PeeknookTestMode.opensSettingsOnLaunch {
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 800_000_000)
+                        coordinator.showSettings()
+                    }
+                }
+            }
         }
         return configuration
     }

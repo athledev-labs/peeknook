@@ -35,12 +35,16 @@ public enum PeeknookServices {
         )
         orchestrator.setup = setup
         orchestrator.usage = usage
-        do {
-            orchestrator.conversationArchive = try ConversationArchiveStore.makeDefault()
-        } catch {
-            orchestrator.conversationArchive = nil
-            if settings.persistConversation {
-                orchestrator.reportArchiveBootstrapFailure(.keyUnavailable)
+        if let archive = dependencies.conversationArchive {
+            orchestrator.conversationArchive = archive
+        } else {
+            do {
+                orchestrator.conversationArchive = try ConversationArchiveStore.makeDefault()
+            } catch {
+                orchestrator.conversationArchive = nil
+                if settings.persistConversation {
+                    orchestrator.reportArchiveBootstrapFailure(.keyUnavailable)
+                }
             }
         }
         orchestrator.loadPersistedConversationIfEnabled()

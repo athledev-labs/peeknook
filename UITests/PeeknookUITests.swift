@@ -3,40 +3,55 @@
 import XCTest
 
 final class PeeknookUITests: XCTestCase {
+    private var app: XCUIApplication!
+
+    private func settingsControl(matching label: String) -> XCUIElement {
+        let predicate = NSPredicate(format: "label == %@", label)
+        for query: XCUIElementQuery in [app.switches, app.buttons, app.toggles] {
+            let match = query.matching(predicate).firstMatch
+            if match.exists { return match }
+        }
+        return app.switches[label]
+    }
+
     override func setUpWithError() throws {
         continueAfterFailure = false
+        app = XCUIApplication()
+        app.launchArguments = ["-PeeknookTestMode"]
+        app.launch()
     }
 
-    func testAppLaunchesAndShowsSetupOrHome() throws {
-        let app = XCUIApplication()
-        app.launch()
-
-        let setupVisible = app.staticTexts["Ollama server"].waitForExistence(timeout: 8)
-        let captureVisible = app.buttons["peeknook.capture"].waitForExistence(timeout: 2)
-            || app.buttons["Capture"].waitForExistence(timeout: 1)
-        XCTAssertTrue(setupVisible || captureVisible, "Expected Get ready or idle home")
-    }
-
-    func testCaptureButtonUsesStableIdentifierWhenHomeIsReady() throws {
-        let app = XCUIApplication()
-        app.launch()
-
+    func testHomeShowsEnabledCaptureInTestMode() throws {
         let capture = app.buttons["peeknook.capture"]
-        guard capture.waitForExistence(timeout: 8) else {
-            throw XCTSkip("Capture control only appears after setup completes")
-        }
-        XCTAssertTrue(capture.isEnabled || capture.exists)
+        XCTAssertTrue(capture.waitForExistence(timeout: 10))
+        XCTAssertTrue(capture.isEnabled)
     }
 
-    func testStatsTopBarAvailableAfterLaunch() throws {
-        let app = XCUIApplication()
+    func testCaptureFlowReachesResultInTestMode() throws {
+        let capture = app.buttons["peeknook.capture"]
+        XCTAssertTrue(capture.waitForExistence(timeout: 10))
+        capture.tap()
+        XCTAssertTrue(app.staticTexts["test answer"].waitForExistence(timeout: 15))
+    }
+
+    func testSettingsRoundTripInTestMode() throws {
+        app.terminate()
+        app.launchArguments = ["-PeeknookTestMode", "-PeeknookTestOpenSettings"]
         app.launch()
 
+        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 15))
+        let greeting = settingsControl(matching: "Show greeting")
+        XCTAssertTrue(greeting.waitForExistence(timeout: 15))
+        greeting.tap()
+
+        app.buttons["Home"].tap()
+        XCTAssertTrue(app.buttons["peeknook.capture"].waitForExistence(timeout: 10))
+    }
+
+    func testStatsTopBarAvailableInTestMode() throws {
         let stats = app.buttons["Stats"]
-        guard stats.waitForExistence(timeout: 8) else {
-            throw XCTSkip("Stats top-bar item not visible in current host chrome")
-        }
+        XCTAssertTrue(stats.waitForExistence(timeout: 10))
         stats.tap()
-        XCTAssertTrue(app.staticTexts["Stats"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["Stats"].waitForExistence(timeout: 5))
     }
 }

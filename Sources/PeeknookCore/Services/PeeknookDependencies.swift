@@ -11,6 +11,7 @@ public struct PeeknookDependencies {
     public var answerSpeechSynthesizer: any SpeechSynthesizing
     public var previewSpeechSynthesizer: any SpeechSynthesizing
     public var modelCatalog: ModelCatalogService
+    public var conversationArchive: ConversationArchiveStore?
 
     public init(
         capture: any CaptureProviding,
@@ -19,7 +20,8 @@ public struct PeeknookDependencies {
         speechRecognizer: any SpeechRecognizing,
         answerSpeechSynthesizer: any SpeechSynthesizing,
         previewSpeechSynthesizer: any SpeechSynthesizing,
-        modelCatalog: ModelCatalogService
+        modelCatalog: ModelCatalogService,
+        conversationArchive: ConversationArchiveStore? = nil
     ) {
         self.capture = capture
         self.inference = inference
@@ -28,6 +30,7 @@ public struct PeeknookDependencies {
         self.answerSpeechSynthesizer = answerSpeechSynthesizer
         self.previewSpeechSynthesizer = previewSpeechSynthesizer
         self.modelCatalog = modelCatalog
+        self.conversationArchive = conversationArchive
     }
 
     /// Production defaults: live capture, Ollama inference, on-device speech when available.
@@ -58,11 +61,12 @@ public struct PeeknookDependencies {
     public static func testing(
         capture: any CaptureProviding = StubCaptureProvider(sampleText: "screen"),
         inference: any InferenceEngine = MockInferenceEngine(tokens: ["ok"]),
-        webLookup: any WebLookupProviding = WebLookupRunner(),
+        webLookup: any WebLookupProviding = StubWebLookup(),
         speechRecognizer: any SpeechRecognizing = StubSpeechRecognizer(),
         answerSpeechSynthesizer: any SpeechSynthesizing = StubSpeechSynthesizer(),
         previewSpeechSynthesizer: (any SpeechSynthesizing)? = nil,
-        modelCatalog: ModelCatalogService = ModelCatalogService.makeDefault()
+        modelCatalog: ModelCatalogService = ModelCatalogService.makeDefault(),
+        conversationArchive: ConversationArchiveStore? = nil
     ) -> PeeknookDependencies {
         let preview = previewSpeechSynthesizer ?? answerSpeechSynthesizer
         return PeeknookDependencies(
@@ -72,7 +76,8 @@ public struct PeeknookDependencies {
             speechRecognizer: speechRecognizer,
             answerSpeechSynthesizer: answerSpeechSynthesizer,
             previewSpeechSynthesizer: preview,
-            modelCatalog: modelCatalog
+            modelCatalog: modelCatalog,
+            conversationArchive: conversationArchive
         )
     }
 }
