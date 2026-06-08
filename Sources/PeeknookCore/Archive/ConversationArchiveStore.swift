@@ -185,6 +185,19 @@ public actor ConversationArchiveStore {
         return reencrypted
     }
 
+    /// Re-seal a legacy plaintext `index.v2.json` (written before the index itself was encrypted), so
+    /// the derived titles it holds stop sitting in cleartext on disk. Returns whether it upgraded the
+    /// index. No-op once the index is already sealed.
+    @discardableResult
+    public func reencryptPlaintextIndexIfNeeded() -> Bool {
+        guard let raw = try? Data(contentsOf: indexURL),
+              !ArchiveEnvelope.isEncrypted(raw),
+              let index = try? JSONDecoder().decode(ConversationArchiveIndex.self, from: raw)
+        else { return false }
+        if case .success = writeIndex(index) { return true }
+        return false
+    }
+
     // MARK: - Internals
 
     private func threadURL(_ id: UUID) -> URL {
@@ -204,16 +217,40 @@ public actor ConversationArchiveStore {
     }
 
     private func readIndex() -> ConversationArchiveIndex {
-        guard let data = try? Data(contentsOf: indexURL),
-              let index = try? JSONDecoder().decode(ConversationArchiveIndex.self, from: data)
-        else { return ConversationArchiveIndex(version: Self.indexVersion, summaries: []) }
-        return index
+        let empty = ConversationArchiveIndex(version: Self.indexVersion, summaries: [])
+        guard let raw = try? Data(contentsOf: indexURL) else { return empty }
+        // The index holds derived titles (excerpts of the user's questions/answers), so it's sealed
+        // like the thread files. Plaintext is still accepted, deliberately: a pre-encryption archive
+        // not yet migrated (re-sealed at launch by `reencryptPlaintextIndexIfNeeded`), or a launch
+        // where the key was transiently unavailable. So the sealing guarantees confidentiality at
+        // rest — the Keychain key gates decrypting bodies and forging sealed data — but not
+        // tamper/downgrade resistance against an attacker who can already write local files (same
+        // posture as the plaintext-tolerant thread reads in `decodeThread`). Fail-closed downgrade
+        // resistance (a trusted "already sealed" marker, applied to index *and* threads) is a future
+        // hardening, intentionally not done here.
+        let json: Data
+        if ArchiveEnvelope.isEncrypted(raw) {
+            guard let opened = try? protection.open(raw) else { return empty }
+            json = opened
+        } else {
+            json = raw
+        }
+        return (try? JSONDecoder().decode(ConversationArchiveIndex.self, from: json)) ?? empty
     }
 
     private func writeIndex(_ index: ConversationArchiveIndex) -> Result<Void, ConversationArchiveError> {
+        let json: Data
+        do {
+            json = try JSONEncoder().encode(index)
+        } catch {
+            return .failure(.encodeFailed)
+        }
+
         let data: Data
         do {
-            data = try JSONEncoder().encode(index)
+            data = try protection.seal(json)
+        } catch ArchiveProtectionError.keyUnavailable {
+            return .failure(.keyUnavailable)
         } catch {
             return .failure(.encodeFailed)
         }

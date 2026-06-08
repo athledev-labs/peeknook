@@ -174,6 +174,34 @@ final class ConversationArchiveFlowTests: XCTestCase {
         }
     }
 
+    func testOpenThreadIgnoredWhenPersistenceOff() async {
+        // With persistence off the History switcher is hidden, but openThread must also refuse to
+        // surface archived content directly (a stale id can't resurrect an opted-out chat).
+        let (store, dir) = tempArchive()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let saved = ConversationThread(
+            turns: [ChatTurn(id: 1, kind: .assistant("archived answer"))],
+            turnCounter: 1
+        )
+        let save = await store.save(saved)
+        XCTAssertTrue(save.isSuccess)
+
+        let orchestrator = SessionOrchestrator(
+            settings: PeeknookSettings(textModel: "gemma4:e4b", persistConversation: false),
+            capture: StubCaptureProvider(sampleText: "x"),
+            inference: MockInferenceEngine(tokens: ["y"])
+        )
+        orchestrator.conversationArchive = store
+
+        await orchestrator.openThread(id: saved.id)
+
+        guard case .idle = orchestrator.phase else {
+            return XCTFail("openThread must not surface archived content when persistence is off, got \(orchestrator.phase)")
+        }
+        XCTAssertTrue(orchestrator.conversation.isEmpty)
+    }
+
     func testDeleteActiveThreadMidFollowUpStaysIdle() async {
         // Deleting the on-screen chat while a follow-up is streaming must abort that work, or the
         // late stream re-files an answer for a thread that no longer exists.

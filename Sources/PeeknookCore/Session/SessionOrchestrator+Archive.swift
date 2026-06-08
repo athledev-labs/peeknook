@@ -15,6 +15,7 @@ extension SessionOrchestrator {
         Task {
             _ = await archive.migrateLegacyIfNeeded()
             _ = await archive.reencryptPlaintextThreadsIfNeeded()
+            _ = await archive.reencryptPlaintextIndexIfNeeded()
             guard let restored = await archive.mostRecent(), !restored.turns.isEmpty else { return }
             // A capture or thread switch started while we were loading off-disk — never adopt the
             // stale thread over the user's in-flight work. Stay defensive: only restore into a
@@ -34,7 +35,11 @@ extension SessionOrchestrator {
 
     /// Open an archived chat by id: load it into memory and surface its last answer as a result.
     public func openThread(id: UUID) async {
-        guard let archive = conversationArchive else { return }
+        // Never surface archived content when the user has persistence off — the History switcher is
+        // hidden then, but guard here too so a stale id can't resurrect an opted-out chat.
+        // Never surface archived content when the user has persistence off — the History switcher is
+        // hidden then, but guard here too so a stale id can't resurrect an opted-out chat.
+        guard settings.persistConversation, let archive = conversationArchive else { return }
         let generation = sessionGeneration
         guard let thread = await archive.load(id: id), !thread.turns.isEmpty else { return }
         // A capture or another thread switch started while this one loaded off-disk — the newer

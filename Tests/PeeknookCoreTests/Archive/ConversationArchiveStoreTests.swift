@@ -167,6 +167,52 @@ final class ConversationArchiveStoreTests: XCTestCase {
         XCTAssertEqual(result.archiveFailure, .directoryUnavailable)
     }
 
+    func testIndexFileIsEncryptedAtRest() async throws {
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = ConversationArchiveTestSupport.makeStore(directory: dir)
+
+        // The derived title is an excerpt of the user's text, so it must not sit on disk in cleartext.
+        let secretTitle = "my secret api key question"
+        let save = await store.save(thread(secretTitle))
+        XCTAssertTrue(save.isSuccess)
+
+        let indexURL = dir.appendingPathComponent("index.v2.json")
+        let raw = try Data(contentsOf: indexURL)
+        XCTAssertTrue(ArchiveEnvelope.isEncrypted(raw), "the index must be sealed at rest")
+        XCTAssertNil(raw.range(of: Data(secretTitle.utf8)), "the derived title leaks in cleartext in the index")
+
+        // …and it still round-trips through the switcher (decrypts on read).
+        let summaries = await store.summaries()
+        XCTAssertEqual(summaries.first?.title, secretTitle)
+    }
+
+    func testReencryptsPlaintextIndex() async throws {
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+
+        // Simulate a pre-encryption archive: a plaintext `index.v2.json`.
+        let indexURL = dir.appendingPathComponent("index.v2.json")
+        let summary = thread("legacy plaintext title").summary
+        let plaintextIndex = ConversationArchiveIndex(version: 2, summaries: [summary])
+        try JSONEncoder().encode(plaintextIndex).write(to: indexURL)
+        XCTAssertFalse(ArchiveEnvelope.isEncrypted(try Data(contentsOf: indexURL)), "precondition: plaintext index")
+
+        let store = ConversationArchiveTestSupport.makeStore(directory: dir)
+        // Readable before migration (tolerant read).
+        let before = await store.summaries()
+        XCTAssertEqual(before.first?.title, "legacy plaintext title")
+
+        let migrated = await store.reencryptPlaintextIndexIfNeeded()
+        XCTAssertTrue(migrated, "should upgrade a plaintext index")
+        XCTAssertTrue(ArchiveEnvelope.isEncrypted(try Data(contentsOf: indexURL)), "index sealed after migration")
+        let after = await store.summaries()
+        XCTAssertEqual(after.first?.title, "legacy plaintext title", "still readable after sealing")
+        let secondRun = await store.reencryptPlaintextIndexIfNeeded()
+        XCTAssertFalse(secondRun, "second run is a no-op once sealed")
+    }
+
     func testDerivedTitlePrefersQuestionThenAnswerThenCapture() {
         let withUser = ConversationThread(turns: [
             ChatTurn(id: 1, kind: .image(CaptureResult(text: nil, sourceLabel: "Vision", appName: "Safari", windowTitle: "Docs"))),
