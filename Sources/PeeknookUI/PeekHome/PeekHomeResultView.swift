@@ -19,6 +19,7 @@ struct PeekHomeResultView: View {
     var onRequestNewChat: () -> Void
 
     @Environment(\.nookResolvedTheme) private var theme
+    @Environment(\.nookContentInsets) private var contentInsets
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -45,6 +46,7 @@ struct PeekHomeResultView: View {
             }
             resultFooter
         }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
     /// History view: turns and the usage chart scroll together as one region (capped), so the
@@ -131,8 +133,9 @@ struct PeekHomeResultView: View {
     }
 
     private var resultCommandBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 4) {
+        PeekHomeLayout.anchoredBottomRow(
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 4) {
                     if orchestrator.hasConversationHistory {
                         NookToolbarButton(
                             title: "History",
@@ -217,8 +220,10 @@ struct PeekHomeResultView: View {
                     ) {
                         onRequestNewChat()
                     }
-            }
-        }
+                }
+            },
+            bottomInset: contentInsets.bottom
+        )
     }
 
     private var suggestionRefreshSeed: Int {

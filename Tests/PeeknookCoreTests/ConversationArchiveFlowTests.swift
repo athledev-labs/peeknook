@@ -48,7 +48,8 @@ final class ConversationArchiveFlowTests: XCTestCase {
             ],
             turnCounter: 2
         )
-        await store.save(saved)
+        let saveResult = await store.save(saved)
+        XCTAssertTrue(saveResult.isSuccess)
 
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(textModel: "gemma4:e4b", persistConversation: true),

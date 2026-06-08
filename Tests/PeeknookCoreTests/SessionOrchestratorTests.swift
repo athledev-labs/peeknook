@@ -105,6 +105,25 @@ final class SessionOrchestratorTests: XCTestCase {
         XCTAssertFalse(orchestrator.hasConversation)
     }
 
+    func testBeginCaptureWithoutReadySetupFailsWithSetupIncomplete() {
+        let defaults = UserDefaults(suiteName: "peeknook.tests.setup-incomplete")!
+        defaults.removePersistentDomain(forName: "peeknook.tests.setup-incomplete")
+        let setup = SetupCoordinator(settings: .default, defaults: defaults)
+        let orchestrator = SessionOrchestrator(
+            settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b"),
+            capture: StubCaptureProvider(sampleText: "hello"),
+            inference: MockInferenceEngine(tokens: ["ok"])
+        )
+        orchestrator.setup = setup
+
+        orchestrator.beginCapture()
+
+        guard case .failed(SessionFailure.setupIncomplete) = orchestrator.phase else {
+            XCTFail("Expected setupIncomplete failure, got \(orchestrator.phase)")
+            return
+        }
+    }
+
     func testBeginCaptureFromResultStartsFreshCapture() async {
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b"),

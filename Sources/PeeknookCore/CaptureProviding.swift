@@ -157,19 +157,22 @@ public struct StubCaptureProvider: CaptureProviding, Sendable {
     public var windowTitle: String?
     /// When set, capture awaits this long before returning (for cancellation tests).
     public var captureDelayNanoseconds: UInt64?
+    public var screenshotBase64: String?
 
     public init(
         sampleText: String,
         sourceLabel: String = "Test capture",
         appName: String? = nil,
         windowTitle: String? = nil,
-        captureDelayNanoseconds: UInt64? = nil
+        captureDelayNanoseconds: UInt64? = nil,
+        screenshotBase64: String? = "stub-screenshot"
     ) {
         self.sampleText = sampleText
         self.sourceLabel = sourceLabel
         self.appName = appName
         self.windowTitle = windowTitle
         self.captureDelayNanoseconds = captureDelayNanoseconds
+        self.screenshotBase64 = screenshotBase64
     }
 
     public func capture(scope: CaptureScope, quick: Bool) async throws -> CaptureResult {
@@ -184,7 +187,8 @@ public struct StubCaptureProvider: CaptureProviding, Sendable {
             text: trimmed,
             sourceLabel: sourceLabel,
             appName: appName,
-            windowTitle: windowTitle
+            windowTitle: windowTitle,
+            screenshotBase64: screenshotBase64
         )
     }
 }

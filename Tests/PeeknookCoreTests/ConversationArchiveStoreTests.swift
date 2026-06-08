@@ -25,8 +25,10 @@ final class ConversationArchiveStoreTests: XCTestCase {
 
         let a = thread("first", updatedAt: Date(timeIntervalSinceNow: -60))
         let b = thread("second", updatedAt: Date())
-        await store.save(a)
-        await store.save(b)
+        let saveA = await store.save(a)
+        let saveB = await store.save(b)
+        XCTAssertTrue(saveA.isSuccess)
+        XCTAssertTrue(saveB.isSuccess)
 
         let summaries = await store.summaries()
         XCTAssertEqual(summaries.count, 2)
@@ -47,7 +49,8 @@ final class ConversationArchiveStoreTests: XCTestCase {
         let dir = tempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         let store = ConversationArchiveStore(directory: dir)
-        await store.save(ConversationThread(turns: []))
+        let emptySave = await store.save(ConversationThread(turns: []))
+        XCTAssertTrue(emptySave.isSuccess)
         let summaries = await store.summaries()
         XCTAssertTrue(summaries.isEmpty)
     }
@@ -58,10 +61,12 @@ final class ConversationArchiveStoreTests: XCTestCase {
         let store = ConversationArchiveStore(directory: dir)
 
         var t = thread("draft")
-        await store.save(t)
+        let firstSave = await store.save(t)
+        XCTAssertTrue(firstSave.isSuccess)
         t.turns.append(ChatTurn(id: 2, kind: .user("more")))
         t.updatedAt = Date(timeIntervalSinceNow: 5)
-        await store.save(t)
+        let secondSave = await store.save(t)
+        XCTAssertTrue(secondSave.isSuccess)
 
         let summaries = await store.summaries()
         XCTAssertEqual(summaries.count, 1)
@@ -73,8 +78,10 @@ final class ConversationArchiveStoreTests: XCTestCase {
         let dir = tempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         let store = ConversationArchiveStore(directory: dir)
-        await store.save(thread("a"))
-        await store.save(thread("b"))
+        let saveA = await store.save(thread("a"))
+        let saveB = await store.save(thread("b"))
+        XCTAssertTrue(saveA.isSuccess)
+        XCTAssertTrue(saveB.isSuccess)
         await store.deleteAll()
         let summaries = await store.summaries()
         XCTAssertTrue(summaries.isEmpty)
@@ -89,7 +96,8 @@ final class ConversationArchiveStoreTests: XCTestCase {
         for i in 0..<5 {
             let t = thread("chat \(i)", updatedAt: Date(timeIntervalSinceNow: Double(i)))
             ids.append(t.id)
-            await store.save(t)
+            let save = await store.save(t)
+            XCTAssertTrue(save.isSuccess)
         }
 
         let remaining = await store.summaries().map(\.id)
@@ -130,7 +138,8 @@ final class ConversationArchiveStoreTests: XCTestCase {
         let dir = tempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         let store = ConversationArchiveStore(directory: dir, legacyFileURL: dir.appendingPathComponent("conversation.v1.json"))
-        await store.save(thread("existing"))
+        let existingSave = await store.save(thread("existing"))
+        XCTAssertTrue(existingSave.isSuccess)
 
         let legacyURL = dir.appendingPathComponent("conversation.v1.json")
         let legacy = PersistedConversation(turns: [ChatTurn(id: 9, kind: .assistant("old"))], contextWindow: nil, turnCounter: 9, lastPromptTokens: nil)
@@ -140,6 +149,19 @@ final class ConversationArchiveStoreTests: XCTestCase {
         XCTAssertNil(skipped)
         let summaries = await store.summaries()
         XCTAssertEqual(summaries.count, 1)
+    }
+
+    func testSaveFailsWhenDirectoryIsFile() async {
+        let parent = tempDir()
+        defer { try? FileManager.default.removeItem(at: parent) }
+        try? FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
+        let dir = parent.appendingPathComponent("blocked-dir")
+        try? "not a directory".write(to: dir, atomically: true, encoding: .utf8)
+
+        let store = ConversationArchiveStore(directory: dir)
+        let result = await store.save(thread("blocked"))
+
+        XCTAssertEqual(result.archiveFailure, .directoryUnavailable)
     }
 
     func testDerivedTitlePrefersQuestionThenAnswerThenCapture() {

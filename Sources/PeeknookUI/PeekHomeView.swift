@@ -10,6 +10,7 @@ public struct PeekHomeView: View {
     public var settings: PeekSettingsController
     public var onOpenSetup: () -> Void
     @Environment(\.nookResolvedTheme) private var theme
+    @Environment(\.nookContentInsets) private var contentInsets
     @EnvironmentObject private var appState: AppState
     @State private var followUpText = ""
     @State private var isFollowUpComposerVisible = false
@@ -43,32 +44,34 @@ public struct PeekHomeView: View {
     public var body: some View {
         Group {
             if showsStats {
-                PeekStatsView(orchestrator: orchestrator)
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                    .padding(.horizontal, 12)
-                    .padding(.top, 8)
-                    .padding(.bottom, 2)
+                PeekHomeLayout.contentColumn(
+                    PeekStatsView(orchestrator: orchestrator),
+                    insets: contentInsets,
+                    bottom: contentInsets.bottom
+                )
             } else if showsModelLibrary {
-                PeekModelLibraryView(
-                    orchestrator: orchestrator,
-                    setup: setup,
-                    settings: settings,
-                    pendingDownload: $pendingDownload,
-                    onDismiss: closeModelLibrary
+                PeekHomeLayout.contentColumn(
+                    PeekModelLibraryView(
+                        orchestrator: orchestrator,
+                        setup: setup,
+                        settings: settings,
+                        pendingDownload: $pendingDownload,
+                        onDismiss: closeModelLibrary
+                    ),
+                    insets: contentInsets,
+                    bottom: contentInsets.bottom
                 )
-                .frame(maxWidth: .infinity, alignment: .topLeading)
-                .padding(.horizontal, 12)
-                .padding(.top, 8)
-                .padding(.bottom, 2)
             } else if showsArchive, case .idle = orchestrator.phase {
-                PeekConversationArchiveView(
-                    orchestrator: orchestrator,
-                    onOpen: openArchivedThread,
-                    onClose: closeArchive
+                PeekHomeLayout.contentColumn(
+                    PeekConversationArchiveView(
+                        orchestrator: orchestrator,
+                        onOpen: openArchivedThread,
+                        onClose: closeArchive
+                    ),
+                    insets: contentInsets,
+                    top: 8,
+                    bottom: contentInsets.bottom
                 )
-                .frame(maxWidth: .infinity, alignment: .topLeading)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
             } else {
                 homeColumn
             }
@@ -222,6 +225,14 @@ public struct PeekHomeView: View {
                 setupBanner
                     .padding(.top, 8)
             }
+            if orchestrator.settings.persistConversation, let issue = orchestrator.archivePersistenceIssue {
+                PeekArchivePersistenceBanner(
+                    message: issue.userFacingMessage,
+                    onDismiss: orchestrator.dismissArchivePersistenceIssue
+                )
+                .padding(.top, 8)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
             if PracticeMode.shipped.count > 1 {
                 modePicker
                     .padding(.top, 8)
@@ -229,11 +240,9 @@ public struct PeekHomeView: View {
             mainColumn
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .padding(.horizontal, 12)
-        // Asymmetric: keep top breathing room, but trim the bottom so the command row sits
-        // close to the chrome's (now tightened) bottom inset instead of double-padding it.
+        .padding(.leading, contentInsets.leading)
+        .padding(.trailing, contentInsets.trailing)
         .padding(.top, 8)
-        .padding(.bottom, 2)
     }
 
     @ViewBuilder
@@ -263,25 +272,31 @@ public struct PeekHomeView: View {
                 )
                 .frame(maxWidth: .infinity, alignment: .topLeading)
                 if case .idle = orchestrator.phase {
-                    PeekIdleCommandBar(
-                        orchestrator: orchestrator,
-                        setup: setup,
-                        settings: settings,
-                        pendingDownload: $pendingDownload,
-                        isBriefComposerVisible: $isBriefComposerVisible,
-                        briefDraft: $briefDraft,
-                        focusBriefField: $isBriefFieldFocused,
-                        onBrowseModels: openModelLibrary,
-                        onCapture: { orchestrator.beginCapture() },
-                        onResume: resumeChat
+                    PeekHomeLayout.anchoredBottomRow(
+                        PeekIdleCommandBar(
+                            orchestrator: orchestrator,
+                            setup: setup,
+                            settings: settings,
+                            pendingDownload: $pendingDownload,
+                            isBriefComposerVisible: $isBriefComposerVisible,
+                            briefDraft: $briefDraft,
+                            focusBriefField: $isBriefFieldFocused,
+                            onBrowseModels: openModelLibrary,
+                            onCapture: { orchestrator.beginCapture() },
+                            onResume: resumeChat
+                        ),
+                        bottomInset: contentInsets.bottom,
+                        top: 12
                     )
-                    .padding(.top, 12)
                 } else {
-                    PeekHomeActiveControls(
-                        orchestrator: orchestrator,
-                        setup: setup,
-                        onConfirmPreview: { orchestrator.confirmPreview() },
-                        onCancel: { orchestrator.cancel() }
+                    PeekHomeLayout.anchoredBottomRow(
+                        PeekHomeActiveControls(
+                            orchestrator: orchestrator,
+                            setup: setup,
+                            onConfirmPreview: { orchestrator.confirmPreview() },
+                            onCancel: { orchestrator.cancel() }
+                        ),
+                        bottomInset: contentInsets.bottom
                     )
                 }
             }

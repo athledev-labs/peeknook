@@ -127,6 +127,28 @@ public struct ConversationSummary: Codable, Sendable, Identifiable, Equatable {
     }
 }
 
+/// Structured failure from archive writes so callers can surface persistence issues instead of
+/// silently dropping saves.
+public enum ConversationArchiveError: Error, Sendable, Equatable {
+    case encodeFailed
+    case directoryUnavailable
+    case threadWriteFailed
+    case indexWriteFailed
+
+    public var userFacingMessage: String {
+        switch self {
+        case .encodeFailed:
+            return "Couldn't encode your conversation for saving."
+        case .directoryUnavailable:
+            return "Couldn't access the conversation storage folder."
+        case .threadWriteFailed:
+            return "Couldn't write your conversation to disk."
+        case .indexWriteFailed:
+            return "Couldn't update the conversation history index."
+        }
+    }
+}
+
 /// On-disk index of the archive, a list of ``ConversationSummary`` so the switcher avoids parsing
 /// every thread file. Versioned to gate the one-time legacy migration.
 struct ConversationArchiveIndex: Codable, Sendable {
@@ -198,17 +220,38 @@ public actor ConversationArchiveStore {
 
     // MARK: - Write
 
-    public func save(_ thread: ConversationThread) {
-        guard !thread.turns.isEmpty else { return }
-        guard let data = try? JSONEncoder().encode(thread) else { return }
-        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        try? data.write(to: threadURL(thread.id), options: .atomic)
+    public func save(_ thread: ConversationThread) -> Result<Void, ConversationArchiveError> {
+        guard !thread.turns.isEmpty else { return .success(()) }
+
+        let data: Data
+        do {
+            data = try JSONEncoder().encode(thread)
+        } catch {
+            return .failure(.encodeFailed)
+        }
+
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        } catch {
+            return .failure(.directoryUnavailable)
+        }
+
+        do {
+            try data.write(to: threadURL(thread.id), options: .atomic)
+        } catch {
+            return .failure(.threadWriteFailed)
+        }
 
         var index = readIndex()
         index.summaries.removeAll { $0.id == thread.id }
         index.summaries.append(thread.summary)
         prune(&index)
-        writeIndex(index)
+        switch writeIndex(index) {
+        case .success:
+            return .success(())
+        case .failure:
+            return .failure(.indexWriteFailed)
+        }
     }
 
     public func delete(id: UUID) {
@@ -270,10 +313,27 @@ public actor ConversationArchiveStore {
         return index
     }
 
-    private func writeIndex(_ index: ConversationArchiveIndex) {
-        guard let data = try? JSONEncoder().encode(index) else { return }
-        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        try? data.write(to: indexURL, options: .atomic)
+    private func writeIndex(_ index: ConversationArchiveIndex) -> Result<Void, ConversationArchiveError> {
+        let data: Data
+        do {
+            data = try JSONEncoder().encode(index)
+        } catch {
+            return .failure(.encodeFailed)
+        }
+
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        } catch {
+            return .failure(.directoryUnavailable)
+        }
+
+        do {
+            try data.write(to: indexURL, options: .atomic)
+        } catch {
+            return .failure(.indexWriteFailed)
+        }
+
+        return .success(())
     }
 
     /// Drop oldest threads (by `updatedAt`) until under both the count and byte caps.

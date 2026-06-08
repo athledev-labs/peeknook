@@ -7,10 +7,13 @@ import XCTest
 /// can assert what history the orchestrator replayed on a follow-up.
 final class ScriptedEngine: InferenceEngine, @unchecked Sendable {
     private(set) var requests: [InferenceRequest] = []
+    private(set) var suggestionRequests: [InferenceRequest] = []
     private let responsesPerCall: [[String]]
     private var callIndex = 0
     /// Canned suggestion-pass result.
     var followUps: [String] = []
+    var inferenceStats: InferenceStats?
+    var contextWindow: Int?
 
     init(responsesPerCall: [[String]]) {
         self.responsesPerCall = responsesPerCall
@@ -20,8 +23,11 @@ final class ScriptedEngine: InferenceEngine, @unchecked Sendable {
 
     var followUpStats: InferenceStats?
 
+    func contextLength(model: String, baseURL: String) async -> Int? { contextWindow }
+
     func generateFollowUps(request: InferenceRequest) async -> FollowUpGenerationResult {
-        FollowUpGenerationResult(suggestions: followUps, stats: followUpStats)
+        suggestionRequests.append(request)
+        return FollowUpGenerationResult(suggestions: followUps, stats: followUpStats)
     }
 
     func stream(request: InferenceRequest) -> AsyncThrowingStream<InferenceEvent, Error> {
@@ -36,7 +42,7 @@ final class ScriptedEngine: InferenceEngine, @unchecked Sendable {
                     if Task.isCancelled { break }
                     continuation.yield(.token(token))
                 }
-                continuation.yield(.completed(nil))
+                continuation.yield(.completed(inferenceStats))
                 continuation.finish()
             }
             continuation.onTermination = { _ in task.cancel() }
@@ -109,6 +115,7 @@ final class ConversationTests: XCTestCase {
         let msgs = engine.requests.last?.messages ?? []
         XCTAssertEqual(msgs.count, 3)
         XCTAssertEqual(msgs[0].role, .user)
+        XCTAssertNotNil(msgs[0].imageBase64, "the sole screenshot still rides as base64")
         XCTAssertEqual(msgs[1], InferenceMessage(role: .assistant, text: "first answer"))
         XCTAssertEqual(msgs[2].role, .user)
         XCTAssertTrue(msgs[2].text.contains("why?"))
@@ -131,11 +138,14 @@ final class ConversationTests: XCTestCase {
         XCTAssertEqual(c[1].assistantText, "first answer")
         XCTAssertTrue(c[2].isImage)
         XCTAssertEqual(c[3].assistantText, "second answer")
-        // The second answer's prompt replays the first answer + the new image grounding.
+        // The second answer's prompt replays both image groundings but only the latest base64.
         let msgs = engine.requests.last?.messages ?? []
         XCTAssertEqual(msgs.count, 3)
+        XCTAssertEqual(msgs[0].role, .user)
+        XCTAssertNil(msgs[0].imageBase64, "older screenshot is text-only")
         XCTAssertEqual(msgs[1], InferenceMessage(role: .assistant, text: "first answer"))
         XCTAssertEqual(msgs[2].role, .user)
+        XCTAssertNotNil(msgs[2].imageBase64, "latest screenshot still rides as base64")
     }
 
     func testRetakeReplacesChat() async {
@@ -349,6 +359,64 @@ final class ConversationTests: XCTestCase {
         guard case .result("first answer") = orchestrator.phase else {
             return XCTFail("Expected resumed result, got \(orchestrator.phase)")
         }
+    }
+
+    func testInferenceReplaySendsOnlyLatestImagePayload() async {
+        let engine = ScriptedEngine(responsesPerCall: [["first"], ["second"], ["third"]])
+        let orchestrator = makeOrchestrator(engine)
+
+        orchestrator.beginCapture()
+        try? await Task.sleep(nanoseconds: 200_000_000)
+        orchestrator.addImage()
+        try? await Task.sleep(nanoseconds: 200_000_000)
+        orchestrator.addImage()
+        try? await Task.sleep(nanoseconds: 200_000_000)
+
+        let msgs = engine.requests.last?.messages ?? []
+        let imageMsgs = msgs.filter { $0.role == .user && $0.text.contains("## Task") }
+        XCTAssertEqual(imageMsgs.count, 3, "all three screenshots still ground via text")
+        XCTAssertNil(imageMsgs[0].imageBase64)
+        XCTAssertNil(imageMsgs[1].imageBase64)
+        XCTAssertNotNil(imageMsgs[2].imageBase64)
+    }
+
+    func testSuggestionsOmitImagePayloads() async {
+        let engine = ScriptedEngine(responsesPerCall: [["answer"]])
+        engine.followUps = ["What next?"]
+        let orchestrator = makeOrchestrator(engine)
+
+        orchestrator.beginCapture()
+        try? await Task.sleep(nanoseconds: 250_000_000)
+
+        let suggestionMsgs = engine.suggestionRequests.last?.messages ?? []
+        XCTAssertFalse(suggestionMsgs.isEmpty)
+        XCTAssertTrue(suggestionMsgs.allSatisfy { $0.imageBase64 == nil })
+    }
+
+    func testCriticalContextBlocksFollowUpAndAddImage() async {
+        let engine = ScriptedEngine(responsesPerCall: [["first answer"], ["retake answer"]])
+        engine.inferenceStats = InferenceStats(promptTokens: 950, responseTokens: 10, generationSeconds: 0.1)
+        engine.contextWindow = 1000
+        let orchestrator = makeOrchestrator(engine)
+
+        orchestrator.beginCapture()
+        try? await Task.sleep(nanoseconds: 250_000_000)
+        XCTAssertEqual(orchestrator.contextPressure, .critical)
+
+        orchestrator.sendFollowUp("blocked?")
+        try? await Task.sleep(nanoseconds: 200_000_000)
+        XCTAssertEqual(orchestrator.conversation.compactMap(\.userText), [])
+        XCTAssertEqual(engine.requests.count, 1, "follow-up must not run inference")
+
+        orchestrator.addImage()
+        try? await Task.sleep(nanoseconds: 200_000_000)
+        XCTAssertEqual(orchestrator.conversation.count, 2)
+        XCTAssertEqual(engine.requests.count, 1, "add image must not run inference")
+
+        orchestrator.retake()
+        try? await Task.sleep(nanoseconds: 250_000_000)
+        XCTAssertEqual(orchestrator.conversation.last?.assistantText, "retake answer")
+        XCTAssertEqual(engine.requests.count, 2, "retake still runs a fresh capture")
     }
 
     func testStartNewChatClearsThread() async {

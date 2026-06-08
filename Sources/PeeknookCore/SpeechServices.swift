@@ -28,6 +28,12 @@ public protocol SpeechRecognizing: Sendable {
     @MainActor var isListening: Bool { get }
 }
 
+public enum SpeechRecognitionError: Error, Sendable, Equatable {
+    case unavailable
+    case notAuthorized
+    case onDeviceUnavailable
+}
+
 #if canImport(AVFoundation)
 @MainActor
 public final class AppleSpeechSynthesizer: SpeechSynthesizingStateful {
@@ -126,9 +132,13 @@ public final class AppleSpeechRecognizer: SpeechRecognizing {
         guard recognizer?.isAvailable == true else {
             throw SpeechRecognitionError.unavailable
         }
+        guard recognizer?.supportsOnDeviceRecognition == true else {
+            throw SpeechRecognitionError.onDeviceUnavailable
+        }
         latestTranscript = ""
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
+        request.requiresOnDeviceRecognition = true
         self.request = request
 
         let input = engine.inputNode
@@ -170,11 +180,6 @@ public final class AppleSpeechRecognizer: SpeechRecognizing {
         return latestTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
-
-public enum SpeechRecognitionError: Error, Sendable, Equatable {
-    case unavailable
-    case notAuthorized
-}
 #endif
 
 /// Test double — records speak calls without audio output.
@@ -206,6 +211,7 @@ public final class StubSpeechRecognizer: SpeechRecognizing {
     public var authorized = true
     public var isListening = false
     public var scriptedFinal = ""
+    public var startError: SpeechRecognitionError?
     private var partialHandler: (@Sendable (String) -> Void)?
 
     public init() {}
@@ -213,6 +219,7 @@ public final class StubSpeechRecognizer: SpeechRecognizing {
     public func requestAuthorization() async -> Bool { authorized }
 
     public func startListening(onPartial: @escaping @Sendable (String) -> Void) async throws {
+        if let startError { throw startError }
         isListening = true
         partialHandler = onPartial
         if !scriptedFinal.isEmpty { onPartial(scriptedFinal) }

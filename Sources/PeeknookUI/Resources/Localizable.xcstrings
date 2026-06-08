@@ -180,6 +180,34 @@
     "No events for this model yet." : {
       "comment" : "Empty state when a timeline model filter has no data.",
       "extractionState" : "manual"
+    },
+    "On-device speech unavailable" : {
+      "comment" : "Inline label when dictation cannot run on-device.",
+      "extractionState" : "manual"
+    },
+    "Speech recognition unavailable" : {
+      "comment" : "Inline label when the speech recognizer is unavailable.",
+      "extractionState" : "manual"
+    },
+    "Speech permission denied" : {
+      "comment" : "Inline label when speech recognition permission was denied.",
+      "extractionState" : "manual"
+    },
+    "Uses on-device speech recognition" : {
+      "comment" : "Accessibility hint for the dictation mic button.",
+      "extractionState" : "manual"
+    },
+    "On-device speech models are not available. Download an English dictation language pack in System Settings, then try again." : {
+      "comment" : "Help text when on-device speech models are missing.",
+      "extractionState" : "manual"
+    },
+    "Speech recognition is unavailable right now." : {
+      "comment" : "Help text when the speech recognizer cannot start.",
+      "extractionState" : "manual"
+    },
+    "Allow speech recognition for Peeknook in System Settings." : {
+      "comment" : "Help text when speech recognition permission was denied.",
+      "extractionState" : "manual"
     }
   },
   "version" : "1.0"

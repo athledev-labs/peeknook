@@ -147,9 +147,7 @@ public final class PeeknookModule: NookModule {
                 coordinator.showHome()
                 coordinator.showNook()
                 self.setup.refreshCapturePermission()
-                if self.setup.isReady {
-                    self.orchestrator.beginCapture()
-                }
+                self.orchestrator.beginCapture()
             }
         }
     }

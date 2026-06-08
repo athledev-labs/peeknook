@@ -194,6 +194,49 @@ enum TokenFormat {
     }
 }
 
+/// Warning when the opt-in conversation archive fails to save on disk.
+struct PeekArchivePersistenceBanner: View {
+    @Environment(\.nookResolvedTheme) private var theme
+    let message: String
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "externaldrive.badge.exclamationmark")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Color.orange)
+                .frame(width: 16)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Couldn't save chat")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(theme.primaryLabel)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(message)
+                    .font(.system(size: 10))
+                    .foregroundStyle(theme.secondaryLabel)
+                    .fixedSize(horizontal: false, vertical: true)
+                NookToolbarButton(
+                    title: "Dismiss",
+                    symbol: "xmark",
+                    help: "Hide this warning",
+                    action: onDismiss
+                )
+                .padding(.top, 1)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(theme.subtleFill.opacity(0.28), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(Color.orange.opacity(0.3), lineWidth: 1)
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Couldn't save chat. \(message)")
+    }
+}
+
 /// Proactive nudge shown *before* the next capture/follow-up when the chat is near the model's
 /// context window. Reuses `PeekContextTint` for color and a `SessionFailure`-style recovery layout,
 /// steering the user toward a new chat (the only reliable reset). Hidden while pressure is `.normal`.

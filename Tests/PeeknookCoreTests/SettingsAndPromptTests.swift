@@ -336,4 +336,30 @@ final class SettingsAndPromptTests: XCTestCase {
         XCTAssertEqual(previewSynth.lastSpoken, SessionOrchestrator.readingVoicePreviewSample)
         XCTAssertNil(answerSynth.lastVoiceIdentifier)
     }
+
+    func testSpeechRecognitionErrorEquatable() {
+        XCTAssertEqual(SpeechRecognitionError.unavailable, .unavailable)
+        XCTAssertEqual(SpeechRecognitionError.notAuthorized, .notAuthorized)
+        XCTAssertEqual(SpeechRecognitionError.onDeviceUnavailable, .onDeviceUnavailable)
+        XCTAssertNotEqual(SpeechRecognitionError.unavailable, .onDeviceUnavailable)
+    }
+
+    @MainActor
+    func testToggleVoiceInputSurfacesRecognitionIssue() async {
+        let recognizer = StubSpeechRecognizer()
+        recognizer.startError = .onDeviceUnavailable
+        let orchestrator = SessionOrchestrator(
+            settings: PeeknookSettings(textModel: "x", voiceInputEnabled: true),
+            capture: StubCaptureProvider(sampleText: "x"),
+            inference: ScriptedEngine(responsesPerCall: []),
+            speechRecognizer: recognizer
+        )
+
+        _ = await orchestrator.toggleVoiceInput()
+
+        XCTAssertEqual(orchestrator.voiceInputIssue, .onDeviceUnavailable)
+        XCTAssertFalse(orchestrator.isListeningForVoice)
+        orchestrator.dismissVoiceInputIssue()
+        XCTAssertNil(orchestrator.voiceInputIssue)
+    }
 }

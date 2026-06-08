@@ -37,6 +37,8 @@ public final class SessionOrchestrator {
     /// Partial transcript while voice input is active.
     public private(set) var voicePartialTranscript: String = ""
     public private(set) var isListeningForVoice = false
+    /// Last speech-recognition failure surfaced to the mic control (cleared on retry or dismiss).
+    public private(set) var voiceInputIssue: SpeechRecognitionError?
     /// True while the answer synthesizer is reading an assistant reply aloud.
     public private(set) var isSpeakingLastAnswer = false
     /// True while the settings voice preview sample is playing.
@@ -45,6 +47,8 @@ public final class SessionOrchestrator {
     public private(set) var speechSpokenRange: NSRange?
     /// Bumped when the brief hotkey (or another host action) should open the idle brief composer.
     public private(set) var briefComposerFocusToken = 0
+    /// Set when the opt-in archive fails to save; cleared on the next successful save or dismiss.
+    public private(set) var archivePersistenceIssue: ConversationArchiveError?
 
     public var settings: PeeknookSettings
     public weak var setup: SetupCoordinator?
@@ -108,6 +112,8 @@ public final class SessionOrchestrator {
         default: return .critical
         }
     }
+
+    private var isContextBlocked: Bool { contextPressure == .critical }
 
     /// True once there's an answered chat the user can extend or restart.
     public var hasConversation: Bool {
@@ -219,6 +225,10 @@ public final class SessionOrchestrator {
         briefComposerFocusToken += 1
     }
 
+    public func dismissVoiceInputIssue() {
+        voiceInputIssue = nil
+    }
+
     /// Toggle on-device dictation for briefs and follow-ups. Returns the final transcript when stopping.
     @discardableResult
     public func toggleVoiceInput() async -> String? {
@@ -232,6 +242,7 @@ public final class SessionOrchestrator {
         guard await speechRecognizer.requestAuthorization() else { return nil }
         isListeningForVoice = true
         voicePartialTranscript = ""
+        voiceInputIssue = nil
         do {
             try await speechRecognizer.startListening { [weak self] partial in
                 Task { @MainActor in
@@ -241,6 +252,9 @@ public final class SessionOrchestrator {
         } catch {
             isListeningForVoice = false
             voicePartialTranscript = ""
+            if let speechError = error as? SpeechRecognitionError {
+                voiceInputIssue = speechError
+            }
         }
         return nil
     }
@@ -383,9 +397,21 @@ public final class SessionOrchestrator {
             turnCounter: turnCounter,
             lastPromptTokens: lastPromptTokens
         )
-        enqueueArchiveIO { archive in
-            await archive.save(thread)
+        enqueueArchiveIO { [self] archive in
+            let result = await archive.save(thread)
+            await MainActor.run {
+                switch result {
+                case .success:
+                    archivePersistenceIssue = nil
+                case .failure(let error):
+                    archivePersistenceIssue = error
+                }
+            }
         }
+    }
+
+    public func dismissArchivePersistenceIssue() {
+        archivePersistenceIssue = nil
     }
 
     /// Delete just the chat on screen from the archive, called when the user discards a thread.
@@ -427,6 +453,7 @@ public final class SessionOrchestrator {
         switch phase {
         case .idle, .result:
             let intent: CaptureIntent = hasConversation ? .addToChat : .fresh
+            guard !isContextBlocked || intent == .fresh else { return }
             startCapture(intent: intent)
         default:
             return
@@ -441,7 +468,7 @@ public final class SessionOrchestrator {
 
     /// Capture a new screenshot and **add** it to the current chat (continue with another image).
     public func addImage() {
-        guard case .result = phase else { return }
+        guard case .result = phase, !isContextBlocked else { return }
         startCapture(intent: .addToChat)
     }
 
@@ -536,7 +563,7 @@ public final class SessionOrchestrator {
     /// context. Only valid once an answer is on screen.
     public func sendFollowUp(_ raw: String) {
         let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, case .result = phase, !conversation.isEmpty else { return }
+        guard !text.isEmpty, case .result = phase, !conversation.isEmpty, !isContextBlocked else { return }
         inferenceTask?.cancel()
         suggestionTask?.cancel()
         suggestedFollowUps = []
@@ -761,19 +788,23 @@ public final class SessionOrchestrator {
     }
 
     /// Maps the display conversation to the model's message list: each image turn becomes a
-    /// grounded user message carrying its screenshot; questions and answers pass through.
+    /// grounded user message; only the latest `policy.maxImagePayloads` screenshots ride as
+    /// base64 payloads. Older images still get text grounding via `captureUserMessage`.
     private func inferenceMessages(
         from conversation: [ChatTurn],
-        webLookup: WebLookupSnapshot? = nil
+        webLookup: WebLookupSnapshot? = nil,
+        policy: InferenceReplayPolicy = .inference
     ) -> [InferenceMessage] {
-        let imageTurns = conversation.filter(\.isImage)
-        let lastImageID = conversation.last(where: \.isImage)?.id
+        let imageTurnIDs = conversation.filter(\.isImage).map(\.id)
+        let replayImageIDs = Set(imageTurnIDs.suffix(policy.maxImagePayloads))
+        let lastImageID = imageTurnIDs.last
         return conversation.map { turn in
             switch turn.kind {
             case .image(let capture):
                 let lookup = turn.id == lastImageID ? webLookup : nil
-                let imageIndex = imageTurns.firstIndex(where: { $0.id == turn.id }) ?? 0
+                let imageIndex = imageTurnIDs.firstIndex(of: turn.id) ?? 0
                 let assembly = promptAssembly(continuingSession: imageIndex > 0)
+                let includeImage = replayImageIDs.contains(turn.id)
                 return InferenceMessage(
                     role: .user,
                     text: PromptBuilder.captureUserMessage(
@@ -781,7 +812,7 @@ public final class SessionOrchestrator {
                         assembly: assembly,
                         webLookup: lookup
                     ),
-                    imageBase64: capture.screenshotBase64
+                    imageBase64: includeImage ? capture.screenshotBase64 : nil
                 )
             case .user(let text):
                 return InferenceMessage(
@@ -810,7 +841,7 @@ public final class SessionOrchestrator {
         isFetchingSuggestions = true
         let request = InferenceRequest(
             mode: settings.mode,
-            messages: inferenceMessages(from: conversation),
+            messages: inferenceMessages(from: conversation, policy: .suggestions),
             model: settings.textModel,
             ollamaBaseURL: settings.ollamaBaseURL,
             quickMode: settings.quickMode
