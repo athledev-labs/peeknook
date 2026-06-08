@@ -35,13 +35,10 @@ struct NookToolbarButton: View {
             .padding(.vertical, 5)
             .peekGlass(cornerRadius: 7, isHovered: isHovered, prominent: prominent)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.borderless)
         .fixedSize(horizontal: true, vertical: false)
-        .animation(.easeOut(duration: 0.12), value: isHovered)
-        .onHover {
-            isHovered = $0
-            onHoverChange?($0)
-        }
+        .peekHoverFeedback($isHovered)
+        .onChange(of: isHovered) { _, hovering in onHoverChange?(hovering) }
         .help(help ?? defaultHelp(hotkey: hotkey))
         .peekAction(label: accessibilityLabel, hint: help)
         .peekTestIdentifier(testIdentifier ?? title)
@@ -58,7 +55,7 @@ struct NookToolbarButton: View {
     }
 
     private var foreground: Color {
-        prominent ? Color.accentColor : theme.secondaryLabel
+        PeekHoverForeground.glassLabel(isHovered: isHovered, prominent: prominent, theme: theme)
     }
 }
 
@@ -100,23 +97,23 @@ struct ValueDropdownPill<MenuContent: View>: View {
             HStack(spacing: 4) {
                 Image(systemName: symbol)
                     .font(.system(size: 8, weight: .regular))
-                    .foregroundStyle(theme.tertiaryLabel)
+                    .foregroundStyle(PeekHoverForeground.dropdownIcon(isHovered: isHovered || isOpen, theme: theme))
                 Text(title)
                     .font(.system(size: 9, weight: .regular))
                     .lineLimit(1)
                     .truncationMode(.middle)
-                    .foregroundStyle(theme.secondaryLabel)
+                    .foregroundStyle(PeekHoverForeground.dropdownLabel(isHovered: isHovered || isOpen, theme: theme))
                 Image(systemName: "chevron.down")
                     .font(.system(size: 6, weight: .bold))
-                    .foregroundStyle(theme.tertiaryLabel)
+                    .foregroundStyle(PeekHoverForeground.dropdownIcon(isHovered: isHovered || isOpen, theme: theme))
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 5)
             .peekGlass(cornerRadius: 7, isHovered: isHovered || isOpen)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.borderless)
         .fixedSize()
-        .onHover { isHovered = $0 }
+        .peekHoverFeedback($isHovered)
         .help(help ?? title)
         .accessibilityElement(children: .ignore)
         .accessibilityAddTraits(.isButton)

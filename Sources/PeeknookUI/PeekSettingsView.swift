@@ -46,7 +46,7 @@ public struct PeekSettingsView: View {
     public var body: some View {
         let profile = SystemProfile.current()
         ScrollViewReader { proxy in
-            ScrollView(.vertical, showsIndicators: false) {
+            PeekScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     section(PeekSettingsSectionTitle.setup) {
                         PeekSettingsSetupSection(setup: setup, onOpenSetup: openSetup)

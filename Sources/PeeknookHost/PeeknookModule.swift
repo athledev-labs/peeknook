@@ -117,12 +117,7 @@ public final class PeeknookModule: NookModule {
         }
         // Peeknook's module glyph, not the default OpenNook notch mark (see NookMarkView).
         configuration.topBar.leadingIcon = Self.moduleDescriptor.icon
-        configuration.expandedWidth = 600
-        // Seat the in-content command row close to the panel's rounded bottom. The chrome
-        // reserves an expanded-content safe-area strip (8pt on three edges by default) that
-        // stacks on top of the framework edge padding, leaving a dead band below our last
-        // row. Trim just the bottom inset, the command row is centered/leading, so it
-        // clears the bottom-corner curve. Radii pin the framework's default appearance.
+        configuration.expandedWidth = 520
         configuration.style = NookStyle(
             topCornerRadius: 19,
             bottomCornerRadius: 24,

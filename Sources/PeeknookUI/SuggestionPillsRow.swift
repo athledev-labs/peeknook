@@ -122,12 +122,9 @@ private struct SuggestionPillButton: View {
                         lineWidth: 1
                     )
             )
-            .shadow(color: .black.opacity(isHovered ? 0.2 : 0), radius: isHovered ? 6 : 0, y: 2)
         }
-        .buttonStyle(.plain)
-        .scaleEffect(isHovered ? 1.02 : 1)
-        .animation(.easeOut(duration: 0.14), value: isHovered)
-        .onHover { isHovered = $0 }
+        .buttonStyle(.borderless)
+        .peekHoverFeedback($isHovered, motion: .chip)
         .help(title)
         .peekAction(label: title, hint: "Suggested follow-up, sends immediately")
     }

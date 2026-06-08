@@ -92,12 +92,13 @@ public struct PeekGlobalTopBarItems: View {
                         RoundedRectangle(cornerRadius: 7, style: .continuous)
                             .stroke(isStatsHovered ? theme.subtleStroke : .clear, lineWidth: 1)
                     )
+                    .animation(PeekHoverMotion.link.animation, value: isStatsHovered)
             }
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .onHover { isStatsHovered = $0 }
-        .animation(.spring(response: 0.26, dampingFraction: 0.82), value: isStatsHovered)
+        .buttonStyle(.borderless)
+        .peekHoverFeedback($isStatsHovered, motion: .link)
+        .animation(PeekHoverMotion.link.animation, value: isStatsHovered)
         .help(statsHelp)
         .peekAction(label: "Stats", hint: statsHelp)
         .peekTestIdentifier(PeekTestID.stats)
@@ -139,12 +140,13 @@ public struct PeekGlobalTopBarItems: View {
                             RoundedRectangle(cornerRadius: 7, style: .continuous)
                                 .stroke(isPastChatsHovered ? theme.subtleStroke : .clear, lineWidth: 1)
                         )
+                        .animation(PeekHoverMotion.link.animation, value: isPastChatsHovered)
                 }
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
-            .onHover { isPastChatsHovered = $0 }
-            .animation(.spring(response: 0.26, dampingFraction: 0.82), value: isPastChatsHovered)
+            .buttonStyle(.borderless)
+            .peekHoverFeedback($isPastChatsHovered, motion: .link)
+            .animation(PeekHoverMotion.link.animation, value: isPastChatsHovered)
             .help("Browse and resume past chats")
             .peekAction(label: "Past chats", hint: "Browse and resume past chats")
             .peekTestIdentifier(PeekTestID.pastChats)

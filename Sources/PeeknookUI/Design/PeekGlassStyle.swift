@@ -45,6 +45,7 @@ struct PeekCommandPillGlass: View {
 }
 
 struct PeekGlassSurface: ViewModifier {
+    @Environment(\.peekHoverMotion) private var motion
     var cornerRadius: CGFloat = 7
     var isHovered: Bool = false
     var prominent: Bool = false
@@ -61,6 +62,8 @@ struct PeekGlassSurface: ViewModifier {
                     isHovered: isHovered,
                     prominent: prominent
                 )
+                .animation(motion.animation, value: isHovered)
+                .animation(motion.animation, value: prominent)
             }
             // Clip any rectangular Button/tint backdrop so prominent accent stays inside the squircle.
             .clipShape(shape)

@@ -11,6 +11,7 @@ public struct PeekSetupView: View {
     public var modelCatalog: ModelCatalogService
     public var onContinue: () -> Void
     @Environment(\.nookResolvedTheme) private var theme
+    @Environment(\.nookContentInsets) private var contentInsets
     @EnvironmentObject private var appState: AppState
     @State private var pendingDownload: InferenceModelOption?
     @State private var showsModelLibrary = false
@@ -46,7 +47,8 @@ public struct PeekSetupView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 16)
+        .padding(.leading, contentInsets.leading)
+        .padding(.trailing, contentInsets.trailing)
         .padding(.vertical, 14)
         .frame(maxHeight: PeekPanelLayout.setupMaxHeight)
         .onAppear { setup.startAutoRefresh() }
@@ -58,7 +60,7 @@ public struct PeekSetupView: View {
     }
 
     private var setupContent: some View {
-        ScrollView {
+        PeekScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 header
                 stepList

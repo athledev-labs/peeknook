@@ -40,7 +40,7 @@ struct PeekSurfaceCommandPills<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        PeekScrollView(.horizontal) {
             HStack(spacing: 6) {
                 content()
             }
@@ -123,7 +123,13 @@ struct PeekSurfaceFilterPill: View {
             Text(LocalizedStringKey(title), bundle: .module)
                 .font(.system(size: 9, weight: .regular))
                 .lineLimit(1)
-                .foregroundStyle(isSelected ? Color.accentColor : theme.secondaryLabel)
+                .foregroundStyle(
+                    PeekHoverForeground.glassLabel(
+                        isHovered: isHovered || isSelected,
+                        prominent: isSelected,
+                        theme: theme
+                    )
+                )
                 .padding(.horizontal, 8)
                 .padding(.vertical, 5)
                 .peekGlass(
@@ -134,8 +140,7 @@ struct PeekSurfaceFilterPill: View {
         }
         .buttonStyle(.borderless)
         .fixedSize(horizontal: true, vertical: false)
-        .animation(.easeOut(duration: 0.12), value: isHovered)
-        .onHover { isHovered = $0 }
+        .peekHoverFeedback($isHovered, motion: isSelected ? .link : nil)
         .peekAction(label: title, hint: "Filter stats by date range")
     }
 }

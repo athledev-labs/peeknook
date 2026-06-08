@@ -22,7 +22,7 @@ struct PeekConversationArchiveView: View {
             if summaries.isEmpty {
                 emptyState
             } else {
-                ScrollView {
+                PeekFadedScrollView(maxHeight: PeekPanelLayout.conversationMaxHeight) {
                     VStack(spacing: 6) {
                         ForEach(summaries) { summary in
                             ArchiveRow(
@@ -33,8 +33,6 @@ struct PeekConversationArchiveView: View {
                         }
                     }
                 }
-                .scrollBounceBehavior(.basedOnSize, axes: .vertical)
-                .frame(maxHeight: PeekPanelLayout.conversationMaxHeight)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -146,24 +144,16 @@ private struct ArchiveRow: View {
                 }
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.borderless)
             .peekAction(label: summary.title, hint: subtitle)
 
-            Button(action: onDelete) {
-                Image(systemName: "trash")
-                    .font(.system(size: 10))
-                    .foregroundStyle(theme.tertiaryLabel)
-                    .padding(4)
-            }
-            .buttonStyle(.plain)
-            .help("Delete this chat")
-            .peekAction(label: "Delete chat", hint: "Delete this chat")
+            ArchiveDeleteButton(action: onDelete)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
         .peekGlass(cornerRadius: 8, isHovered: isHovered)
         .onHover { isHovered = $0 }
-        .animation(.easeOut(duration: 0.12), value: isHovered)
+        .animation(PeekHoverMotion.link.animation, value: isHovered)
     }
 
     private var subtitle: String {
@@ -177,4 +167,33 @@ private struct ArchiveRow: View {
         f.unitsStyle = .abbreviated
         return f
     }()
+}
+
+private struct ArchiveDeleteButton: View {
+    let action: () -> Void
+
+    @Environment(\.nookResolvedTheme) private var theme
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "trash")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(isHovered ? Color.red.opacity(0.95) : theme.tertiaryLabel)
+                .frame(width: 22, height: 22)
+                .background {
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(isHovered ? Color.red.opacity(0.14) : .clear)
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .strokeBorder(isHovered ? Color.red.opacity(0.28) : .clear, lineWidth: 0.5)
+                }
+        }
+        .buttonStyle(.borderless)
+        .peekHoverFeedback($isHovered, motion: .link)
+        .animation(PeekHoverMotion.link.animation, value: isHovered)
+        .help("Delete this chat")
+        .peekAction(label: "Delete chat", hint: "Delete this chat")
+    }
 }

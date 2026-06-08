@@ -261,12 +261,12 @@ public struct PeekHomeView: View {
                             .padding(.top, 8)
                     }
                 }
+                .padding(.leading, contentInsets.leading)
+                .padding(.trailing, contentInsets.trailing)
             }
             mainColumn
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .padding(.leading, contentInsets.leading)
-        .padding(.trailing, contentInsets.trailing)
         .padding(.top, 8)
         .animation(.easeOut(duration: 0.2), value: orchestrator.lastNotice)
     }
@@ -297,6 +297,8 @@ public struct PeekHomeView: View {
                     onRecover: handleRecovery
                 )
                 .frame(maxWidth: .infinity, alignment: .topLeading)
+                .padding(.leading, contentInsets.leading)
+                .padding(.trailing, contentInsets.trailing)
                 if case .idle = orchestrator.phase {
                     PeekHomeLayout.anchoredBottomRow(
                         PeekIdleCommandBar(
@@ -312,6 +314,7 @@ public struct PeekHomeView: View {
                             onCapture: { orchestrator.beginCapture() },
                             onResume: resumeChat
                         ),
+                        insets: contentInsets,
                         top: 4
                     )
                 } else {
@@ -321,7 +324,8 @@ public struct PeekHomeView: View {
                             setup: setup,
                             onConfirmPreview: { orchestrator.confirmPreview() },
                             onCancel: { orchestrator.cancel() }
-                        )
+                        ),
+                        insets: contentInsets
                     )
                 }
             }

@@ -43,6 +43,8 @@ struct PeekHomeResultView: View {
             resultFooter
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
+        .padding(.leading, contentInsets.leading)
+        .padding(.trailing, contentInsets.trailing)
     }
 
     /// Collapsed result: the latest answer in one owned, capped scroll region so a long single
@@ -235,6 +237,7 @@ struct PeekHomeResultView: View {
                     }
                 }
             },
+            insets: .zero,
             top: 4
         )
     }

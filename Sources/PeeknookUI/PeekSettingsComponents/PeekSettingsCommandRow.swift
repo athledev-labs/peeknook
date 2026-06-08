@@ -43,9 +43,11 @@ struct PeekSettingsCommandRow: View {
             }
             .padding(.vertical, PeekSettingsRowMetrics.rowVerticalPadding)
             .contentShape(Rectangle())
+            .peekHoverRowHighlight(isHovering)
         }
-        .buttonStyle(.plain)
-        .onHover { isHovering = $0 }
+        .buttonStyle(.borderless)
+        .environment(\.peekHoverMotion, .link)
+        .peekHoverFeedback($isHovering, motion: .link)
     }
 
     @ViewBuilder

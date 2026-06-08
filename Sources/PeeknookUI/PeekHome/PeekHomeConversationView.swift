@@ -19,7 +19,7 @@ struct PeekHomeConversationView: View {
     var body: some View {
         if scrolls {
             ScrollViewReader { proxy in
-                ScrollView {
+                PeekScrollView {
                     turnStack
                 }
                 .scrollBounceBehavior(.basedOnSize, axes: .vertical)

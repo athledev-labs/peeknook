@@ -17,7 +17,7 @@ struct PeekFadedScrollView<Content: View>: View {
     private let fadeHeight: CGFloat = 12
 
     var body: some View {
-        ScrollView(.vertical, showsIndicators: false) {
+        PeekScrollView {
             content()
         }
         .scrollBounceBehavior(.basedOnSize, axes: .vertical)
