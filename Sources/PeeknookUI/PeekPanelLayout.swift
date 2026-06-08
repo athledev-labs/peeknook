@@ -20,6 +20,16 @@ enum PeekPanelLayout {
         return min(300, max(160, visibleHeight * 0.28))
     }
 
+    /// Collapsed result (latest answer only). Caps a long single answer so it scrolls in place
+    /// instead of growing the panel past the notch and shoving the host top bar off screen
+    /// (invariant: growable surfaces self-bound against the notch). Slightly taller than the live
+    /// streaming view, since the result footer/command bar are compact.
+    static var resultContentMaxHeight: CGFloat {
+        guard let screen = notchScreen else { return 320 }
+        let visibleHeight = screen.visibleFrame.height
+        return min(360, max(200, visibleHeight * 0.34))
+    }
+
     /// Full History view (turns + usage chart in one scroll), a bit taller than the collapsed
     /// answer, still capped against the notch screen so it never pushes the host top bar off.
     static var historyMaxHeight: CGFloat {

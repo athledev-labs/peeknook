@@ -29,6 +29,10 @@ public struct PeekCompactView: View {
         .buttonStyle(.plain)
         .disabled(!setup.isReady && orchestrator.phase == .idle)
         .help(helpText)
+        // Single-image button: a plain label (vs `peekAction`, which collapses a multi-child
+        // icon+text subtree) keeps the Button's native activation and disabled state intact for
+        // VoiceOver, while naming the otherwise-unlabeled glyph. `help` supplies the hint.
+        .accessibilityLabel(Text(voiceOverLabel))
     }
 
     /// idle → capture, failed → retry, result → expand to read/continue (no thread loss).
@@ -50,33 +54,45 @@ public struct PeekCompactView: View {
         orchestrator.settings.mode.symbolName
     }
 
+    /// Non-nil exactly during the capture/inference stages, so it doubles as the "busy" signal.
+    private var loadingPresentation: PeekSessionLoadingPresentation? {
+        PeekSessionLoadingPresentation.resolve(for: orchestrator)
+    }
+
     private var isBusy: Bool {
-        switch orchestrator.phase {
-        case .capturing, .inferring:
-            true
-        default:
-            false
-        }
+        loadingPresentation != nil
     }
 
     private var helpText: String {
+        if let presentation = loadingPresentation { return presentation.label }
         switch orchestrator.phase {
         case .idle:
-            if setup.isReady {
-                "Capture & answer (\(orchestrator.settings.captureHotkey.display))"
-            } else {
-                "Finish setup first"
-            }
-        case .capturing:
-            "Capturing…"
+            return setup.isReady
+                ? "Capture & answer (\(orchestrator.settings.captureHotkey.display))"
+                : "Finish setup first"
         case .previewing:
-            "Opening preview to confirm"
-        case .inferring:
-            "Thinking…"
+            return "Opening preview to confirm"
         case .result:
-            "Answer ready, tap to expand"
+            return "Answer ready, tap to expand"
         case .failed(let failure):
-            failure.title
+            return failure.title
+        case .capturing, .inferring:
+            return "" // unreachable: loadingPresentation is non-nil for these
+        }
+    }
+
+    /// Concise VoiceOver label describing what a tap *does* in the current phase (the longer
+    /// ``helpText`` rides as the hint).
+    private var voiceOverLabel: String {
+        switch orchestrator.phase {
+        case .idle:
+            return setup.isReady ? "Capture and answer" : "Finish setup first"
+        case .failed:
+            return "Retry capture"
+        case .result:
+            return "Open answer"
+        case .capturing, .inferring, .previewing:
+            return loadingPresentation?.label ?? "Opening preview to confirm"
         }
     }
 }

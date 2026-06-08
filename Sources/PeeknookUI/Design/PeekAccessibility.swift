@@ -28,6 +28,26 @@ extension View {
             .accessibilityAddTraits(.updatesFrequently)
             .accessibilityLabel(Text(label))
     }
+
+    /// Expose a custom switch row as one VoiceOver toggle: a single element carrying the on/off
+    /// value and the `.isToggle` trait, flipped by a single activation action. Apply to the whole
+    /// row — it replaces the row's children, so the visual pill stays a plain mouse tap target
+    /// without surfacing as a second, redundant element.
+    func peekToggle(
+        label: String,
+        isOn: Bool,
+        hint: String? = nil,
+        toggle: @escaping () -> Void
+    ) -> some View {
+        accessibilityElement(children: .ignore)
+            .accessibilityAddTraits(.isToggle)
+            .accessibilityLabel(Text(label))
+            .accessibilityValue(Text(isOn ? "On" : "Off"))
+            // Explicit `.default`: this is the activation VoiceOver fires on double-tap for the
+            // switch. (The parameterless form already defaults to `.default`; named for clarity.)
+            .accessibilityAction(.default) { toggle() }
+            .modifier(PeekAccessibilityHint(hint: hint))
+    }
 }
 
 private struct PeekAccessibilityHint: ViewModifier {

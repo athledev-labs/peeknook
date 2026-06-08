@@ -16,15 +16,10 @@ struct PeekHomePhaseContent: View {
         switch orchestrator.phase {
         case .idle:
             EmptyView()
-        case .capturing:
-            VStack(alignment: .leading, spacing: 8) {
-                StageLabel(text: "Capturing the screen…", symbol: "camera.viewfinder")
-                AnalyzingSkeleton()
-            }
+        case .capturing, .inferring:
+            activeLoadingContent
         case .previewing(let preview):
             previewContent(preview)
-        case .inferring:
-            inferringContent
         case .result:
             EmptyView()
         case .failed(let failure):
@@ -78,25 +73,35 @@ struct PeekHomePhaseContent: View {
         }
     }
 
+    /// Capture and inference share one resolver for their honest status line (see
+    /// ``PeekSessionLoadingPresentation``). Capturing shows the answer skeleton; inferring streams
+    /// the live conversation, which renders its own skeleton/web-lookup table.
     @ViewBuilder
-    private var inferringContent: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if orchestrator.streamedAnswer.isEmpty {
-                if orchestrator.inferenceModelWasWarm {
-                    StageLabel(text: "Reading the screen…", symbol: "viewfinder")
+    private var activeLoadingContent: some View {
+        if let presentation = PeekSessionLoadingPresentation.resolve(for: orchestrator) {
+            VStack(alignment: .leading, spacing: 8) {
+                loadingLabel(presentation)
+                if case .capturing = orchestrator.phase {
+                    AnalyzingSkeleton()
                 } else {
-                    StageLabel(text: "Loading the model, first run is slower…", symbol: "hourglass")
+                    PeekHomeConversationView(
+                        orchestrator: orchestrator,
+                        showsFullConversation: showsFullConversation,
+                        streaming: true
+                    )
                 }
-            } else {
-                Label("Answering…", systemImage: "sparkles")
-                    .font(.system(size: 12))
-                    .foregroundStyle(theme.secondaryLabel)
             }
-            PeekHomeConversationView(
-                orchestrator: orchestrator,
-                showsFullConversation: showsFullConversation,
-                streaming: true
-            )
+        }
+    }
+
+    @ViewBuilder
+    private func loadingLabel(_ presentation: PeekSessionLoadingPresentation) -> some View {
+        if presentation.shimmers {
+            StageLabel(text: presentation.label, symbol: presentation.symbol)
+        } else {
+            Label(presentation.label, systemImage: presentation.symbol)
+                .font(.system(size: 12))
+                .foregroundStyle(theme.secondaryLabel)
         }
     }
 }

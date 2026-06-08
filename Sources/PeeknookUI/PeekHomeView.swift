@@ -27,6 +27,8 @@ public struct PeekHomeView: View {
     /// normal hover-to-dismiss resumes (no forced Close).
     @State private var keepOpenGrace = false
     @State private var keepOpenGraceTask: Task<Void, Never>?
+    /// Auto-clears a transient ``SessionNotice`` banner a few seconds after it appears.
+    @State private var noticeDismissTask: Task<Void, Never>?
     @FocusState private var isFollowUpFieldFocused: Bool
     @FocusState private var isBriefFieldFocused: Bool
 
@@ -92,7 +94,11 @@ public struct PeekHomeView: View {
         .onChange(of: showsStats) { _, shown in if shown { armKeepOpenGrace() } }
         .onChange(of: showsModelLibrary) { _, shown in if shown { armKeepOpenGrace() } }
         .onChange(of: showsFullConversation) { _, shown in if shown { armKeepOpenGrace() } }
-        .onDisappear { keepOpenGraceTask?.cancel() }
+        .onChange(of: orchestrator.noticeToken) { _, _ in armNoticeAutoDismiss() }
+        .onDisappear {
+            keepOpenGraceTask?.cancel()
+            noticeDismissTask?.cancel()
+        }
         .onChange(of: orchestrator.phase) { _, newPhase in
             isFollowUpComposerVisible = false
             followUpText = ""
@@ -237,6 +243,15 @@ public struct PeekHomeView: View {
                 .padding(.top, 8)
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
+            if let notice = orchestrator.lastNotice {
+                PeekSessionNoticeBanner(
+                    notice: notice,
+                    conversationArchived: orchestrator.settings.persistConversation,
+                    onDismiss: { withAnimation(.easeOut(duration: 0.2)) { orchestrator.clearNotice() } }
+                )
+                .padding(.top, 8)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
             if PracticeMode.shipped.count > 1 {
                 modePicker
                     .padding(.top, 8)
@@ -247,6 +262,7 @@ public struct PeekHomeView: View {
         .padding(.leading, contentInsets.leading)
         .padding(.trailing, contentInsets.trailing)
         .padding(.top, 8)
+        .animation(.easeOut(duration: 0.2), value: orchestrator.lastNotice)
     }
 
     @ViewBuilder
@@ -433,6 +449,19 @@ public struct PeekHomeView: View {
         withAnimation(.easeOut(duration: 0.2)) {
             showsFullConversation = visible
             appState.moduleBreadcrumb = visible ? Self.historyBreadcrumb : nil
+        }
+    }
+
+    /// A transient ``SessionNotice`` is informational, not a standing alert — clear it a few seconds
+    /// after it lands so it doesn't linger over the home surface. Re-armed on every notice token.
+    private func armNoticeAutoDismiss() {
+        guard orchestrator.lastNotice != nil else { return }
+        noticeDismissTask?.cancel()
+        noticeDismissTask = Task {
+            try? await Task.sleep(nanoseconds: 6_000_000_000)
+            if !Task.isCancelled {
+                withAnimation(.easeOut(duration: 0.2)) { orchestrator.clearNotice() }
+            }
         }
     }
 

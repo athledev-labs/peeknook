@@ -37,16 +37,29 @@ struct PeekHomeResultView: View {
             if showsFullConversation {
                 fullConversationScroll
             } else {
-                PeekHomeConversationView(
-                    orchestrator: orchestrator,
-                    showsFullConversation: false,
-                    streaming: false
-                )
+                collapsedResultScroll
                 suggestionPillRow
             }
             resultFooter
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+
+    /// Collapsed result: the latest answer in one owned, capped scroll region so a long single
+    /// answer scrolls in place instead of growing the panel past the notch. The suggestion pills and
+    /// command bar stay fixed below it.
+    private var collapsedResultScroll: some View {
+        ScrollView {
+            PeekHomeConversationView(
+                orchestrator: orchestrator,
+                showsFullConversation: false,
+                streaming: false,
+                scrolls: false
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .scrollBounceBehavior(.basedOnSize, axes: .vertical)
+        .frame(maxHeight: PeekPanelLayout.resultContentMaxHeight)
     }
 
     /// History view: turns and the usage chart scroll together as one region (capped), so the

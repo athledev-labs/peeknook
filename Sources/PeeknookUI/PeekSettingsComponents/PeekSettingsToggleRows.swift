@@ -34,10 +34,13 @@ struct PeekSettingsToggleRow: View {
             PeekSettingsTogglePill(isOn: $isOn)
         }
         .padding(.vertical, 4)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(title)
-        .accessibilityValue(isOn ? "On" : "Off")
-        .accessibilityHint(detail)
+        // One VoiceOver switch element for the whole row (label + on/off value + a single toggle
+        // action), instead of a merged element plus a separately-focusable pill button.
+        .peekToggle(label: title, isOn: isOn, hint: detail) {
+            withAnimation(.spring(response: 0.22, dampingFraction: 0.86)) {
+                isOn.toggle()
+            }
+        }
     }
 }
 
@@ -81,7 +84,8 @@ struct PeekSettingsTogglePill: View {
         }
         .buttonStyle(.plain)
         .onHover { isHovering = $0 }
-        .accessibilityLabel(isOn ? "On" : "Off")
-        .accessibilityHint("Double tap to toggle")
+        // No accessibility here: the only caller is `PeekSettingsToggleRow`, which exposes the whole
+        // row as one VoiceOver switch via `peekToggle` (its `children: .ignore` would suppress these
+        // anyway). The pill stays a plain mouse/trackpad tap target.
     }
 }
