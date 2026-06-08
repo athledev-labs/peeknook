@@ -18,10 +18,10 @@ struct PeekSettingsSetupSection: View {
                     .foregroundStyle(setup.isReady ? Color.green : Color.orange)
                     .frame(width: 18)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(setup.isReady ? "Ready to capture" : "Setup incomplete")
+                    Text(peek: setup.isReady ? "Ready to capture" : "Setup incomplete")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(theme.primaryLabel.opacity(0.95))
-                    Text(summaryDetail)
+                    Text(peek: summaryDetail)
                         .font(.system(size: 9, weight: .regular))
                         .foregroundStyle(theme.tertiaryLabel)
                 }

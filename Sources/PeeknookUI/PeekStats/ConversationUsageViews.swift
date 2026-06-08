@@ -68,7 +68,7 @@ struct ContextThreadChart: View {
     var body: some View {
         if points.isEmpty { EmptyView() } else {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Context through this chat")
+                Text(peek: "Context through this chat")
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(theme.tertiaryLabel)
                 HStack(alignment: .bottom, spacing: 6) {
@@ -81,7 +81,7 @@ struct ContextThreadChart: View {
                     TurnUsageBreakdown(point: selected, onClose: { selectedID = nil })
                         .transition(.opacity.combined(with: .move(edge: .top)))
                 }
-                Text("Tap a bar for a breakdown · bars = prompt size per answer (full thread)")
+                Text(peek: "Tap a bar for a breakdown · bars = prompt size per answer (full thread)")
                     .font(.system(size: 9))
                     .foregroundStyle(theme.quaternaryLabel)
             }
@@ -126,7 +126,7 @@ struct TurnUsageBreakdown: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("\(point.label) breakdown")
+                Text(verbatim: "\(point.label) \(PeekLocalized("breakdown"))")
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(theme.secondaryLabel)
                 Spacer(minLength: 0)
@@ -167,7 +167,7 @@ struct TurnUsageBreakdown: View {
 
     private func breakdownRow(_ title: String, value: String, detail: String?) -> some View {
         HStack(alignment: .top, spacing: 8) {
-            Text(title)
+            Text(peek: title)
                 .font(.system(size: 9))
                 .foregroundStyle(theme.tertiaryLabel)
                 .frame(width: 92, alignment: .leading)
@@ -207,7 +207,7 @@ struct PeekArchivePersistenceBanner: View {
                 .foregroundStyle(Color.orange)
                 .frame(width: 16)
             VStack(alignment: .leading, spacing: 3) {
-                Text("Couldn't save chat")
+                Text(peek: "Couldn't save chat")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(theme.primaryLabel)
                     .fixedSize(horizontal: false, vertical: true)
@@ -329,7 +329,7 @@ struct PeekContextMeter: View {
                 .progressViewStyle(.linear)
                 .frame(maxWidth: 72)
                 .tint(PeekContextTint.color(for: fraction))
-            Text("\(TokenFormat.compact(used)) / \(TokenFormat.compact(total)) context")
+            Text(verbatim: "\(TokenFormat.compact(used)) / \(TokenFormat.compact(total)) \(PeekLocalized("context"))")
                 .font(.system(size: 9))
                 .foregroundStyle(theme.tertiaryLabel)
                 .lineLimit(1)

@@ -21,7 +21,7 @@ struct PeekSettingsStatusRow: View {
                     .foregroundStyle(tone.tint(theme: theme))
                     .frame(width: PeekSettingsRowMetrics.iconWidth)
 
-                Text(title)
+                Text(peek: title)
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(theme.primaryLabel.opacity(0.95))
                     .lineLimit(1)
@@ -33,7 +33,7 @@ struct PeekSettingsStatusRow: View {
             }
 
             if let detail, !detail.isEmpty {
-                Text(detail)
+                Text(peek: detail)
                     .font(.system(size: 9, weight: .regular))
                     .foregroundStyle(tone == .error ? Color.red.opacity(0.9) : theme.tertiaryLabel)
                     .fixedSize(horizontal: false, vertical: true)
@@ -51,7 +51,7 @@ struct PeekSettingsStatusBadge: View {
     @Environment(\.nookResolvedTheme) private var theme
 
     var body: some View {
-        Text(text)
+        Text(peek: text)
             .font(.system(size: 9, weight: .semibold))
             .foregroundStyle(tone.badgeForeground(theme: theme))
             .lineLimit(1)

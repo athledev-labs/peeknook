@@ -43,10 +43,10 @@ struct PeekSettingsModelPickerRow: View {
                 .frame(width: PeekSettingsRowMetrics.iconWidth)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("Vision model")
+                Text(peek: "Vision model")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(theme.primaryLabel.opacity(0.95))
-                Text(detail)
+                Text(peek: detail)
                     .font(.system(size: 9, weight: .regular))
                     .foregroundStyle(theme.tertiaryLabel)
                     .fixedSize(horizontal: false, vertical: true)

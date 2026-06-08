@@ -19,6 +19,11 @@ extension Text {
     init(peek key: LocalizedStringKey) {
         self.init(key, bundle: .module)
     }
+
+    /// Localized `Text` for dynamic keys (settings row titles, failure copy, etc.).
+    init(peek key: String) {
+        self.init(LocalizedStringKey(key), bundle: .module)
+    }
 }
 
 /// Localized `String` resolved against this module's String Catalog, for interpolation into

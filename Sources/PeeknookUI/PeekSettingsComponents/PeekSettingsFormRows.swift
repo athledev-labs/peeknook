@@ -21,7 +21,7 @@ struct PeekSettingsFormField: View {
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(isFocused ? theme.accent : theme.headerInactiveIcon)
                     .frame(width: PeekSettingsRowMetrics.iconWidth)
-                Text(title)
+                Text(peek: title)
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(theme.tertiaryLabel)
             }
@@ -53,7 +53,7 @@ struct PeekSettingsValueRow: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: PeekSettingsRowMetrics.rowSpacing) {
-            Text(label)
+            Text(peek: label)
                 .font(.system(size: 11, weight: .regular))
                 .foregroundStyle(theme.secondaryLabel)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -73,7 +73,7 @@ struct PeekSettingsNote: View {
     @Environment(\.nookResolvedTheme) private var theme
 
     var body: some View {
-        Text(text)
+        Text(peek: text)
             .font(.system(size: 10, weight: .regular))
             .foregroundStyle(theme.tertiaryLabel)
             .fixedSize(horizontal: false, vertical: true)

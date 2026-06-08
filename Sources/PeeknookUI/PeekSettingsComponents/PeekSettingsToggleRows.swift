@@ -21,10 +21,10 @@ struct PeekSettingsToggleRow: View {
                 .frame(width: 18)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
+                Text(peek: title)
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(theme.primaryLabel.opacity(0.95))
-                Text(detail)
+                Text(peek: detail)
                     .font(.system(size: 9, weight: .regular))
                     .foregroundStyle(theme.tertiaryLabel)
                     .fixedSize(horizontal: false, vertical: true)

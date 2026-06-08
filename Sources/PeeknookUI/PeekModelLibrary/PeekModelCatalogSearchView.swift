@@ -115,12 +115,12 @@ struct PeekModelCatalogSearchView: View {
                 .foregroundStyle(Color.orange.opacity(0.95))
                 .fixedSize(horizontal: false, vertical: true)
         } else if trimmedQuery.isEmpty {
-            Text("Search the public Ollama library, results load from ollama.com.")
+            Text(peek: "Search the public Ollama library, results load from ollama.com.")
                 .font(.system(size: 9))
                 .foregroundStyle(theme.tertiaryLabel)
                 .fixedSize(horizontal: false, vertical: true)
         } else if !isSearching, displayedResults.isEmpty {
-            Text("No models match \"\(trimmedQuery)\".")
+            Text(verbatim: "\(PeekLocalized("No models match")) \"\(trimmedQuery)\".")
                 .font(.system(size: 9))
                 .foregroundStyle(theme.tertiaryLabel)
         }
@@ -154,9 +154,9 @@ struct PeekModelCatalogSearchView: View {
 
     private var tableHeader: some View {
         HStack(spacing: 8) {
-            Text("Model")
+            Text(peek: "Model")
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Text("Tags")
+            Text(peek: "Tags")
                 .frame(width: 44, alignment: .trailing)
         }
         .font(.system(size: 8, weight: .semibold))
@@ -234,13 +234,13 @@ struct PeekModelCatalogSearchView: View {
     private func tagRows(for model: RemoteCatalogModel) -> some View {
         let tags = tagsByModel[model.modelID] ?? []
         if tags.isEmpty, loadingTags.contains(model.modelID) {
-            Text("Loading tags…")
+            Text(peek: "Loading tags…")
                 .font(.system(size: 9))
                 .foregroundStyle(theme.secondaryLabel)
                 .padding(.leading, 26)
                 .padding(.bottom, 6)
         } else if tags.isEmpty {
-            Text("No tags listed.")
+            Text(peek: "No tags listed.")
                 .font(.system(size: 9))
                 .foregroundStyle(theme.tertiaryLabel)
                 .padding(.leading, 26)
@@ -287,7 +287,7 @@ struct PeekModelCatalogSearchView: View {
     }
 
     private func badge(_ title: String, color: Color) -> some View {
-        Text(title)
+        Text(peek: title)
             .font(.system(size: 8, weight: .semibold))
             .foregroundStyle(color.opacity(0.95))
             .padding(.horizontal, 5)

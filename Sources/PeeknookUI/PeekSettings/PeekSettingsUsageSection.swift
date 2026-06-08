@@ -27,7 +27,7 @@ struct PeekSettingsDataSection: View {
             Button("Reset stats", role: .destructive, action: onReset)
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Clears capture counts, token totals, and history on this Mac. You can't undo it.")
+            Text(peek: "Clears capture counts, token totals, and history on this Mac. You can't undo it.")
         }
     }
 }

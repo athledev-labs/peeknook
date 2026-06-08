@@ -80,7 +80,7 @@ struct PeekModelLibraryRow: View {
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(titleColor)
             if isRecommended {
-                Text("Recommended")
+                Text(peek: "Recommended")
                     .font(.system(size: 8, weight: .semibold))
                     .foregroundStyle(theme.accent)
                     .padding(.horizontal, 5)
@@ -97,25 +97,25 @@ struct PeekModelLibraryRow: View {
         case .none:
             EmptyView()
         case .checking:
-            Text("Checking…")
+            Text(peek: "Checking…")
                 .font(.system(size: 8, weight: .medium))
                 .foregroundStyle(theme.tertiaryLabel)
         case .supports:
-            Text("Vision")
+            Text(peek: "Vision")
                 .font(.system(size: 8, weight: .semibold))
                 .foregroundStyle(Color.green.opacity(0.9))
                 .padding(.horizontal, 5)
                 .padding(.vertical, 2)
                 .background(Color.green.opacity(0.12), in: Capsule(style: .continuous))
         case .textOnly:
-            Text("Text-only")
+            Text(peek: "Text-only")
                 .font(.system(size: 8, weight: .semibold))
                 .foregroundStyle(Color.orange.opacity(0.95))
                 .padding(.horizontal, 5)
                 .padding(.vertical, 2)
                 .background(Color.orange.opacity(0.12), in: Capsule(style: .continuous))
         case .unknown:
-            Text("Vision unknown")
+            Text(peek: "Vision unknown")
                 .font(.system(size: 8, weight: .medium))
                 .foregroundStyle(theme.tertiaryLabel)
                 .padding(.horizontal, 5)

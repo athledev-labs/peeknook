@@ -44,10 +44,10 @@ struct PeekShortcutRow: View {
                 .frame(width: 18)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
+                Text(peek: title)
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(theme.primaryLabel.opacity(0.95))
-                Text(isRecording ? "Press a shortcut. Esc to cancel." : detail)
+                Text(peek: isRecording ? "Press a shortcut. Esc to cancel." : detail)
                     .font(.system(size: 9, weight: .regular))
                     .foregroundStyle(theme.tertiaryLabel)
             }
@@ -70,7 +70,7 @@ struct PeekShortcutRow: View {
     @ViewBuilder
     private var shortcutControl: some View {
         if isRecording {
-            Text("Listening…")
+            Text(peek: "Listening…")
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(theme.primaryLabel.opacity(0.9))
                 .padding(.horizontal, 10)
@@ -85,7 +85,7 @@ struct PeekShortcutRow: View {
                     }
                 }
 
-                Text("Change")
+                Text(peek: "Change")
                     .font(.system(size: 9, weight: .semibold))
                     .foregroundStyle(isHovering ? theme.accent : theme.secondaryLabel)
             }

@@ -25,11 +25,11 @@ struct PeekFailureView: View {
                     .frame(width: 18)
                     .peekDecorative()
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(failure.title)
+                    Text(peek: failure.title)
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(theme.primaryLabel)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text(failure.message)
+                    Text(peek: failure.message)
                         .font(.system(size: 11))
                         .foregroundStyle(theme.secondaryLabel)
                         .fixedSize(horizontal: false, vertical: true)
@@ -107,13 +107,13 @@ struct PeekFailureView: View {
 private extension RecoveryAction {
     func label(usesRemoteOllama: Bool) -> String {
         switch self {
-        case .tryAgain: "Try again"
-        case .openSetup: "Open setup"
-        case .checkOllama: usesRemoteOllama ? "Check server" : "Open Ollama"
-        case .downloadModel: "Download model"
-        case .switchModel: "Switch model"
-        case .openScreenRecordingSettings: "Open settings"
-        case .openAccessibilitySettings: "Open settings"
+        case .tryAgain: PeekLocalized("Try again")
+        case .openSetup: PeekLocalized("Open setup")
+        case .checkOllama: usesRemoteOllama ? PeekLocalized("Check server") : PeekLocalized("Open Ollama")
+        case .downloadModel: PeekLocalized("Download model")
+        case .switchModel: PeekLocalized("Switch model")
+        case .openScreenRecordingSettings: PeekLocalized("Open settings")
+        case .openAccessibilitySettings: PeekLocalized("Open settings")
         }
     }
 

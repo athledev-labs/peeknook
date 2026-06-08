@@ -18,7 +18,7 @@ struct PeekSettingsSetupChip: View {
     var body: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(title)
+                Text(peek: title)
                     .font(.system(size: 9, weight: .medium))
                     .foregroundStyle(theme.secondaryLabel)
                     .lineLimit(1)
@@ -26,7 +26,7 @@ struct PeekSettingsSetupChip: View {
                     Image(systemName: tone.icon)
                         .font(.system(size: 8, weight: .semibold))
                         .foregroundStyle(tone.tint(theme: theme))
-                    Text(status)
+                    Text(peek: status)
                         .font(.system(size: 9, weight: .semibold))
                         .foregroundStyle(tone.badgeForeground(theme: theme))
                         .lineLimit(1)

@@ -25,7 +25,11 @@ struct PeekSettingsDisclosureSection<Content: View>: View {
                         .foregroundStyle(theme.quaternaryLabel)
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
                         .frame(width: iconGutter)
-                    SettingsSectionLabel(title)
+                    Text(peek: title)
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(theme.quaternaryLabel)
+                        .tracking(0.42)
+                        .textCase(.uppercase)
                     Spacer(minLength: 0)
                 }
                 .contentShape(Rectangle())

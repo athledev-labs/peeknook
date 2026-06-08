@@ -29,8 +29,8 @@ extension View {
     func peekAction(label: String, hint: String? = nil) -> some View {
         accessibilityElement(children: .ignore)
             .accessibilityAddTraits(.isButton)
-            .accessibilityLabel(Text(label))
-            .modifier(PeekAccessibilityHint(hint: hint))
+        .accessibilityLabel(Text(LocalizedStringKey(label), bundle: .module))
+        .modifier(PeekAccessibilityHint(hint: hint))
     }
 
     /// Announce a transient busy region (skeletons, shimmer placeholders) as a single status
@@ -54,8 +54,8 @@ extension View {
     ) -> some View {
         accessibilityElement(children: .ignore)
             .accessibilityAddTraits(.isToggle)
-            .accessibilityLabel(Text(label))
-            .accessibilityValue(Text(isOn ? "On" : "Off"))
+        .accessibilityLabel(Text(LocalizedStringKey(label), bundle: .module))
+        .accessibilityValue(Text(LocalizedStringKey(isOn ? "On" : "Off"), bundle: .module))
             // Explicit `.default`: this is the activation VoiceOver fires on double-tap for the
             // switch. (The parameterless form already defaults to `.default`; named for clarity.)
             .accessibilityAction(.default) { toggle() }

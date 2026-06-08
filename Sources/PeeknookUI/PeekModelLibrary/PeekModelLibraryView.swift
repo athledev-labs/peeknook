@@ -169,7 +169,7 @@ struct PeekModelLibraryView: View {
     private var customContent: some View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Ollama tag")
+                Text(peek: "Ollama tag")
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(theme.tertiaryLabel)
 
@@ -229,7 +229,7 @@ struct PeekModelLibraryView: View {
         switch customValidation {
         case .idle:
             if trimmedCustomTag.isEmpty {
-                Text("Type any Ollama tag. Peek pulls it if it isn't installed yet.")
+                Text(peek: "Type any Ollama tag. Peek pulls it if it isn't installed yet.")
                     .font(.system(size: 9))
                     .foregroundStyle(theme.tertiaryLabel)
                     .fixedSize(horizontal: false, vertical: true)
@@ -237,33 +237,33 @@ struct PeekModelLibraryView: View {
         case .checking:
             HStack(spacing: 4) {
                 ProgressView().controlSize(.mini)
-                Text("Checking vision support…")
+                Text(peek: "Checking vision support…")
                     .font(.system(size: 9))
                     .foregroundStyle(theme.secondaryLabel)
             }
         case .ready(let vision):
             switch vision {
             case .some(true):
-                Text("Supports vision, ready to add.")
+                Text(peek: "Supports vision, ready to add.")
                     .font(.system(size: 9))
                     .foregroundStyle(Color.green.opacity(0.9))
             case .some(false):
-                Text("Text-only, it won't read your screenshots. You can still add it to test.")
+                Text(peek: "Text-only, it won't read your screenshots. You can still add it to test.")
                     .font(.system(size: 9))
                     .foregroundStyle(Color.orange.opacity(0.95))
                     .fixedSize(horizontal: false, vertical: true)
             case .none:
-                Text("Couldn't verify vision support. Peek will add it anyway.")
+                Text(peek: "Couldn't verify vision support. Peek will add it anyway.")
                     .font(.system(size: 9))
                     .foregroundStyle(theme.secondaryLabel)
                     .fixedSize(horizontal: false, vertical: true)
             }
         case .duplicate:
-            Text("Already in your library.")
+            Text(peek: "Already in your library.")
                 .font(.system(size: 9))
                 .foregroundStyle(theme.secondaryLabel)
         case .unreachable:
-            Text("Can't reach Ollama, check it's running.")
+            Text(peek: "Can't reach Ollama, check it's running.")
                 .font(.system(size: 9))
                 .foregroundStyle(Color.orange.opacity(0.95))
         }
@@ -289,7 +289,7 @@ struct PeekModelLibraryView: View {
     }
 
     private var introNote: some View {
-        Text("Peek sends a screenshot with every capture. Pick a model that supports vision (image input).")
+        Text(peek: "Peek sends a screenshot with every capture. Pick a model that supports vision (image input).")
             .font(.system(size: 10))
             .foregroundStyle(theme.secondaryLabel)
             .fixedSize(horizontal: false, vertical: true)
@@ -300,7 +300,7 @@ struct PeekModelLibraryView: View {
             HStack(spacing: 4) {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 9, weight: .bold))
-                Text("Back")
+                Text(peek: "Back")
                     .font(.system(size: 10, weight: .medium))
             }
             .foregroundStyle(theme.secondaryLabel)

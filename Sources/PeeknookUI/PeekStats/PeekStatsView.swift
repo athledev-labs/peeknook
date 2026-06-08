@@ -102,7 +102,7 @@ struct PeekStatsView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Clears capture counts, token totals, and history on this Mac. You can't undo it.")
+            Text(peek: "Clears capture counts, token totals, and history on this Mac. You can't undo it.")
         }
     }
 
@@ -195,7 +195,7 @@ struct PeekStatsView: View {
                 .foregroundStyle(theme.tertiaryLabel)
                 .frame(width: PeekSettingsRowMetrics.iconWidth)
                 .peekDecorative()
-            Text(label)
+            Text(peek: label)
                 .font(.system(size: 11, weight: .regular))
                 .foregroundStyle(theme.secondaryLabel)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -227,12 +227,12 @@ struct PeekStatsView: View {
             .padding(.horizontal, 2)
             HStack {
                 legendDot(color: Color.accentColor.opacity(0.85))
-                Text("Prompt In \(TokenFormat.compact(window.promptTokens))")
+                Text(verbatim: "\(PeekLocalized("Prompt In")) \(TokenFormat.compact(window.promptTokens))")
                     .font(.system(size: 11, weight: .regular))
                     .foregroundStyle(theme.secondaryLabel)
                 Spacer(minLength: 8)
                 legendDot(color: theme.tertiaryLabel.opacity(0.3))
-                Text("Generated \(TokenFormat.compact(window.responseTokens))")
+                Text(verbatim: "\(PeekLocalized("Generated")) \(TokenFormat.compact(window.responseTokens))")
                     .font(.system(size: 11, weight: .regular))
                     .foregroundStyle(theme.secondaryLabel)
             }

@@ -24,12 +24,12 @@ struct PeekSettingsCommandRow: View {
                     .frame(width: PeekSettingsRowMetrics.iconWidth)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
+                    Text(peek: title)
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(titleTint)
                         .multilineTextAlignment(.leading)
                         .lineLimit(1)
-                    Text(subtitle)
+                    Text(peek: subtitle)
                         .font(.system(size: 9, weight: .regular))
                         .foregroundStyle(theme.tertiaryLabel)
                         .fixedSize(horizontal: false, vertical: true)
@@ -56,7 +56,7 @@ struct PeekSettingsCommandRow: View {
                 .font(.system(size: 9, weight: .bold))
                 .foregroundStyle(isHovering ? iconTint : theme.quaternaryLabel)
         case .button(let label):
-            Text(label)
+            Text(peek: label)
                 .font(.system(size: 9, weight: .semibold))
                 .foregroundStyle(buttonForeground)
                 .padding(.horizontal, 10)
