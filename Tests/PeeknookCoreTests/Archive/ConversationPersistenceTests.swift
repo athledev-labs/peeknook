@@ -27,8 +27,7 @@ final class ConversationPersistenceTests: XCTestCase {
             XCTFail("Expected result, got \(firstPhase)")
             return
         }
-        // The detached save task needs a beat to land on disk.
-        try await Task.sleep(nanoseconds: 150_000_000)
+        _ = await store.waitForSummaries(count: 1)
 
         let second = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b", persistConversation: true),
@@ -37,9 +36,9 @@ final class ConversationPersistenceTests: XCTestCase {
         )
         second.conversationArchive = store
         second.loadPersistedConversationIfEnabled()
-        try await Task.sleep(nanoseconds: 200_000_000)
+        let restored = await second.waitUntil { second.hasConversation }
+        XCTAssertTrue(restored)
 
-        XCTAssertTrue(second.hasConversation)
         second.resumeChat()
         guard case .result("answer") = second.phase else {
             XCTFail("Expected restored result, got \(second.phase)")
@@ -58,7 +57,7 @@ final class ConversationPersistenceTests: XCTestCase {
         )
         orchestrator.conversationArchive = store
         orchestrator.beginCapture()
-        try await Task.sleep(nanoseconds: 200_000_000)
+        _ = await orchestrator.waitForResult("ok")
 
         let summaries = await store.summaries()
         XCTAssertTrue(summaries.isEmpty, "Persistence off should never write a thread")
@@ -80,9 +79,9 @@ final class ConversationPersistenceTests: XCTestCase {
         )
         orchestrator.conversationArchive = store
         orchestrator.beginCapture()
-        try await Task.sleep(nanoseconds: 350_000_000)
-        try await Task.sleep(nanoseconds: 200_000_000)
-        XCTAssertEqual(orchestrator.archivePersistenceIssue, .directoryUnavailable)
+        _ = await orchestrator.waitForResult("hi")
+        let issueReported = await orchestrator.waitForArchivePersistenceIssue(.directoryUnavailable)
+        XCTAssertTrue(issueReported)
     }
 
     func testDiscardActiveThreadRemovesItFromArchive() async throws {
@@ -96,14 +95,12 @@ final class ConversationPersistenceTests: XCTestCase {
         )
         orchestrator.conversationArchive = store
         orchestrator.beginCapture()
-        try await Task.sleep(nanoseconds: 350_000_000)
-        try await Task.sleep(nanoseconds: 150_000_000)
-        let beforeDiscard = await store.summaries()
+        _ = await orchestrator.waitForResult("hi")
+        let beforeDiscard = await store.waitForSummaries(count: 1)
         XCTAssertEqual(beforeDiscard.count, 1)
 
         orchestrator.startNewChat()
-        try await Task.sleep(nanoseconds: 150_000_000)
-        let afterDiscard = await store.summaries()
+        let afterDiscard = await store.waitForSummaries(count: 0)
         XCTAssertTrue(afterDiscard.isEmpty, "Discarding the active chat should remove it from the archive")
     }
 

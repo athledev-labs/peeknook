@@ -10,6 +10,7 @@ final class ScriptedEngine: InferenceEngine, @unchecked Sendable {
     private(set) var suggestionRequests: [InferenceRequest] = []
     private let responsesPerCall: [[String]]
     private var callIndex = 0
+    private let tokenDelayNanoseconds: UInt64
     /// Canned suggestion-pass result.
     var followUps: [String] = []
     var inferenceStats: InferenceStats?
@@ -18,8 +19,9 @@ final class ScriptedEngine: InferenceEngine, @unchecked Sendable {
     /// Whether `warmUp` reports the model as loaded (drives prewarm warmth tests).
     var warmUpSucceeds = true
 
-    init(responsesPerCall: [[String]]) {
+    init(responsesPerCall: [[String]], tokenDelayNanoseconds: UInt64 = 0) {
         self.responsesPerCall = responsesPerCall
+        self.tokenDelayNanoseconds = tokenDelayNanoseconds
     }
 
     func health(baseURL: String, model: String, acceptInsecureRemote: Bool) async -> InferenceHealth { .ready }
@@ -40,10 +42,13 @@ final class ScriptedEngine: InferenceEngine, @unchecked Sendable {
         requests.append(request)
         let tokens = callIndex < responsesPerCall.count ? responsesPerCall[callIndex] : []
         callIndex += 1
+        let delay = tokenDelayNanoseconds
         return AsyncThrowingStream { continuation in
             let task = Task {
                 for token in tokens {
-                    try? await Task.sleep(nanoseconds: 8_000_000)
+                    if delay > 0 {
+                        try? await Task.sleep(nanoseconds: delay)
+                    }
                     if Task.isCancelled { break }
                     continuation.yield(.token(token))
                 }
@@ -76,7 +81,7 @@ final class ConversationTests: XCTestCase {
         let orchestrator = makeOrchestrator(engine)
         orchestrator.setSessionBrief("Chess themes only")
         orchestrator.beginCapture()
-        try? await Task.sleep(nanoseconds: 200_000_000)
+        _ = await orchestrator.waitForInferring()
         XCTAssertTrue(engine.requests.first?.messages.first?.text.contains("Session brief") ?? false)
         orchestrator.startNewChat()
         XCTAssertEqual(orchestrator.sessionBrief, "")
@@ -87,10 +92,9 @@ final class ConversationTests: XCTestCase {
         let orchestrator = makeOrchestrator(engine)
 
         orchestrator.beginCapture()
-        try? await Task.sleep(nanoseconds: 200_000_000)
-
-        guard case .result("first answer") = orchestrator.phase else {
-            return XCTFail("Expected first answer, got \(orchestrator.phase)")
+        let phase = await orchestrator.waitForResult("first answer")
+        guard case .result("first answer") = phase else {
+            return XCTFail("Expected first answer, got \(phase)")
         }
         // The chat opens with the captured image, then the answer.
         XCTAssertEqual(orchestrator.conversation.count, 2)
@@ -106,13 +110,12 @@ final class ConversationTests: XCTestCase {
         let orchestrator = makeOrchestrator(engine)
 
         orchestrator.beginCapture()
-        try? await Task.sleep(nanoseconds: 200_000_000)
+        _ = await orchestrator.waitForResult("first answer")
 
         orchestrator.sendFollowUp("why?")
-        try? await Task.sleep(nanoseconds: 200_000_000)
-
-        guard case .result("second answer") = orchestrator.phase else {
-            return XCTFail("Expected second answer, got \(orchestrator.phase)")
+        let phase = await orchestrator.waitForResult("second answer")
+        guard case .result("second answer") = phase else {
+            return XCTFail("Expected second answer, got \(phase)")
         }
         XCTAssertEqual(orchestrator.conversation.compactMap(\.assistantText), ["first answer", "second answer"])
         XCTAssertEqual(orchestrator.conversation.compactMap(\.userText), ["why?"])
@@ -132,9 +135,9 @@ final class ConversationTests: XCTestCase {
         let orchestrator = makeOrchestrator(engine)
 
         orchestrator.beginCapture()
-        try? await Task.sleep(nanoseconds: 200_000_000)
+        _ = await orchestrator.waitForResult("first answer")
         orchestrator.addImage()
-        try? await Task.sleep(nanoseconds: 200_000_000)
+        _ = await orchestrator.waitForResult("second answer")
 
         // Two image turns now coexist in one chat.
         let c = orchestrator.conversation
@@ -158,9 +161,9 @@ final class ConversationTests: XCTestCase {
         let orchestrator = makeOrchestrator(engine)
 
         orchestrator.beginCapture()
-        try? await Task.sleep(nanoseconds: 200_000_000)
+        _ = await orchestrator.waitForResult("first answer")
         orchestrator.retake()
-        try? await Task.sleep(nanoseconds: 200_000_000)
+        _ = await orchestrator.waitForResult("second answer")
 
         // Retake starts over: just the new image + its answer.
         XCTAssertEqual(orchestrator.conversation.count, 2)
@@ -172,9 +175,9 @@ final class ConversationTests: XCTestCase {
         let orchestrator = makeOrchestrator(engine)
 
         orchestrator.beginCapture()
-        try? await Task.sleep(nanoseconds: 200_000_000)
+        _ = await orchestrator.waitForResult("first answer")
         orchestrator.beginCapture()
-        try? await Task.sleep(nanoseconds: 200_000_000)
+        _ = await orchestrator.waitForResult("second answer")
 
         XCTAssertEqual(orchestrator.conversation.count, 4)
         XCTAssertEqual(orchestrator.conversation.compactMap(\.assistantText), ["first answer", "second answer"])
@@ -188,15 +191,15 @@ final class ConversationTests: XCTestCase {
         orchestrator.usage = usage
 
         orchestrator.beginCapture()
-        try? await Task.sleep(nanoseconds: 150_000_000)
+        _ = await orchestrator.waitForResult("a")
         XCTAssertEqual(usage.stats.captures, 1)
 
         orchestrator.sendFollowUp("more")   // no new image
-        try? await Task.sleep(nanoseconds: 150_000_000)
+        _ = await orchestrator.waitForResult("b")
         XCTAssertEqual(usage.stats.captures, 1, "text follow-up is not a capture")
 
         orchestrator.addImage()             // new screenshot
-        try? await Task.sleep(nanoseconds: 150_000_000)
+        _ = await orchestrator.waitForResult("c")
         XCTAssertEqual(usage.stats.captures, 2, "an added image is a new capture")
     }
 
@@ -208,11 +211,11 @@ final class ConversationTests: XCTestCase {
         orchestrator.usage = usage
 
         orchestrator.beginCapture()
-        try? await Task.sleep(nanoseconds: 150_000_000)
+        _ = await orchestrator.waitForResult("a")
         XCTAssertEqual(usage.stats.captures, 1)
 
         orchestrator.sendFollowUp("more")
-        try? await Task.sleep(nanoseconds: 150_000_000)
+        _ = await orchestrator.waitForResult("b")
         XCTAssertEqual(usage.stats.captures, 1, "a follow-up reuses the screenshot, not a new capture")
     }
 
@@ -227,14 +230,17 @@ final class ConversationTests: XCTestCase {
     }
 
     func testStoppingFollowUpKeepsThread() async {
-        let engine = ScriptedEngine(responsesPerCall: [["done"], ["slow ", "answer ", "tokens"]])
+        let engine = ScriptedEngine(
+            responsesPerCall: [["done"], ["slow ", "answer ", "tokens"]],
+            tokenDelayNanoseconds: 8_000_000
+        )
         let orchestrator = makeOrchestrator(engine)
 
         orchestrator.beginCapture()
-        try? await Task.sleep(nanoseconds: 150_000_000)
+        _ = await orchestrator.waitForResult("done")
 
         orchestrator.sendFollowUp("expand")
-        try? await Task.sleep(nanoseconds: 12_000_000) // mid follow-up stream
+        _ = await orchestrator.waitForInferring()
         orchestrator.cancel()
 
         // The established answer survives; the unanswered question is dropped.
@@ -253,12 +259,12 @@ final class ConversationTests: XCTestCase {
         let orchestrator = makeOrchestrator(engine)
 
         orchestrator.beginCapture()
-        try? await Task.sleep(nanoseconds: 250_000_000)
-
+        let phase = await orchestrator.waitForResult("The error is a nil unwrap.")
         XCTAssertEqual(orchestrator.conversation.last?.assistantText, "The error is a nil unwrap.")
-        XCTAssertEqual(orchestrator.suggestedFollowUps, ["How do I fix it?", "What line is it on?"])
-        guard case .result("The error is a nil unwrap.") = orchestrator.phase else {
-            return XCTFail("Answer must be exactly what the model streamed, got \(orchestrator.phase)")
+        let suggestionsReady = await orchestrator.waitForSuggestions(["How do I fix it?", "What line is it on?"])
+        XCTAssertTrue(suggestionsReady)
+        guard case .result("The error is a nil unwrap.") = phase else {
+            return XCTFail("Answer must be exactly what the model streamed, got \(phase)")
         }
     }
 
@@ -274,9 +280,9 @@ final class ConversationTests: XCTestCase {
         )
 
         orchestrator.beginCapture()
-        try? await Task.sleep(nanoseconds: 200_000_000)
-
-        XCTAssertEqual(orchestrator.suggestedFollowUps, ["What does this mean?"])
+        _ = await orchestrator.waitForResult("short answer")
+        let suggestionsReady = await orchestrator.waitForSuggestions(["What does this mean?"])
+        XCTAssertTrue(suggestionsReady)
     }
 
     func testFocusedConversationShowsOnlyLatestAnswer() async {
@@ -284,9 +290,9 @@ final class ConversationTests: XCTestCase {
         let orchestrator = makeOrchestrator(engine)
 
         orchestrator.beginCapture()
-        try? await Task.sleep(nanoseconds: 200_000_000)
+        _ = await orchestrator.waitForResult("first answer")
         orchestrator.sendFollowUp("What about shorts?")
-        try? await Task.sleep(nanoseconds: 200_000_000)
+        _ = await orchestrator.waitForResult("second answer")
 
         XCTAssertEqual(orchestrator.conversation.count, 4) // image, assistant, user, assistant
         XCTAssertEqual(orchestrator.focusedConversationTurns.count, 1)
@@ -324,7 +330,9 @@ final class ConversationTests: XCTestCase {
         let orchestrator = makeOrchestrator(engine)
 
         orchestrator.beginCapture()
-        try? await Task.sleep(nanoseconds: 250_000_000)
+        _ = await orchestrator.waitForResult("answer")
+        let suggestionsReady = await orchestrator.waitForSuggestions(["What next?"])
+        XCTAssertTrue(suggestionsReady)
 
         let usage = orchestrator.conversation.last(where: \.isAssistant)?.turnUsage
         XCTAssertEqual(usage?.suggestionPass?.promptTokens, 900)
@@ -341,7 +349,7 @@ final class ConversationTests: XCTestCase {
         )
 
         orchestrator.beginCapture()
-        try? await Task.sleep(nanoseconds: 200_000_000)
+        _ = await orchestrator.waitForResult("answer")
 
         XCTAssertTrue(orchestrator.suggestedFollowUps.isEmpty, "the setting toggle still disables suggestions")
     }
@@ -351,7 +359,7 @@ final class ConversationTests: XCTestCase {
         let orchestrator = makeOrchestrator(engine)
 
         orchestrator.beginCapture()
-        try? await Task.sleep(nanoseconds: 200_000_000)
+        _ = await orchestrator.waitForResult("first answer")
 
         orchestrator.finishChat()
         guard case .idle = orchestrator.phase else {
@@ -371,11 +379,11 @@ final class ConversationTests: XCTestCase {
         let orchestrator = makeOrchestrator(engine)
 
         orchestrator.beginCapture()
-        try? await Task.sleep(nanoseconds: 200_000_000)
+        _ = await orchestrator.waitForResult("first")
         orchestrator.addImage()
-        try? await Task.sleep(nanoseconds: 200_000_000)
+        _ = await orchestrator.waitForResult("second")
         orchestrator.addImage()
-        try? await Task.sleep(nanoseconds: 200_000_000)
+        _ = await orchestrator.waitForResult("third")
 
         let msgs = engine.requests.last?.messages ?? []
         let imageMsgs = msgs.filter { $0.role == .user && $0.text.contains("## Task") }
@@ -394,11 +402,11 @@ final class ConversationTests: XCTestCase {
         )
 
         orchestrator.beginCapture()
-        try? await Task.sleep(nanoseconds: 200_000_000)
+        _ = await orchestrator.waitForResult("first")
         orchestrator.addImage()
-        try? await Task.sleep(nanoseconds: 200_000_000)
+        _ = await orchestrator.waitForResult("second")
         orchestrator.addImage()
-        try? await Task.sleep(nanoseconds: 200_000_000)
+        _ = await orchestrator.waitForResult("third")
 
         let msgs = engine.requests.last?.messages ?? []
         let imageMsgs = msgs.filter { $0.role == .user && $0.text.contains("## Task") }
@@ -413,7 +421,9 @@ final class ConversationTests: XCTestCase {
         let orchestrator = makeOrchestrator(engine)
 
         orchestrator.beginCapture()
-        try? await Task.sleep(nanoseconds: 250_000_000)
+        _ = await orchestrator.waitForResult("answer")
+        let suggestionsReady = await orchestrator.waitForSuggestions(["What next?"])
+        XCTAssertTrue(suggestionsReady)
 
         let suggestionMsgs = engine.suggestionRequests.last?.messages ?? []
         XCTAssertFalse(suggestionMsgs.isEmpty)
@@ -427,21 +437,19 @@ final class ConversationTests: XCTestCase {
         let orchestrator = makeOrchestrator(engine)
 
         orchestrator.beginCapture()
-        try? await Task.sleep(nanoseconds: 250_000_000)
+        _ = await orchestrator.waitForResult("first answer")
         XCTAssertEqual(orchestrator.contextPressure, .critical)
 
         orchestrator.sendFollowUp("blocked?")
-        try? await Task.sleep(nanoseconds: 200_000_000)
         XCTAssertEqual(orchestrator.conversation.compactMap(\.userText), [])
         XCTAssertEqual(engine.requests.count, 1, "follow-up must not run inference")
 
         orchestrator.addImage()
-        try? await Task.sleep(nanoseconds: 200_000_000)
         XCTAssertEqual(orchestrator.conversation.count, 2)
         XCTAssertEqual(engine.requests.count, 1, "add image must not run inference")
 
         orchestrator.retake()
-        try? await Task.sleep(nanoseconds: 250_000_000)
+        _ = await orchestrator.waitForResult("retake answer")
         XCTAssertEqual(orchestrator.conversation.last?.assistantText, "retake answer")
         XCTAssertEqual(engine.requests.count, 2, "retake still runs a fresh capture")
     }
@@ -451,7 +459,7 @@ final class ConversationTests: XCTestCase {
         let orchestrator = makeOrchestrator(engine)
 
         orchestrator.beginCapture()
-        try? await Task.sleep(nanoseconds: 200_000_000)
+        _ = await orchestrator.waitForResult("first answer")
 
         orchestrator.startNewChat()
         guard case .idle = orchestrator.phase else {
@@ -468,10 +476,7 @@ final class ConversationTests: XCTestCase {
         let orchestrator = makeOrchestrator(engine)
 
         orchestrator.beginCapture()
-        let inferring = await orchestrator.waitForPhase { if case .inferring = $0 { return true }; return false }
-        guard case .inferring = inferring else {
-            return XCTFail("Expected to catch the inferring phase, got \(inferring)")
-        }
+        _ = await orchestrator.waitForInferring()
 
         orchestrator.startNewChat()
         guard case .idle = orchestrator.phase else {
@@ -496,7 +501,7 @@ final class ConversationTests: XCTestCase {
         let orchestrator = makeOrchestrator(engine)
 
         orchestrator.beginCapture()
-        try? await Task.sleep(nanoseconds: 250_000_000)
+        _ = await orchestrator.waitForResult("first answer")
         XCTAssertEqual(orchestrator.contextPressure, .critical)
 
         // Leave the result for the calm home; the thread stays resumable but its context is full.
@@ -525,7 +530,7 @@ final class ConversationTests: XCTestCase {
         let orchestrator = makeOrchestrator(engine)
 
         orchestrator.beginCapture()
-        try? await Task.sleep(nanoseconds: 250_000_000)
+        _ = await orchestrator.waitForResult("first answer")
         XCTAssertEqual(orchestrator.contextPressure, .critical)
         guard case .result = orchestrator.phase else {
             return XCTFail("Expected a result, got \(orchestrator.phase)")
@@ -545,14 +550,14 @@ final class ConversationTests: XCTestCase {
         let cold = makeOrchestrator(failEngine)
         XCTAssertFalse(cold.modelLikelyWarm)
         cold.prewarm()
-        try? await Task.sleep(nanoseconds: 120_000_000)
+        await cold.waitForPrewarmComplete()
         XCTAssertFalse(cold.modelLikelyWarm, "a failed warm-up must not fake a warm model")
 
         let okEngine = ScriptedEngine(responsesPerCall: [])
         okEngine.warmUpSucceeds = true
         let warm = makeOrchestrator(okEngine)
         warm.prewarm()
-        try? await Task.sleep(nanoseconds: 120_000_000)
+        await warm.waitForPrewarmComplete()
         XCTAssertTrue(warm.modelLikelyWarm, "a successful warm-up marks the model warm")
     }
 }

@@ -19,7 +19,6 @@ private struct StatsInferenceEngine: InferenceEngine, Sendable {
         AsyncThrowingStream { continuation in
             let task = Task {
                 for token in tokens {
-                    try? await Task.sleep(nanoseconds: 20_000_000)
                     if Task.isCancelled { break }
                     continuation.yield(.token(token))
                 }
@@ -84,19 +83,20 @@ final class ConversationArchiveFlowTests: XCTestCase {
         )
         orchestrator.conversationArchive = store
         orchestrator.beginCapture()
-        try await Task.sleep(nanoseconds: 350_000_000)
-        try await Task.sleep(nanoseconds: 200_000_000)
+        _ = await orchestrator.waitForResult("hi")
 
-        let summaries = await orchestrator.availableThreads()
+        let summaries = await store.waitForSummaries(count: 1)
         XCTAssertEqual(summaries.count, 1)
 
         await orchestrator.openThread(id: summaries[0].id)
         orchestrator.deleteThread(id: summaries[0].id)
-        try await Task.sleep(nanoseconds: 100_000_000)
 
-        XCTAssertEqual(orchestrator.phase, .idle)
+        guard case .idle = orchestrator.phase else {
+            XCTFail("Expected idle after delete, got \(orchestrator.phase)")
+            return
+        }
         XCTAssertFalse(orchestrator.hasConversation)
-        let remaining = await orchestrator.availableThreads()
+        let remaining = await store.waitForSummaries(count: 0)
         XCTAssertTrue(remaining.isEmpty)
     }
 
@@ -107,7 +107,7 @@ final class ConversationArchiveFlowTests: XCTestCase {
             inference: StatsInferenceEngine(tokens: ["ok"], promptTokens: 950, window: 1000)
         )
         orchestrator.beginCapture()
-        try await Task.sleep(nanoseconds: 300_000_000)
+        _ = await orchestrator.waitForResult("ok")
 
         XCTAssertEqual(orchestrator.contextPressure, .critical)
         XCTAssertEqual(orchestrator.contextFraction ?? 0, 0.95, accuracy: 0.001)
@@ -120,7 +120,7 @@ final class ConversationArchiveFlowTests: XCTestCase {
             inference: StatsInferenceEngine(tokens: ["ok"], promptTokens: 850, window: 1000)
         )
         orchestrator.beginCapture()
-        try await Task.sleep(nanoseconds: 300_000_000)
+        _ = await orchestrator.waitForResult("ok")
 
         XCTAssertEqual(orchestrator.contextPressure, .high)
     }
@@ -132,7 +132,7 @@ final class ConversationArchiveFlowTests: XCTestCase {
             inference: MockInferenceEngine(tokens: ["ok"])
         )
         orchestrator.beginCapture()
-        try await Task.sleep(nanoseconds: 200_000_000)
+        _ = await orchestrator.waitForResult("ok")
 
         XCTAssertEqual(orchestrator.contextPressure, .normal)
     }
@@ -165,13 +165,11 @@ final class ConversationArchiveFlowTests: XCTestCase {
         orchestrator.loadPersistedConversationIfEnabled()
         orchestrator.startNewChat()
 
-        // Give the restore task time to run its file IO and (pre-fix) adopt the stale thread.
-        try? await Task.sleep(nanoseconds: 300_000_000)
-
-        XCTAssertTrue(orchestrator.conversation.isEmpty, "restore adopted a stale thread after the session moved on")
-        guard case .idle = orchestrator.phase else {
-            return XCTFail("Expected idle, got \(orchestrator.phase)")
+        let held = await orchestrator.phaseHolding({ if case .idle = $0 { return true }; return false })
+        guard case .idle = held else {
+            return XCTFail("Restore adopted a stale thread after the session moved on: \(held)")
         }
+        XCTAssertTrue(orchestrator.conversation.isEmpty, "restore adopted a stale thread after the session moved on")
     }
 
     func testOpenThreadIgnoredWhenPersistenceOff() async {
@@ -223,10 +221,7 @@ final class ConversationArchiveFlowTests: XCTestCase {
         }
 
         orchestrator.sendFollowUp("expand")
-        let inferring = await orchestrator.waitForPhase { if case .inferring = $0 { return true }; return false }
-        guard case .inferring = inferring else {
-            return XCTFail("Expected to catch the follow-up inferring, got \(inferring)")
-        }
+        _ = await orchestrator.waitForInferring()
 
         orchestrator.deleteThread(id: active)
         guard case .idle = orchestrator.phase else {

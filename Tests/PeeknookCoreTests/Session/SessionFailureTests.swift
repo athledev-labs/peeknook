@@ -36,9 +36,9 @@ final class SessionFailureTests: XCTestCase {
         )
 
         orchestrator.beginCapture()
-        try? await Task.sleep(nanoseconds: 150_000_000)
+        let phase = await orchestrator.waitForFailed { $0.kind == .emptyAnswer }
 
-        guard case .failed(let failure) = orchestrator.phase else {
+        guard case .failed(let failure) = phase else {
             XCTFail("Expected failed, got \(orchestrator.phase)")
             return
         }

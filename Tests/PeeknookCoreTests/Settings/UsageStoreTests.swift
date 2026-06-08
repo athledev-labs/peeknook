@@ -160,9 +160,12 @@ final class UsageStoreTests: XCTestCase {
         orchestrator.usage = usage
 
         orchestrator.beginCapture()
-        try? await Task.sleep(nanoseconds: 90_000_000) // mid-stream
+        _ = await orchestrator.waitForInferring()
         orchestrator.cancel()
-        try? await Task.sleep(nanoseconds: 300_000_000) // let any stray record land
+        let held = await orchestrator.phaseHolding({ if case .idle = $0 { return true }; return false })
+        guard case .idle = held else {
+            return XCTFail("Expected idle after cancel, got \(held)")
+        }
 
         XCTAssertEqual(usage.stats.captures, 0, "a cancelled inference must not count as a capture")
         XCTAssertTrue(usage.stats.events.isEmpty)
@@ -175,14 +178,13 @@ final class UsageStoreTests: XCTestCase {
             capture: StubCaptureProvider(sampleText: "x"),
             inference: MockInferenceEngine(
                 tokens: ["a", "b"],
-                delayNanoseconds: 10_000_000,
                 completionStats: InferenceStats(promptTokens: 50, responseTokens: 2, generationSeconds: 0.2)
             )
         )
         orchestrator.usage = usage
 
         orchestrator.beginCapture()
-        try? await Task.sleep(nanoseconds: 250_000_000)
+        _ = await orchestrator.waitForResult("ab")
 
         XCTAssertEqual(usage.stats.captures, 1, "a completed inference should be recorded once")
         XCTAssertEqual(usage.stats.events.count, 1)

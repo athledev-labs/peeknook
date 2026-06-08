@@ -13,17 +13,15 @@ final class SessionOrchestratorTests: XCTestCase {
         )
 
         orchestrator.beginCapture()
-        try? await Task.sleep(nanoseconds: 50_000_000)
-
-        guard case .previewing = orchestrator.phase else {
-            XCTFail("Expected previewing, got \(orchestrator.phase)")
+        let previewPhase = await orchestrator.waitForPreviewing()
+        guard case .previewing = previewPhase else {
+            XCTFail("Expected previewing, got \(previewPhase)")
             return
         }
 
         orchestrator.confirmPreview()
-        try? await Task.sleep(nanoseconds: 300_000_000)
-
-        guard case .result("ab") = orchestrator.phase else {
+        let resultPhase = await orchestrator.waitForResult("ab")
+        guard case .result("ab") = resultPhase else {
             XCTFail("Expected result ab, got \(orchestrator.phase)")
             return
         }
@@ -57,10 +55,9 @@ final class SessionOrchestratorTests: XCTestCase {
         )
 
         orchestrator.beginCapture()
-        try? await Task.sleep(nanoseconds: 50_000_000)
-
-        guard case .previewing(let preview) = orchestrator.phase else {
-            XCTFail("Expected previewing, got \(orchestrator.phase)")
+        let previewPhase = await orchestrator.waitForPreviewing()
+        guard case .previewing(let preview) = previewPhase else {
+            XCTFail("Expected previewing, got \(previewPhase)")
             return
         }
         XCTAssertEqual(preview.appName, "Safari")
@@ -100,8 +97,11 @@ final class SessionOrchestratorTests: XCTestCase {
             return
         }
 
-        try await Task.sleep(nanoseconds: 300_000_000)
-        XCTAssertEqual(orchestrator.phase, .idle)
+        let held = await orchestrator.phaseHolding({ if case .idle = $0 { return true }; return false })
+        guard case .idle = held else {
+            XCTFail("Late capture leaked state: \(held)")
+            return
+        }
         XCTAssertFalse(orchestrator.hasConversation)
     }
 
@@ -131,16 +131,12 @@ final class SessionOrchestratorTests: XCTestCase {
             inference: MockInferenceEngine(tokens: ["ok"])
         )
         orchestrator.beginCapture()
-        try? await Task.sleep(nanoseconds: 150_000_000)
-        guard case .result = orchestrator.phase else {
-            XCTFail("Expected result before second capture")
-            return
-        }
+        _ = await orchestrator.waitForResult("ok")
 
         orchestrator.beginCapture()
-        try? await Task.sleep(nanoseconds: 150_000_000)
-        guard case .result("ok") = orchestrator.phase else {
-            XCTFail("Expected hotkey capture from result, got \(orchestrator.phase)")
+        let second = await orchestrator.waitForResult("ok")
+        guard case .result("ok") = second else {
+            XCTFail("Expected hotkey capture from result, got \(second)")
             return
         }
     }

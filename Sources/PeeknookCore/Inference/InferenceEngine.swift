@@ -130,7 +130,7 @@ public struct MockInferenceEngine: InferenceEngine, Sendable {
 
     public init(
         tokens: [String] = ["안녕", " ", "informal ", "greeting."],
-        delayNanoseconds: UInt64 = 40_000_000,
+        delayNanoseconds: UInt64 = 0,
         completionStats: InferenceStats? = nil
     ) {
         self.tokens = tokens
