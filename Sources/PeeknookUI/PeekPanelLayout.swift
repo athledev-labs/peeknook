@@ -47,17 +47,30 @@ enum PeekPanelLayout {
 
     /// Dedicated Stats drill-in, scrollable all-time analytics.
     static var statsMaxHeight: CGFloat {
-        guard let screen = notchScreen else { return 400 }
-        let visibleHeight = screen.visibleFrame.height
-        return min(480, max(280, visibleHeight * 0.5))
+        pinnedFooterScrollMaxHeight()
     }
 
     /// Model library drill-in, browse and download vision models.
     static var modelLibraryMaxHeight: CGFloat {
-        guard let screen = notchScreen else { return 400 }
-        let visibleHeight = screen.visibleFrame.height
-        return min(480, max(280, visibleHeight * 0.5))
+        pinnedFooterScrollMaxHeight()
     }
+
+    /// Scroll height for drill-in surfaces that pin a bottom command row. Reserves space for the
+    /// host top bar and footer so OpenNook never sizes the panel past the notch screen.
+    static func pinnedFooterScrollMaxHeight(
+        preferredFraction: CGFloat = 0.36,
+        min totalMin: CGFloat = 260,
+        max totalMax: CGFloat = 420,
+        bottomChrome: CGFloat = bottomCommandBarHeight
+    ) -> CGFloat {
+        guard let screen = notchScreen else { return totalMin - bottomChrome }
+        let visibleHeight = screen.visibleFrame.height
+        let bodyCap = min(totalMax, max(totalMin, visibleHeight * preferredFraction))
+        return max(120, bodyCap - bottomChrome)
+    }
+
+    /// Approximate height of ``PeekSurfaceCommandBar`` plus its bottom inset clearance.
+    static let bottomCommandBarHeight: CGFloat = 40
 
     /// First-run setup checklist, scrollable against the notch screen.
     static var setupMaxHeight: CGFloat {

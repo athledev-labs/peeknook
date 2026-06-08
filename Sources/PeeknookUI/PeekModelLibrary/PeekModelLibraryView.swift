@@ -74,18 +74,16 @@ struct PeekModelLibraryView: View {
                 backButton
             }
 
-            ScrollView(.vertical, showsIndicators: false) {
+            PeekSurfaceScrollColumn(maxScrollHeight: PeekPanelLayout.modelLibraryMaxHeight) {
                 VStack(alignment: .leading, spacing: 12) {
                     introNote
                     tabContent
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.bottom, 8)
+            } footer: {
+                tabFilterBar
             }
-            .scrollBounceBehavior(.basedOnSize, axes: .vertical)
-            .frame(maxHeight: PeekPanelLayout.modelLibraryMaxHeight)
-
-            tabFilterBar
         }
         .peekModelDownloadConfirmation(pending: $pendingDownload) { option in
             settings.beginModelDownload(option)

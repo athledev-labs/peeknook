@@ -65,24 +65,20 @@ struct PeekStatsView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 10) {
-                    if window.hasData {
-                        collapsible(.overview) { overviewRows }
-                        collapsible(.tokenMix) { tokenMixChart }
-                        collapsible(.growth) { growthSection }
-                        collapsible(.models) { modelSectionBody }
-                    } else {
-                        emptyState
-                    }
+        PeekSurfaceScrollColumn(maxScrollHeight: PeekPanelLayout.statsMaxHeight) {
+            VStack(alignment: .leading, spacing: 10) {
+                if window.hasData {
+                    collapsible(.overview) { overviewRows }
+                    collapsible(.tokenMix) { tokenMixChart }
+                    collapsible(.growth) { growthSection }
+                    collapsible(.models) { modelSectionBody }
+                } else {
+                    emptyState
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.bottom, 8)
             }
-            .scrollBounceBehavior(.basedOnSize, axes: .vertical)
-            .frame(maxHeight: PeekPanelLayout.statsMaxHeight)
-
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.bottom, 8)
+        } footer: {
             dateFilterBar
         }
         .animation(.easeOut(duration: 0.18), value: dateRange)

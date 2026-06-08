@@ -51,8 +51,7 @@ public struct PeekHomeView: View {
             if showsStats {
                 PeekHomeLayout.contentColumn(
                     PeekStatsView(orchestrator: orchestrator),
-                    insets: contentInsets,
-                    bottom: contentInsets.bottom
+                    insets: contentInsets
                 )
             } else if showsModelLibrary {
                 PeekHomeLayout.contentColumn(
@@ -64,8 +63,7 @@ public struct PeekHomeView: View {
                         pendingDownload: $pendingDownload,
                         onDismiss: closeModelLibrary
                     ),
-                    insets: contentInsets,
-                    bottom: contentInsets.bottom
+                    insets: contentInsets
                 )
             } else if showsArchive, case .idle = orchestrator.phase {
                 PeekHomeLayout.contentColumn(
@@ -75,8 +73,7 @@ public struct PeekHomeView: View {
                         onClose: closeArchive
                     ),
                     insets: contentInsets,
-                    top: 8,
-                    bottom: contentInsets.bottom
+                    top: 8
                 )
             } else {
                 homeColumn
@@ -226,9 +223,14 @@ public struct PeekHomeView: View {
         }
     }
 
+    private var homePhaseSpacing: CGFloat {
+        if case .idle = orchestrator.phase { return 0 }
+        return 10
+    }
+
     private var homeColumn: some View {
         VStack(alignment: .leading, spacing: 0) {
-            ScrollView {
+            PeekFadedScrollView(maxHeight: PeekPanelLayout.idleHomeMaxHeight) {
                 VStack(alignment: .leading, spacing: 0) {
                     if case .idle = orchestrator.phase {
                         PeekIdleHomeContent(settings: orchestrator.settings)
@@ -260,7 +262,6 @@ public struct PeekHomeView: View {
                     }
                 }
             }
-            .frame(maxHeight: PeekPanelLayout.idleHomeMaxHeight)
             mainColumn
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -288,7 +289,7 @@ public struct PeekHomeView: View {
                 onRequestNewChat: requestNewChat
             )
         } else {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: homePhaseSpacing) {
                 PeekHomePhaseContent(
                     orchestrator: orchestrator,
                     showsFullConversation: showsFullConversation,
@@ -311,8 +312,7 @@ public struct PeekHomeView: View {
                             onCapture: { orchestrator.beginCapture() },
                             onResume: resumeChat
                         ),
-                        bottomInset: contentInsets.bottom,
-                        top: 12
+                        top: 4
                     )
                 } else {
                     PeekHomeLayout.anchoredBottomRow(
@@ -321,8 +321,7 @@ public struct PeekHomeView: View {
                             setup: setup,
                             onConfirmPreview: { orchestrator.confirmPreview() },
                             onCancel: { orchestrator.cancel() }
-                        ),
-                        bottomInset: contentInsets.bottom
+                        )
                     )
                 }
             }

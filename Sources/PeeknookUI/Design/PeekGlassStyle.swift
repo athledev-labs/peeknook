@@ -12,34 +12,35 @@ struct PeekCommandPillGlass: View {
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
         ZStack {
-            shape.fill(Color.white.opacity(isHovered ? 0.13 : 0.09))
-            shape.fill(
-                LinearGradient(
-                    colors: [
-                        Color.white.opacity(isHovered ? 0.26 : 0.18),
-                        Color.white.opacity(0.05),
-                        Color.clear,
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
             if prominent {
-                shape.fill(Color.accentColor.opacity(isHovered ? 0.18 : 0.12))
+                shape.fill(Color.accentColor.opacity(isHovered ? 0.22 : 0.16))
+                shape.strokeBorder(Color.accentColor.opacity(0.35), lineWidth: 0.5)
+            } else {
+                shape.fill(Color.white.opacity(isHovered ? 0.13 : 0.09))
+                shape.fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(isHovered ? 0.26 : 0.18),
+                            Color.white.opacity(0.05),
+                            Color.clear,
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                shape.strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(isHovered ? 0.42 : 0.3),
+                            Color.white.opacity(0.08),
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 0.5
+                )
             }
-            shape.strokeBorder(
-                LinearGradient(
-                    colors: [
-                        Color.white.opacity(isHovered ? 0.42 : 0.3),
-                        Color.white.opacity(0.08),
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
-                lineWidth: 0.5
-            )
         }
-        .shadow(color: .black.opacity(0.45), radius: 4, y: 2)
     }
 }
 
@@ -48,14 +49,21 @@ struct PeekGlassSurface: ViewModifier {
     var isHovered: Bool = false
     var prominent: Bool = false
 
+    private var shape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+    }
+
     func body(content: Content) -> some View {
-        content.background {
-            PeekCommandPillGlass(
-                cornerRadius: cornerRadius,
-                isHovered: isHovered,
-                prominent: prominent
-            )
-        }
+        content
+            .background {
+                PeekCommandPillGlass(
+                    cornerRadius: cornerRadius,
+                    isHovered: isHovered,
+                    prominent: prominent
+                )
+            }
+            // Clip any rectangular Button/tint backdrop so prominent accent stays inside the squircle.
+            .clipShape(shape)
     }
 }
 

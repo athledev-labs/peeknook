@@ -13,7 +13,25 @@ struct PeekSurfaceCommandBar<Content: View>: View {
             content()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, 12)
+        .padding(.top, 4)
+    }
+}
+
+/// Scrollable middle + pinned bottom command row. Keeps footer chrome fixed while content scrolls
+/// (with edge fades) once it hits the notch-safe cap from ``PeekPanelLayout``.
+struct PeekSurfaceScrollColumn<Content: View, Footer: View>: View {
+    let maxScrollHeight: CGFloat
+    @ViewBuilder var content: () -> Content
+    @ViewBuilder var footer: () -> Footer
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            PeekFadedScrollView(maxHeight: maxScrollHeight) {
+                content()
+            }
+            footer()
+                .layoutPriority(1)
+        }
     }
 }
 
@@ -114,7 +132,7 @@ struct PeekSurfaceFilterPill: View {
                     prominent: isSelected
                 )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.borderless)
         .fixedSize(horizontal: true, vertical: false)
         .animation(.easeOut(duration: 0.12), value: isHovered)
         .onHover { isHovered = $0 }

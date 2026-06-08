@@ -49,7 +49,7 @@ struct PeekHomeResultView: View {
     /// answer scrolls in place instead of growing the panel past the notch. The suggestion pills and
     /// command bar stay fixed below it.
     private var collapsedResultScroll: some View {
-        ScrollView {
+        PeekFadedScrollView(maxHeight: PeekPanelLayout.resultContentMaxHeight) {
             PeekHomeConversationView(
                 orchestrator: orchestrator,
                 showsFullConversation: false,
@@ -58,14 +58,12 @@ struct PeekHomeResultView: View {
             )
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .scrollBounceBehavior(.basedOnSize, axes: .vertical)
-        .frame(maxHeight: PeekPanelLayout.resultContentMaxHeight)
     }
 
     /// History view: turns and the usage chart scroll together as one region (capped), so the
     /// chart and per-answer breakdown are always reachable. The command bar stays fixed below.
     private var fullConversationScroll: some View {
-        ScrollView {
+        PeekFadedScrollView(maxHeight: PeekPanelLayout.historyMaxHeight) {
             VStack(alignment: .leading, spacing: 8) {
                 PeekHomeConversationView(
                     orchestrator: orchestrator,
@@ -77,8 +75,6 @@ struct PeekHomeResultView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .scrollBounceBehavior(.basedOnSize, axes: .vertical)
-        .frame(maxHeight: PeekPanelLayout.historyMaxHeight)
     }
 
     @ViewBuilder
@@ -239,7 +235,7 @@ struct PeekHomeResultView: View {
                     }
                 }
             },
-            bottomInset: contentInsets.bottom
+            top: 4
         )
     }
 

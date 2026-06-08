@@ -34,14 +34,14 @@ enum PeekHomeLayout {
     }
 
     /// Bottom row when the parent column already applied `nookContentInsets` horizontally.
+    /// Command rows skip `nookContentInsets.bottom`: the chrome's edge padding and expanded
+    /// safe-area strip already clear the bottom curve for full-width bars.
     static func anchoredBottomRow<V: View>(
         _ content: V,
-        bottomInset: CGFloat,
         top: CGFloat = 0
     ) -> some View {
         content
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, top)
-            .padding(.bottom, bottomInset)
     }
 }
