@@ -44,7 +44,7 @@ struct NookToolbarButton: View {
         }
         .help(help ?? defaultHelp(hotkey: hotkey))
         .peekAction(label: accessibilityLabel, hint: help)
-        .accessibilityIdentifier(testIdentifier ?? title)
+        .peekTestIdentifier(testIdentifier ?? title)
     }
 
     private func defaultHelp(hotkey: CaptureHotkey?) -> String {

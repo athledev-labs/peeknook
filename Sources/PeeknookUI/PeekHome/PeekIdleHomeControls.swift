@@ -197,6 +197,7 @@ struct PeekIdleCommandBar: View {
                     symbol: orchestrator.sessionBrief.isEmpty ? "text.alignleft" : "text.alignleft.fill",
                     hotkey: orchestrator.settings.briefHotkey,
                     help: PeekSessionBriefStrip.buttonHelp(for: orchestrator),
+                    testIdentifier: PeekTestID.brief,
                     prominent: isBriefComposerVisible || !orchestrator.sessionBrief.isEmpty
                 ) {
                     PeekSessionBriefStrip.toggleComposer(
@@ -218,7 +219,7 @@ struct PeekIdleCommandBar: View {
                     symbol: "camera.viewfinder",
                     hotkey: orchestrator.settings.captureHotkey,
                     help: "Instant capture from anywhere on your Mac",
-                    testIdentifier: "peeknook.capture",
+                    testIdentifier: PeekTestID.capture,
                     prominent: true,
                     action: onCapture
                 )

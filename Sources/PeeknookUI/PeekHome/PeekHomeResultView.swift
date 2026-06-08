@@ -175,6 +175,7 @@ struct PeekHomeResultView: View {
                         symbol: orchestrator.sessionBrief.isEmpty ? "text.alignleft" : "text.alignleft.fill",
                         hotkey: orchestrator.settings.briefHotkey,
                         help: PeekSessionBriefStrip.buttonHelp(for: orchestrator),
+                        testIdentifier: PeekTestID.brief,
                         prominent: isBriefComposerVisible || !orchestrator.sessionBrief.isEmpty
                     ) {
                         PeekSessionBriefStrip.toggleComposer(
@@ -190,7 +191,8 @@ struct PeekHomeResultView: View {
                         hotkey: orchestrator.settings.captureHotkey,
                         help: orchestrator.hasConversation
                             ? "Capture the latest screen and continue this chat"
-                            : "Capture again from anywhere on your Mac"
+                            : "Capture again from anywhere on your Mac",
+                        testIdentifier: PeekTestID.capture
                     ) {
                         orchestrator.beginCapture()
                     }
@@ -222,6 +224,7 @@ struct PeekHomeResultView: View {
                         title: "Done",
                         symbol: "house",
                         help: "End this chat and return to the home screen",
+                        testIdentifier: PeekTestID.done,
                         prominent: true
                     ) {
                         onFinishChat()
@@ -229,7 +232,8 @@ struct PeekHomeResultView: View {
                     NookToolbarButton(
                         title: "New chat",
                         symbol: "arrow.counterclockwise",
-                        help: "Discard this thread and start fresh"
+                        help: "Discard this thread and start fresh",
+                        testIdentifier: PeekTestID.newChat
                     ) {
                         onRequestNewChat()
                     }

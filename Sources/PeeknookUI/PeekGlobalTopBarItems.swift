@@ -100,6 +100,7 @@ public struct PeekGlobalTopBarItems: View {
         .animation(.spring(response: 0.26, dampingFraction: 0.82), value: isStatsHovered)
         .help(statsHelp)
         .peekAction(label: "Stats", hint: statsHelp)
+        .peekTestIdentifier(PeekTestID.stats)
         .opacity(allowsGlobalDrillIn ? 1 : 0.4)
         .disabled(!allowsGlobalDrillIn)
     }
@@ -146,6 +147,7 @@ public struct PeekGlobalTopBarItems: View {
             .animation(.spring(response: 0.26, dampingFraction: 0.82), value: isPastChatsHovered)
             .help("Browse and resume past chats")
             .peekAction(label: "Past chats", hint: "Browse and resume past chats")
+            .peekTestIdentifier(PeekTestID.pastChats)
     }
 
     /// Past chats only makes sense from the home root (idle) and only when the archive has

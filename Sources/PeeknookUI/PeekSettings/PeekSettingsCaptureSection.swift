@@ -23,6 +23,7 @@ struct PeekSettingsCaptureSection: View {
                 icon: orchestrator.settings.showGreeting ? "sun.horizon.fill" : "sun.horizon",
                 title: "Show greeting",
                 detail: "Morning/Afternoon headline on the idle home screen",
+                testIdentifier: PeekTestID.showGreeting,
                 isOn: showGreetingBinding
             )
 

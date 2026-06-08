@@ -2,6 +2,18 @@
 
 import SwiftUI
 
+/// Stable `accessibilityIdentifier` values shared by XCUITest and VoiceOver. English UI copy can
+/// localize without breaking UI tests that query these ids.
+enum PeekTestID {
+    static let capture = "peeknook.capture"
+    static let brief = "peeknook.brief"
+    static let done = "peeknook.done"
+    static let newChat = "peeknook.newChat"
+    static let stats = "peeknook.stats"
+    static let pastChats = "peeknook.pastChats"
+    static let showGreeting = "peeknook.settings.showGreeting"
+}
+
 /// Reusable accessibility conventions for Peeknook's shared components. Apply these instead of
 /// hand-rolling `accessibility*` on each view so the command bar, pills, skeletons, and failure
 /// card expose consistent VoiceOver semantics. New Home/Settings/Setup/History controls should go
@@ -37,6 +49,7 @@ extension View {
         label: String,
         isOn: Bool,
         hint: String? = nil,
+        testIdentifier: String? = nil,
         toggle: @escaping () -> Void
     ) -> some View {
         accessibilityElement(children: .ignore)
@@ -47,6 +60,24 @@ extension View {
             // switch. (The parameterless form already defaults to `.default`; named for clarity.)
             .accessibilityAction(.default) { toggle() }
             .modifier(PeekAccessibilityHint(hint: hint))
+            .modifier(PeekTestIdentifierModifier(identifier: testIdentifier))
+    }
+
+    /// Attach a stable identifier for XCUITest without changing the VoiceOver label.
+    func peekTestIdentifier(_ identifier: String?) -> some View {
+        modifier(PeekTestIdentifierModifier(identifier: identifier))
+    }
+}
+
+private struct PeekTestIdentifierModifier: ViewModifier {
+    let identifier: String?
+
+    func body(content: Content) -> some View {
+        if let identifier {
+            content.accessibilityIdentifier(identifier)
+        } else {
+            content
+        }
     }
 }
 

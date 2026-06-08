@@ -8,6 +8,7 @@ struct PeekSettingsToggleRow: View {
     let icon: String
     let title: String
     let detail: String
+    var testIdentifier: String? = nil
     @Binding var isOn: Bool
 
     @Environment(\.nookResolvedTheme) private var theme
@@ -36,7 +37,7 @@ struct PeekSettingsToggleRow: View {
         .padding(.vertical, 4)
         // One VoiceOver switch element for the whole row (label + on/off value + a single toggle
         // action), instead of a merged element plus a separately-focusable pill button.
-        .peekToggle(label: title, isOn: isOn, hint: detail) {
+        .peekToggle(label: title, isOn: isOn, hint: detail, testIdentifier: testIdentifier) {
             withAnimation(.spring(response: 0.22, dampingFraction: 0.86)) {
                 isOn.toggle()
             }
