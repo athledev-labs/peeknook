@@ -25,9 +25,12 @@ swift test
 For a signed `.app`:
 
 ```sh
+brew install xcodegen            # one-time: the script generates the project with XcodeGen
 ./Scripts/regenerate-xcodeproj.sh
 open Peeknook.xcodeproj
 ```
+
+`regenerate-xcodeproj.sh` runs **XcodeGen** (`xcodegen generate`) against `project.yml`, so XcodeGen must be installed first; the script exits with an install hint if it is missing. Like the SPM build, the generated Xcode project / signed `.app` resolves OpenNook from the sibling `../opennook` checkout (the script requires it locally — set `OPENNOOK_PACKAGE_PATH` to point at an existing clone). `Package.swift` itself falls back to the Git URL when no sibling checkout is present, which is enough for `swift build` / `swift test` but not for `regenerate-xcodeproj.sh`.
 
 ## Developing vs using the shipped app
 
