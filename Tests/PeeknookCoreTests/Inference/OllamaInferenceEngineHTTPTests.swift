@@ -142,6 +142,8 @@ final class OllamaInferenceEngineHTTPTests: XCTestCase {
         XCTAssertEqual(OllamaURLProtocolStub.recordedBodies.count, 2)
         let first = String(data: OllamaURLProtocolStub.recordedBodies[0], encoding: .utf8) ?? ""
         XCTAssertTrue(first.contains("\"think\":false"))
+        let retry = String(data: OllamaURLProtocolStub.recordedBodies[1], encoding: .utf8) ?? ""
+        XCTAssertFalse(retry.contains("\"think\""), "retry must omit the think field")
     }
 
     func testUsesRemoteOllamaHostParsing() {
@@ -150,5 +152,99 @@ final class OllamaInferenceEngineHTTPTests: XCTestCase {
         XCTAssertFalse(OllamaURLPolicy.usesRemoteOllama("http://[::1]:11434"))
         XCTAssertTrue(OllamaURLPolicy.usesRemoteOllama("http://192.168.1.10:11434"))
         XCTAssertTrue(OllamaURLPolicy.usesRemoteOllama("http://ollama.home:11434"))
+    }
+
+    // MARK: - Follow-up suggestions (non-streaming /api/chat through the unified client)
+
+    private func followUpRequest() -> InferenceRequest {
+        InferenceRequest(
+            mode: .general,
+            messages: [.init(role: .user, text: "explain", imageBase64: nil)],
+            model: "gemma4:e4b",
+            ollamaBaseURL: "http://stub.test:11434",
+            acceptInsecureRemoteOllama: true
+        )
+    }
+
+    func testFollowUpReturnsSuggestionsOnSuccess() async {
+        let success = #"{"message":{"content":"{\"suggestions\":[\"a\",\"b\"]}"}}"#.data(using: .utf8)!
+        OllamaURLProtocolStub.responsesByPath = [
+            "/api/chat": [.init(statusCode: 200, body: success, headers: [:])]
+        ]
+
+        let engine = OllamaInferenceEngine(session: makeStubSession())
+        let result = await engine.generateFollowUps(request: followUpRequest())
+        XCTAssertEqual(result.suggestions, ["a", "b"])
+    }
+
+    func testFollowUpRetriesWithoutThinkOn400ThenSucceeds() async {
+        let thinkError = #"{"error":"unknown field think"}"#.data(using: .utf8)!
+        let success = #"{"message":{"content":"{\"suggestions\":[\"a\",\"b\"]}"}}"#.data(using: .utf8)!
+        OllamaURLProtocolStub.responsesByPath = [
+            "/api/chat": [
+                .init(statusCode: 400, body: thinkError, headers: [:]),
+                .init(statusCode: 200, body: success, headers: [:])
+            ]
+        ]
+
+        let engine = OllamaInferenceEngine(session: makeStubSession())
+        let result = await engine.generateFollowUps(request: followUpRequest())
+        XCTAssertEqual(result.suggestions, ["a", "b"])
+        XCTAssertEqual(OllamaURLProtocolStub.recordedBodies.count, 2)
+        let first = String(data: OllamaURLProtocolStub.recordedBodies[0], encoding: .utf8) ?? ""
+        XCTAssertTrue(first.contains("\"think\":false"))
+        let retry = String(data: OllamaURLProtocolStub.recordedBodies[1], encoding: .utf8) ?? ""
+        XCTAssertFalse(retry.contains("\"think\""), "retry must omit the think field")
+    }
+
+    func testFollowUpReturnsEmptyOnNonThink400DoesNotRetry() async {
+        // A 400 whose body does NOT mention "think" must surface (and be swallowed to []) with
+        // NO retry — distinct from the think-retry branch.
+        let badRequest = #"{"error":"bad request"}"#.data(using: .utf8)!
+        OllamaURLProtocolStub.responsesByPath = [
+            "/api/chat": [.init(statusCode: 400, body: badRequest, headers: [:])]
+        ]
+
+        let engine = OllamaInferenceEngine(session: makeStubSession())
+        let result = await engine.generateFollowUps(request: followUpRequest())
+        XCTAssertEqual(result.suggestions, [])
+        XCTAssertEqual(OllamaURLProtocolStub.recordedBodies.count, 1)
+    }
+
+    func testFollowUpReturnsEmptyOnNonThink500() async {
+        let serverError = #"{"error":"internal server error"}"#.data(using: .utf8)!
+        OllamaURLProtocolStub.responsesByPath = [
+            "/api/chat": [.init(statusCode: 500, body: serverError, headers: [:])]
+        ]
+
+        let engine = OllamaInferenceEngine(session: makeStubSession())
+        let result = await engine.generateFollowUps(request: followUpRequest())
+        XCTAssertEqual(result.suggestions, [])
+        // A non-think 500 must NOT trigger a retry.
+        XCTAssertEqual(OllamaURLProtocolStub.recordedBodies.count, 1)
+    }
+
+    func testWarmUpRetriesWithoutThinkOn400AndReturnsTrue() async {
+        let thinkError = #"{"error":"unknown field think"}"#.data(using: .utf8)!
+        let success = #"{"message":{"content":"ok"},"done":true}"#.data(using: .utf8)!
+        OllamaURLProtocolStub.responsesByPath = [
+            "/api/chat": [
+                .init(statusCode: 400, body: thinkError, headers: [:]),
+                .init(statusCode: 200, body: success, headers: [:])
+            ]
+        ]
+
+        let engine = OllamaInferenceEngine(session: makeStubSession())
+        let warmed = await engine.warmUp(
+            model: "gemma4:e4b",
+            baseURL: "http://stub.test:11434",
+            acceptInsecureRemote: true
+        )
+        XCTAssertTrue(warmed)
+        XCTAssertEqual(OllamaURLProtocolStub.recordedBodies.count, 2)
+        let first = String(data: OllamaURLProtocolStub.recordedBodies[0], encoding: .utf8) ?? ""
+        XCTAssertTrue(first.contains("\"think\":false"))
+        let retry = String(data: OllamaURLProtocolStub.recordedBodies[1], encoding: .utf8) ?? ""
+        XCTAssertFalse(retry.contains("\"think\""), "retry must omit the think field")
     }
 }

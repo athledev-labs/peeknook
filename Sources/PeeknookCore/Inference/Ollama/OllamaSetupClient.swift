@@ -18,9 +18,11 @@ public enum OllamaPullEvent: Sendable, Equatable {
 /// Ollama install / health / model pull for the setup wizard.
 public struct OllamaSetupClient: Sendable {
     public var session: URLSession
+    private let client: OllamaHTTPClient
 
     public init(session: URLSession = .shared) {
         self.session = session
+        self.client = OllamaHTTPClient(session: session)
     }
 
     public func installedModelNames(baseURL: String, acceptInsecureRemote: Bool = false) async -> [String] {
@@ -129,21 +131,14 @@ public struct OllamaSetupClient: Sendable {
         continuation: AsyncThrowingStream<OllamaPullEvent, Error>.Continuation
     ) async throws {
         let url = baseURL.appendingPathComponent("api/pull")
-        var req = URLRequest(url: url)
-        req.httpMethod = "POST"
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.timeoutInterval = 3600
-
-        let body = OllamaPullRequest(model: model, stream: true)
-        req.httpBody = try JSONEncoder().encode(body)
-
-        let (bytes, response) = try await session.bytes(for: req)
-        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-            throw InferenceError.http(
-                status: (response as? HTTPURLResponse)?.statusCode ?? -1,
-                message: "Model download failed. Is Ollama running?"
-            )
-        }
+        // `pull` does NOT send `think`. Route through the shared client so a failed pull surfaces
+        // Ollama's real error body (falling back to the existing message when it's empty).
+        let bytes = try await client.postStream(
+            url: url,
+            body: ["model": model, "stream": true],
+            timeout: 3600,
+            fallbackMessage: "Model download failed. Is Ollama running?"
+        )
 
         for try await line in bytes.lines {
             if Task.isCancelled { return }
@@ -176,11 +171,6 @@ struct OllamaTagsResponse: Decodable, Sendable {
         let name: String
     }
     let models: [Model]
-}
-
-private struct OllamaPullRequest: Encodable, Sendable {
-    let model: String
-    let stream: Bool
 }
 
 private struct OllamaPullChunk: Decodable, Sendable {

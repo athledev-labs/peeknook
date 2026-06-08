@@ -4,9 +4,11 @@ import Foundation
 
 public struct OllamaInferenceEngine: InferenceEngine, Sendable {
     public var session: URLSession
+    private let client: OllamaHTTPClient
 
     public init(session: URLSession = .shared) {
         self.session = session
+        self.client = OllamaHTTPClient(session: session)
     }
 
     public func health(baseURL: String, model: String, acceptInsecureRemote: Bool) async -> InferenceHealth {
@@ -84,67 +86,29 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
         request: InferenceRequest,
         continuation: AsyncThrowingStream<InferenceEvent, Error>.Continuation
     ) async throws {
-        let url = baseURL.appendingPathComponent("api/chat")
-        var req = URLRequest(url: url)
-        req.httpMethod = "POST"
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.timeoutInterval = 120
-
         // Each user message carries the screenshot it introduced; Ollama keeps earlier images in
         // context, so a chat can span several captures.
-        var messages: [OllamaChatRequest.Message] = [
-            .init(role: "system", content: PromptBuilder.systemPrompt(agentAppendix: request.agentSystemAppendix), images: nil)
+        var messages: [OllamaChatMessage] = [
+            OllamaChatMessage(role: "system", content: PromptBuilder.systemPrompt(agentAppendix: request.agentSystemAppendix), images: nil)
         ]
         for turn in request.messages {
-            messages.append(.init(role: turn.role.rawValue, content: turn.text, images: turn.imageBase64.map { [$0] }))
+            messages.append(OllamaChatMessage(role: turn.role.rawValue, content: turn.text, images: turn.imageBase64.map { [$0] }))
         }
         #if DEBUG
         let imageCount = request.messages.filter { $0.imageBase64 != nil }.count
         InferenceDebugLog.recordImagePayloadCount(imageCount, model: request.model)
         #endif
-        func makeBody(think: Bool?) -> OllamaChatRequest {
-            OllamaChatRequest(
-                model: request.model,
-                messages: messages,
-                stream: true,
-                // Keep the model warm so the next capture skips cold-start; cap output in quick mode.
-                keepAlive: "10m",
-                think: think,
-                options: request.quickMode ? OllamaChatRequest.Options(numPredict: 256) : nil
-            )
-        }
-        func send(_ body: OllamaChatRequest) async throws -> (URLSession.AsyncBytes, HTTPURLResponse) {
-            var attempt = req
-            attempt.httpBody = try JSONEncoder().encode(body)
-            let (bytes, response) = try await session.bytes(for: attempt)
-            guard let http = response as? HTTPURLResponse else {
-                throw InferenceError.ollamaUnreachable("No response from Ollama.")
-            }
-            return (bytes, http)
-        }
 
-        // Gemma 4 reasons by default and streams empty `content` until thinking ends (blank answers,
-        // worst in quick mode), a notch HUD wants the direct answer, so disable chain-of-thought.
-        // Not every model supports `think`; if Ollama 400s on it, retry once without it so swapping
-        // to a non-reasoning model still works.
-        var (bytes, http) = try await send(makeBody(think: false))
-        if http.statusCode == 400 {
-            let detail = await Self.readErrorBody(bytes)
-            if (detail ?? "").lowercased().contains("think") {
-                (bytes, http) = try await send(makeBody(think: nil))
-            } else {
-                throw InferenceError.http(status: 400, message: Self.friendlyChatFailure(status: 400, ollamaError: detail))
-            }
-        }
-        guard http.statusCode == 200 else {
-            // Surface Ollama's actual error body, a generic "check the model" hint hides
-            // real failures like a missing llama-server runner.
-            let detail = await Self.readErrorBody(bytes)
-            throw InferenceError.http(
-                status: http.statusCode,
-                message: Self.friendlyChatFailure(status: http.statusCode, ollamaError: detail)
-            )
-        }
+        // The client applies `think:false` (with a one-shot retry without `think` on a 400 that
+        // mentions it) and surfaces Ollama's real error body on other failures.
+        let bytes = try await client.chatStream(
+            base: baseURL,
+            model: request.model,
+            messages: messages,
+            quickMode: request.quickMode,
+            // Keep the model warm so the next capture skips cold-start.
+            keepAlive: "10m"
+        )
 
         for try await line in bytes.lines {
             if Task.isCancelled { return }
@@ -176,39 +140,29 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
                 request.ollamaBaseURL,
                 acceptInsecureRemote: request.acceptInsecureRemoteOllama
             )
-            let url = base.appendingPathComponent("api/chat")
-            var req = URLRequest(url: url)
-            req.httpMethod = "POST"
-            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            req.timeoutInterval = 30
 
             // Replay the same conversation (with its images), then ask for suggestions,
             // constrained to the JSON schema.
-            var messages: [[String: Any]] = [
-                ["role": "system", "content": PromptBuilder.followUpSystemPrompt]
+            var messages: [OllamaChatMessage] = [
+                OllamaChatMessage(role: "system", content: PromptBuilder.followUpSystemPrompt)
             ]
             for turn in request.messages {
-                var msg: [String: Any] = ["role": turn.role.rawValue, "content": turn.text]
-                if let image = turn.imageBase64 { msg["images"] = [image] }
-                messages.append(msg)
+                messages.append(OllamaChatMessage(role: turn.role.rawValue, content: turn.text, images: turn.imageBase64.map { [$0] }))
             }
-            messages.append(["role": "user", "content": PromptBuilder.followUpUserPrompt])
+            messages.append(OllamaChatMessage(role: "user", content: PromptBuilder.followUpUserPrompt))
 
-            let body: [String: Any] = [
-                "model": request.model,
-                "messages": messages,
-                "stream": false,
-                "keep_alive": "10m",
-                "think": false, // direct JSON, not chain-of-thought (see streamChat)
-                "format": PromptBuilder.followUpSchema,
-                "options": ["num_predict": 120, "temperature": 0.4]
-            ]
-            req.httpBody = try JSONSerialization.data(withJSONObject: body)
-
-            let (data, response) = try await session.data(for: req)
-            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-                return FollowUpGenerationResult(suggestions: [])
-            }
+            // The client applies `think:false` + one-shot think-retry (see streamChat) and surfaces
+            // Ollama errors; we stay best-effort and swallow any throw below.
+            let data = try await client.chatData(
+                base: base,
+                model: request.model,
+                messages: messages,
+                stream: false,
+                keepAlive: "10m",
+                options: ["num_predict": 120, "temperature": 0.4],
+                format: PromptBuilder.followUpSchema,
+                timeout: 30 // parity with the original follow-up pass; the answer stream uses 120s
+            )
             let suggestions = Self.parseSuggestions(from: data)
             let stats = Self.parseChatStats(from: data)
             return FollowUpGenerationResult(suggestions: suggestions, stats: stats)
@@ -303,59 +257,23 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
     @discardableResult
     public func warmUp(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> Bool {
         guard let base = try? resolveBaseURL(baseURL, acceptInsecureRemote: acceptInsecureRemote) else { return false }
-        let url = base.appendingPathComponent("api/chat")
-        var req = URLRequest(url: url)
-        req.httpMethod = "POST"
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.timeoutInterval = 60
-        let body: [String: Any] = [
-            "model": model,
-            "messages": [["role": "user", "content": "ok"]],
-            "stream": false,
-            "keep_alive": "10m",
-            "think": false,
-            "options": ["num_predict": 1]
-        ]
-        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
-        // Report whether the model actually loaded: a 2xx means it's resident. Anything else (Ollama
-        // down, model missing, transport error) is a failed warm-up the caller must not treat as warm.
-        guard let (_, response) = try? await session.data(for: req),
-              let http = response as? HTTPURLResponse,
-              (200..<300).contains(http.statusCode)
-        else { return false }
-        return true
-    }
-
-    // MARK: - Error surfacing
-
-    /// Reads Ollama's (small, JSON) error body without throwing, returning its `error` string.
-    private static func readErrorBody(_ bytes: URLSession.AsyncBytes) async -> String? {
-        var raw = ""
+        // The client applies `think:false` with a one-shot retry without `think` on a 400 that
+        // mentions it, so a non-reasoning model still warms. A successful (non-throwing) call means
+        // the model loaded; any thrown error is a failed warm-up the caller must not treat as warm.
         do {
-            for try await line in bytes.lines {
-                raw += line
-                if raw.count > 4_000 { break }
-            }
-        } catch { /* best-effort, fall through to whatever we collected */ }
-
-        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        if let data = trimmed.data(using: .utf8),
-           let body = try? JSONDecoder().decode(OllamaErrorBody.self, from: data),
-           !body.error.isEmpty {
-            return body.error
+            _ = try await client.chatData(
+                base: base,
+                model: model,
+                messages: [OllamaChatMessage(role: "user", content: "ok")],
+                stream: false,
+                keepAlive: "10m",
+                options: ["num_predict": 1],
+                format: nil
+            )
+            return true
+        } catch {
+            return false
         }
-        return trimmed
-    }
-
-    private static func friendlyChatFailure(status: Int, ollamaError: String?) -> String {
-        guard let raw = ollamaError, !raw.isEmpty else {
-            return "Ollama request failed (HTTP \(status)). Make sure `ollama serve` is running and the model is pulled."
-        }
-        if raw.contains("llama-server binary not found") || raw.contains("llama runner") {
-            return "Ollama is running but its model runner is missing (no llama-server). Reinstall Ollama from ollama.com (or `brew reinstall ollama`), then `ollama serve` and try again."
-        }
-        return "Ollama error: \(raw.prefix(300))"
     }
 }
 
@@ -384,45 +302,6 @@ public enum InferenceError: Error, Sendable, LocalizedError {
     }
 }
 
-private struct OllamaChatRequest: Encodable, Sendable {
-    struct Message: Encodable, Sendable {
-        let role: String
-        let content: String
-        let images: [String]?
-
-        enum CodingKeys: String, CodingKey {
-            case role, content, images
-        }
-
-        func encode(to encoder: Encoder) throws {
-            var container = encoder.container(keyedBy: CodingKeys.self)
-            try container.encode(role, forKey: .role)
-            try container.encode(content, forKey: .content)
-            if let images, !images.isEmpty {
-                try container.encode(images, forKey: .images)
-            }
-        }
-    }
-    struct Options: Encodable, Sendable {
-        let numPredict: Int
-        enum CodingKeys: String, CodingKey {
-            case numPredict = "num_predict"
-        }
-    }
-
-    let model: String
-    let messages: [Message]
-    let stream: Bool
-    let keepAlive: String?
-    let think: Bool?
-    let options: Options?
-
-    enum CodingKeys: String, CodingKey {
-        case model, messages, stream, think, options
-        case keepAlive = "keep_alive"
-    }
-}
-
 private struct OllamaChatChunk: Decodable, Sendable {
     struct Message: Decodable, Sendable {
         let content: String?
@@ -439,8 +318,4 @@ private struct OllamaChatChunk: Decodable, Sendable {
         case evalCount = "eval_count"
         case evalDuration = "eval_duration"
     }
-}
-
-private struct OllamaErrorBody: Decodable, Sendable {
-    let error: String
 }

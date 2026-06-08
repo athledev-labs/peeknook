@@ -129,48 +129,31 @@ public struct MacCaptureProvider: CaptureProviding, Sendable {
     /// 3. else the largest window anywhere.
     private static func windowTarget(content: SCShareableContent, cursor: CGPoint?) async throws -> CaptureTarget {
         let ownPID = ProcessInfo.processInfo.processIdentifier
-
-        // Real, on-screen app window that isn't our own notch HUD.
-        func usable(_ window: SCWindow) -> Bool {
-            window.owningApplication?.processID != ownPID
-                && window.windowLayer == 0
-                && window.frame.width > 80 && window.frame.height > 80
-        }
-
-        // `content.windows` is ordered front-to-back, so the first hit under the cursor is
-        // the topmost window there. Cursor + frame share the global top-left coordinate space.
-        if let cursor,
-           let under = content.windows.first(where: { usable($0) && $0.frame.contains(cursor) }) {
-            return try await Self.screenshot(of: under)
-        }
-
         let frontPID = await MainActor.run {
             NSWorkspace.shared.frontmostApplication?.processIdentifier
         }
-        if let frontPID,
-           let largestFront = content.windows
-               .filter({ usable($0) && $0.owningApplication?.processID == frontPID })
-               .max(by: { Self.area($0.frame) < Self.area($1.frame) }) {
-            return try await Self.screenshot(of: largestFront)
-        }
 
-        guard let anyWindow = content.windows
-            .filter(usable)
-            .max(by: { Self.area($0.frame) < Self.area($1.frame) }) else {
+        // Pure selection over plain descriptors (front-to-back order preserved); map the chosen
+        // descriptor back to its SCWindow for the screenshot I/O below.
+        let descriptors = content.windows.map(Self.descriptor(for:))
+        guard let chosen = CaptureTargetSelector.selectWindow(
+            windows: descriptors,
+            cursor: cursor,
+            ownerPID: ownPID,
+            frontmostPID: frontPID
+        ),
+            let window = content.windows.first(where: { $0.windowID == chosen.windowID }) else {
             throw CaptureError.failed("No capturable window under the cursor or front app. Click the window you want, then try again.")
         }
-        return try await Self.screenshot(of: anyWindow)
+        return try await Self.screenshot(of: window)
     }
 
     /// The whole display the cursor is on (else the first/main display).
     private static func displayTarget(content: SCShareableContent, cursor: CGPoint?) async throws -> CaptureTarget {
         let displays = content.displays
-        let display: SCDisplay
-        if let cursor, let hit = displays.first(where: { $0.frame.contains(cursor) }) {
-            display = hit
-        } else if let first = displays.first {
-            display = first
-        } else {
+        let descriptors = displays.map { CaptureDisplayDescriptor(displayID: $0.displayID, frame: $0.frame) }
+        guard let chosen = CaptureTargetSelector.selectDisplay(displays: descriptors, cursor: cursor),
+              let display = displays.first(where: { $0.displayID == chosen.displayID }) else {
             throw CaptureError.failed("No display available to capture.")
         }
 
@@ -197,6 +180,18 @@ public struct MacCaptureProvider: CaptureProviding, Sendable {
         CGEvent(source: nil)?.location
     }
 
+    /// Plain, testable view of an `SCWindow` for `CaptureTargetSelector`.
+    private static func descriptor(for window: SCWindow) -> CaptureWindowDescriptor {
+        CaptureWindowDescriptor(
+            windowID: window.windowID,
+            frame: window.frame,
+            ownerPID: window.owningApplication?.processID ?? -1,
+            layer: window.windowLayer,
+            appName: window.owningApplication?.applicationName,
+            title: window.title
+        )
+    }
+
     private static func screenshot(of window: SCWindow) async throws -> CaptureTarget {
         let filter = SCContentFilter(desktopIndependentWindow: window)
         let config = SCStreamConfiguration()
@@ -212,6 +207,4 @@ public struct MacCaptureProvider: CaptureProviding, Sendable {
             windowTitle: window.title
         )
     }
-
-    private static func area(_ rect: CGRect) -> CGFloat { rect.width * rect.height }
 }
