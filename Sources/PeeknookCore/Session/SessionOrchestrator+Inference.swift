@@ -24,7 +24,7 @@ extension SessionOrchestrator {
 
         if settings.webLookupEnabled, let capture {
             isFetchingWebLookup = true
-            let snapshot = await webLookupRunner.lookup(capture: capture)
+            let snapshot = await webLookup.lookup(capture: capture)
             isFetchingWebLookup = false
             guard lifecycle.isCurrentSession(sessionGen), !Task.isCancelled else { return }
             webLookupSnapshot = snapshot
@@ -35,13 +35,13 @@ extension SessionOrchestrator {
         let inferencePolicy = InferenceReplayPolicy(
             maxImagePayloads: settings.inferenceImageReplay.maxImagePayloads
         )
+        let budgeted = ContextBudgetPolicy.trimmedConversation(conversation, pressure: contextPressure)
         let request = InferenceRequest(
             mode: settings.mode,
-            messages: inferenceMessages(from: conversation, webLookup: webLookupSnapshot, policy: inferencePolicy),
+            messages: inferenceMessages(from: budgeted, webLookup: webLookupSnapshot, policy: inferencePolicy),
             model: settings.textModel,
-            ollamaBaseURL: settings.ollamaBaseURL,
-            quickMode: settings.quickMode,
-            acceptInsecureRemoteOllama: settings.acceptInsecureRemoteOllama
+            endpoint: .from(settings: settings),
+            quickMode: settings.quickMode
         )
         let stream = inference.stream(request: request)
 
@@ -152,9 +152,8 @@ extension SessionOrchestrator {
             mode: settings.mode,
             messages: inferenceMessages(from: conversation, policy: .suggestions),
             model: settings.textModel,
-            ollamaBaseURL: settings.ollamaBaseURL,
-            quickMode: settings.quickMode,
-            acceptInsecureRemoteOllama: settings.acceptInsecureRemoteOllama
+            endpoint: .from(settings: settings),
+            quickMode: settings.quickMode
         )
         let expectedTurn = turnCounter
         let sessionGen = lifecycle.snapshotSession()

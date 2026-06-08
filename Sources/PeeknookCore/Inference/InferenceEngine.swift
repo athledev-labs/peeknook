@@ -10,11 +10,26 @@ public struct InferenceRequest: Sendable, Equatable {
     /// messages that introduced them. The engine prepends the system prompt.
     public var messages: [InferenceMessage]
     public var model: String
-    public var ollamaBaseURL: String
+    public var endpoint: InferenceEndpoint
     public var quickMode: Bool
-    /// When false, plain HTTP to non-loopback Ollama hosts is rejected before any request.
-    public var acceptInsecureRemoteOllama: Bool
 
+    public init(
+        mode: PracticeMode,
+        agentSystemAppendix: String? = nil,
+        messages: [InferenceMessage],
+        model: String,
+        endpoint: InferenceEndpoint,
+        quickMode: Bool = false
+    ) {
+        self.mode = mode
+        self.agentSystemAppendix = agentSystemAppendix
+        self.messages = messages
+        self.model = model
+        self.endpoint = endpoint
+        self.quickMode = quickMode
+    }
+
+    /// Convenience for call sites that still have settings fields.
     public init(
         mode: PracticeMode,
         agentSystemAppendix: String? = nil,
@@ -24,13 +39,14 @@ public struct InferenceRequest: Sendable, Equatable {
         quickMode: Bool = false,
         acceptInsecureRemoteOllama: Bool = false
     ) {
-        self.mode = mode
-        self.agentSystemAppendix = agentSystemAppendix
-        self.messages = messages
-        self.model = model
-        self.ollamaBaseURL = ollamaBaseURL
-        self.quickMode = quickMode
-        self.acceptInsecureRemoteOllama = acceptInsecureRemoteOllama
+        self.init(
+            mode: mode,
+            agentSystemAppendix: agentSystemAppendix,
+            messages: messages,
+            model: model,
+            endpoint: .ollama(baseURL: ollamaBaseURL, acceptInsecureRemote: acceptInsecureRemoteOllama),
+            quickMode: quickMode
+        )
     }
 }
 

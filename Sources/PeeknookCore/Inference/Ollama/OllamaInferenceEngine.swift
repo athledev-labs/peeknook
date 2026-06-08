@@ -26,10 +26,7 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
         AsyncThrowingStream { continuation in
             let task = Task {
                 do {
-                    let base = try resolveBaseURL(
-                        request.ollamaBaseURL,
-                        acceptInsecureRemote: request.acceptInsecureRemoteOllama
-                    )
+                    let base = try resolveEndpoint(request.endpoint)
                     try await ensureModel(baseURL: base, model: request.model)
                     try await streamChat(
                         baseURL: base,
@@ -48,6 +45,13 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
 
     private func resolveBaseURL(_ string: String, acceptInsecureRemote: Bool) throws -> URL {
         try OllamaURLPolicy.resolveOrThrow(string, acceptInsecureRemote: acceptInsecureRemote)
+    }
+
+    private func resolveEndpoint(_ endpoint: InferenceEndpoint) throws -> URL {
+        switch endpoint {
+        case .ollama(let baseURL, let acceptInsecureRemote):
+            return try resolveBaseURL(baseURL, acceptInsecureRemote: acceptInsecureRemote)
+        }
     }
 
     private func fetchVersion(baseURL: URL) async throws {
@@ -136,10 +140,7 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
 
     public func generateFollowUps(request: InferenceRequest) async -> FollowUpGenerationResult {
         do {
-            let base = try resolveBaseURL(
-                request.ollamaBaseURL,
-                acceptInsecureRemote: request.acceptInsecureRemoteOllama
-            )
+            let base = try resolveEndpoint(request.endpoint)
 
             // Replay the same conversation (with its images), then ask for suggestions,
             // constrained to the JSON schema.

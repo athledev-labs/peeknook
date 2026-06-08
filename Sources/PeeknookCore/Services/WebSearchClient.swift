@@ -109,12 +109,16 @@ public struct WebSearchClient: Sendable {
 
     /// Build a search query from capture context, prefers selected text, then window title.
     /// Returns nil when the context looks sensitive (API keys, tokens, password managers).
-    public static func query(from capture: CaptureResult) -> String? {
-        if SensitiveTextHeuristics.shouldSkipWebLookup(
+    public static func query(
+        from capture: CaptureResult,
+        policy: SensitiveContentPolicy = SensitiveContentPolicy()
+    ) -> String? {
+        guard policy.allowsEgress(
             text: capture.text,
             windowTitle: capture.windowTitle,
-            appName: capture.appName
-        ) {
+            appName: capture.appName,
+            for: .webLookup
+        ) else {
             return nil
         }
         if let text = capture.text?.trimmingCharacters(in: .whitespacesAndNewlines), text.count >= 4 {

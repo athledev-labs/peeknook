@@ -66,6 +66,7 @@ public enum SensitiveTextHeuristics: Sendable {
                   let swiftRange = Range(valueRange, in: text) else { continue }
             let value = String(text[swiftRange])
             if classifyToken(value) { return true }
+            if value.count >= 6 { return true }
         }
         return false
     }

@@ -105,7 +105,11 @@ public struct ModelCatalogService: Sendable {
     // MARK: - Remote catalog
 
     public func searchCatalog(query: String, page: Int = 1) async throws -> [RemoteCatalogModel] {
-        try await remote.search(query: query, page: page)
+        let policy = SensitiveContentPolicy()
+        guard policy.allowsEgress(text: query, windowTitle: nil, appName: nil, for: .catalogSearch) else {
+            return []
+        }
+        return try await remote.search(query: query, page: page)
     }
 
     public func catalogTags(for modelID: String) async throws -> [RemoteCatalogTag] {

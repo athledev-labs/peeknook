@@ -13,7 +13,7 @@ public final class SessionOrchestrator {
     public var phase: SessionPhase { phaseMachine.phase }
     private var phaseMachine = SessionPhaseMachine()
     let lifecycle = SessionLifecycleCoordinator()
-    let webLookupRunner = WebLookupRunner()
+    let webLookup: any WebLookupProviding
     public internal(set) var streamedAnswer: String = ""
     /// Committed conversation, image turns (each captured screenshot), the user's follow-up
     /// questions, and assistant answers, oldest first. Empty until the first answer lands.
@@ -143,6 +143,7 @@ public final class SessionOrchestrator {
         settings: PeeknookSettings,
         capture: any CaptureProviding,
         inference: any InferenceEngine,
+        webLookup: any WebLookupProviding = WebLookupRunner(),
         speechRecognizer: any SpeechRecognizing = StubSpeechRecognizer(),
         speechSynthesizer: any SpeechSynthesizing = StubSpeechSynthesizer(),
         previewSpeechSynthesizer: (any SpeechSynthesizing)? = nil
@@ -150,6 +151,7 @@ public final class SessionOrchestrator {
         self.settings = settings
         self.capture = capture
         self.inference = inference
+        self.webLookup = webLookup
         self.speechRecognizer = speechRecognizer
         self.answerSpeechSynthesizer = speechSynthesizer
         self.previewSpeechSynthesizer = previewSpeechSynthesizer ?? speechSynthesizer

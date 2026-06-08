@@ -99,29 +99,36 @@ public actor ConversationArchiveStore {
             return .failure(.directoryUnavailable)
         }
 
-        do {
-            try writeProtected(data, to: threadURL(thread.id))
-        } catch {
-            return .failure(.threadWriteFailed)
-        }
-
         var index = readIndex()
         index.summaries.removeAll { $0.id == thread.id }
-        index.summaries.append(thread.summary)
+        index.summaries.append(thread.summary(fileBytes: data.count))
         prune(&index)
+
+        let priorIndex = readIndex()
         switch writeIndex(index) {
         case .success:
-            return .success(())
+            break
         case .failure:
             return .failure(.indexWriteFailed)
         }
+
+        do {
+            try writeProtected(data, to: threadURL(thread.id))
+        } catch {
+            _ = writeIndex(priorIndex)
+            return .failure(.threadWriteFailed)
+        }
+        recordSealed()
+        return .success(())
     }
 
     public func delete(id: UUID) {
         try? FileManager.default.removeItem(at: threadURL(id))
         var index = readIndex()
         index.summaries.removeAll { $0.id == id }
-        writeIndex(index)
+        if case .success = writeIndex(index) {
+            recordSealed()
+        }
     }
 
     /// Wipe the whole archive, called when the user turns persistence off or taps Clear all.
@@ -164,7 +171,7 @@ public actor ConversationArchiveStore {
         }
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try? writeProtected(fileData, to: threadURL(thread.id))
-        writeIndex(ConversationArchiveIndex(version: Self.indexVersion, summaries: [thread.summary]))
+        writeIndex(ConversationArchiveIndex(version: Self.indexVersion, summaries: [thread.summary(fileBytes: fileData.count)]))
         try? FileManager.default.removeItem(at: legacyFileURL)
         return thread
     }
@@ -206,7 +213,10 @@ public actor ConversationArchiveStore {
               !ArchiveEnvelope.isEncrypted(raw),
               let index = try? JSONDecoder().decode(ConversationArchiveIndex.self, from: raw)
         else { return false }
-        if case .success = writeIndex(index) { return true }
+        if case .success = writeIndex(index) {
+            recordSealed()
+            return true
+        }
         return false
     }
 
@@ -339,16 +349,6 @@ public actor ConversationArchiveStore {
             return .failure(.indexWriteFailed)
         }
 
-        // CRITICAL INVARIANT: the trusted marker flips true ONLY once the archive is fully encrypted
-        // on disk — `recordSealed()` re-checks `isArchiveFullyEncrypted()` and self-defers while any
-        // plaintext index or thread remains. So by the time `archiveIsSealed()` is true, no legitimate
-        // plaintext file can exist, and every later plaintext read is tampering/corruption — safe to
-        // refuse (fail-closed). This is also what makes interrupted migrations recoverable: a
-        // `reencryptPlaintextThreadsIfNeeded` loop seals threads one at a time, and the per-save
-        // `recordSealed()` does NOT set the marker until the LAST thread seals everything. If the
-        // loop is interrupted, the marker stays unset, so the next launch's reencrypt runs again and
-        // recovers the stranded plaintext threads instead of refusing them.
-        recordSealed()
         return .success(())
     }
 
@@ -365,17 +365,19 @@ public actor ConversationArchiveStore {
             index.summaries.removeLast()
         }
 
-        while totalBytes(of: index.summaries) > maxBytes, index.summaries.count > 1,
-              let oldest = index.summaries.last {
+        var totalBytes = index.summaries.reduce(0) { running, summary in
+            running + (summary.fileBytes ?? fileSize(for: summary.id))
+        }
+        while totalBytes > maxBytes, index.summaries.count > 1, let oldest = index.summaries.last {
+            let removed = oldest.fileBytes ?? fileSize(for: oldest.id)
             try? FileManager.default.removeItem(at: threadURL(oldest.id))
             index.summaries.removeLast()
+            totalBytes -= removed
         }
     }
 
-    private func totalBytes(of summaries: [ConversationSummary]) -> Int {
-        summaries.reduce(0) { running, summary in
-            let size = (try? FileManager.default.attributesOfItem(atPath: threadURL(summary.id).path)[.size]) as? Int
-            return running + (size ?? 0)
-        }
+    private func fileSize(for id: UUID) -> Int {
+        let path = threadURL(id).path
+        return (try? FileManager.default.attributesOfItem(atPath: path)[.size] as? Int) ?? 0
     }
 }

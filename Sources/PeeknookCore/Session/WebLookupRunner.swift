@@ -3,29 +3,30 @@
 import Foundation
 
 /// Network-bound web lookup work, kept off the orchestrator's observable surface until complete.
-public struct WebLookupRunner: Sendable {
-    public var client: WebSearchClient
+public protocol WebLookupProviding: Sendable {
+    func lookup(capture: CaptureResult) async -> WebLookupSnapshot?
+}
 
-    public init(client: WebSearchClient = WebSearchClient()) {
+public struct WebLookupRunner: WebLookupProviding, Sendable {
+    public var client: WebSearchClient
+    public var policy: SensitiveContentPolicy
+
+    public init(client: WebSearchClient = WebSearchClient(), policy: SensitiveContentPolicy = SensitiveContentPolicy()) {
         self.client = client
+        self.policy = policy
     }
 
     /// Run opt-in DuckDuckGo lookup for a capture turn. Returns a snapshot even when blocked or failed.
     public func lookup(capture: CaptureResult) async -> WebLookupSnapshot? {
-        let sensitive = SensitiveTextHeuristics.shouldSkipWebLookup(
-            text: capture.text,
-            windowTitle: capture.windowTitle,
-            appName: capture.appName
-        )
-        if sensitive {
+        if let failure = policy.webLookupFailureIfBlocked(capture: capture) {
             return WebLookupSnapshot(
                 query: "",
                 results: [],
                 lookupFailed: true,
-                lookupFailure: .sensitiveContent
+                lookupFailure: failure
             )
         }
-        guard let query = WebSearchClient.query(from: capture) else { return nil }
+        guard let query = WebSearchClient.query(from: capture, policy: policy) else { return nil }
 
         let allowed = await WebSearchRateLimiter.shared.allowSearch()
         if !allowed {

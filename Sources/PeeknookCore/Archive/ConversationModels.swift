@@ -58,14 +58,17 @@ public struct ConversationThread: Codable, Sendable, Identifiable, Equatable {
     }
 
     /// Lightweight row used by the list/switcher (no screenshots) so listing stays cheap.
-    public var summary: ConversationSummary {
+    public var summary: ConversationSummary { summary(fileBytes: nil) }
+
+    public func summary(fileBytes: Int? = nil) -> ConversationSummary {
         ConversationSummary(
             id: id,
             title: title,
             createdAt: createdAt,
             updatedAt: updatedAt,
             turnCount: turns.count,
-            hasImage: hasImage
+            hasImage: hasImage,
+            fileBytes: fileBytes
         )
     }
 
@@ -109,6 +112,8 @@ public struct ConversationSummary: Codable, Sendable, Identifiable, Equatable {
     public var updatedAt: Date
     public var turnCount: Int
     public var hasImage: Bool
+    /// Sealed on-disk byte size for the thread file; nil for legacy index rows until re-saved.
+    public var fileBytes: Int?
 
     public init(
         id: UUID,
@@ -116,7 +121,8 @@ public struct ConversationSummary: Codable, Sendable, Identifiable, Equatable {
         createdAt: Date,
         updatedAt: Date,
         turnCount: Int,
-        hasImage: Bool
+        hasImage: Bool,
+        fileBytes: Int? = nil
     ) {
         self.id = id
         self.title = title
@@ -124,6 +130,22 @@ public struct ConversationSummary: Codable, Sendable, Identifiable, Equatable {
         self.updatedAt = updatedAt
         self.turnCount = turnCount
         self.hasImage = hasImage
+        self.fileBytes = fileBytes
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, title, createdAt, updatedAt, turnCount, hasImage, fileBytes
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(UUID.self, forKey: .id)
+        self.title = try c.decode(String.self, forKey: .title)
+        self.createdAt = try c.decode(Date.self, forKey: .createdAt)
+        self.updatedAt = try c.decode(Date.self, forKey: .updatedAt)
+        self.turnCount = try c.decode(Int.self, forKey: .turnCount)
+        self.hasImage = try c.decode(Bool.self, forKey: .hasImage)
+        self.fileBytes = try c.decodeIfPresent(Int.self, forKey: .fileBytes)
     }
 }
 
