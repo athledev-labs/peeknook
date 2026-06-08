@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-import NookApp
+import PeeknookDesign
 import SwiftUI
 
 /// Rotating section copy so the suggestion row stays fresh without hardcoding domain labels.

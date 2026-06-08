@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import AppKit
-import NookApp
+import PeeknookDesign
 import PeeknookCore
 import SwiftUI
 
@@ -218,6 +218,7 @@ struct PeekIdleCommandBar: View {
                     symbol: "camera.viewfinder",
                     hotkey: orchestrator.settings.captureHotkey,
                     help: "Instant capture from anywhere on your Mac",
+                    testIdentifier: "peeknook.capture",
                     prominent: true,
                     action: onCapture
                 )

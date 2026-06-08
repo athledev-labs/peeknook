@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-import NookApp
+import PeeknookDesign
 import SwiftUI
 
 /// Bottom command row shared by home, stats, and other drilled-in surfaces, same HStack layout

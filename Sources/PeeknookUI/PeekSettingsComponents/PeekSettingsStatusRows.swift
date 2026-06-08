@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-import NookApp
+import PeeknookDesign
 import SwiftUI
 
 /// Read-only status row with a trailing badge. Detail appears below only when needed.

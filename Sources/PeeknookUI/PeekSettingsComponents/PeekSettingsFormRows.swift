@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-import NookApp
+import PeeknookDesign
 import SwiftUI
 
 /// Stacked form field for narrow notch panels: label row, then full-width input.

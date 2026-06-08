@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-import NookApp
+import PeeknookDesign
 import SwiftUI
 
 /// Lightweight expand/collapse trigger for nested settings (e.g. Advanced).

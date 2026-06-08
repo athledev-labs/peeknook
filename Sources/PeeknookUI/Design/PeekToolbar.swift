@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-import NookApp
+import PeeknookDesign
 import PeeknookCore
 import SwiftUI
 
@@ -12,6 +12,7 @@ struct NookToolbarButton: View {
     let symbol: String
     var hotkey: CaptureHotkey?
     var help: String?
+    var testIdentifier: String?
     var onHoverChange: ((Bool) -> Void)?
     var prominent = false
     let action: () -> Void
@@ -43,6 +44,7 @@ struct NookToolbarButton: View {
         }
         .help(help ?? defaultHelp(hotkey: hotkey))
         .peekAction(label: accessibilityLabel, hint: help)
+        .accessibilityIdentifier(testIdentifier ?? title)
     }
 
     private func defaultHelp(hotkey: CaptureHotkey?) -> String {

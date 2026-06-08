@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-import NookApp
+import PeeknookDesign
 import SwiftUI
 
 /// Per-command liquid glass, visible on the notch's black panel (material alone blurs to nothing).

@@ -2,7 +2,7 @@
 
 import AppKit
 import Carbon.HIToolbox
-import NookApp
+import PeeknookDesign
 import PeeknookCore
 import SwiftUI
 

@@ -24,7 +24,8 @@ let package = Package(
         .executable(name: "Peeknook", targets: ["PeeknookExecutable"]),
         .library(name: "PeeknookHost", targets: ["PeeknookHost"]),
         .library(name: "PeeknookCore", targets: ["PeeknookCore"]),
-        .library(name: "PeeknookUI", targets: ["PeeknookUI"])
+        .library(name: "PeeknookUI", targets: ["PeeknookUI"]),
+        .library(name: "PeeknookDesign", targets: ["PeeknookDesign"])
     ],
     dependencies: [
         opennookDependency
@@ -36,10 +37,18 @@ let package = Package(
             swiftSettings: strictConcurrency
         ),
         .target(
+            name: "PeeknookDesign",
+            dependencies: [
+                .product(name: "NookApp", package: "opennook")
+            ],
+            path: "Sources/PeeknookDesign",
+            swiftSettings: strictConcurrency
+        ),
+        .target(
             name: "PeeknookUI",
             dependencies: [
                 "PeeknookCore",
-                .product(name: "NookApp", package: "opennook")
+                "PeeknookDesign"
             ],
             path: "Sources/PeeknookUI",
             resources: [.process("Resources")],

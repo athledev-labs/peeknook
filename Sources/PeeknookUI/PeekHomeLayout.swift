@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-import NookApp
+import PeeknookDesign
 import SwiftUI
 
 /// Shared expanded-home layout helpers. Aligns Peeknook with OpenNook's LayoutNook pattern:
