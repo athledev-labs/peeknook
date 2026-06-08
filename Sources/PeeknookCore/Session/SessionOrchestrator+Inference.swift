@@ -60,6 +60,10 @@ extension SessionOrchestrator {
             }
         }
 
+        // The web lookup can span several awaits; if the user cancelled (or started a new chat)
+        // while it ran, this turn was abandoned — don't open an inference stream for it.
+        if Task.isCancelled { return }
+
         let inferencePolicy = InferenceReplayPolicy(
             maxImagePayloads: settings.inferenceImageReplay.maxImagePayloads
         )

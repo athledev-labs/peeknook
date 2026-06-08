@@ -300,8 +300,9 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
 
     // MARK: - Warm-up
 
-    public func warmUp(model: String, baseURL: String, acceptInsecureRemote: Bool) async {
-        guard let base = try? resolveBaseURL(baseURL, acceptInsecureRemote: acceptInsecureRemote) else { return }
+    @discardableResult
+    public func warmUp(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> Bool {
+        guard let base = try? resolveBaseURL(baseURL, acceptInsecureRemote: acceptInsecureRemote) else { return false }
         let url = base.appendingPathComponent("api/chat")
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
@@ -316,7 +317,13 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
             "options": ["num_predict": 1]
         ]
         req.httpBody = try? JSONSerialization.data(withJSONObject: body)
-        _ = try? await session.data(for: req) // fire-and-forget; only side effect is a loaded model
+        // Report whether the model actually loaded: a 2xx means it's resident. Anything else (Ollama
+        // down, model missing, transport error) is a failed warm-up the caller must not treat as warm.
+        guard let (_, response) = try? await session.data(for: req),
+              let http = response as? HTTPURLResponse,
+              (200..<300).contains(http.statusCode)
+        else { return false }
+        return true
     }
 
     // MARK: - Error surfacing

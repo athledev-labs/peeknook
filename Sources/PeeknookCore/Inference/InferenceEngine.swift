@@ -65,8 +65,10 @@ public protocol InferenceEngine: Sendable {
     /// Best-effort: empty suggestions on failure so the UI simply shows no pills.
     func generateFollowUps(request: InferenceRequest) async -> FollowUpGenerationResult
     /// Proactively load the model into memory (resets `keep_alive`) so the next real capture
-    /// isn't the one that pays the cold-start cost.
-    func warmUp(model: String, baseURL: String, acceptInsecureRemote: Bool) async
+    /// isn't the one that pays the cold-start cost. Returns whether the model was actually loaded,
+    /// so callers don't record a warm model after a failed warm-up.
+    @discardableResult
+    func warmUp(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> Bool
     /// The model's context window in tokens (for the chat's context-usage meter), or nil if
     /// unknown. Best-effort.
     func contextLength(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> Int?
@@ -84,7 +86,8 @@ public extension InferenceEngine {
     func generateFollowUps(request: InferenceRequest) async -> FollowUpGenerationResult {
         FollowUpGenerationResult(suggestions: [])
     }
-    func warmUp(model: String, baseURL: String) async {
+    @discardableResult
+    func warmUp(model: String, baseURL: String) async -> Bool {
         await warmUp(model: model, baseURL: baseURL, acceptInsecureRemote: false)
     }
     func contextLength(model: String, baseURL: String) async -> Int? { nil }
@@ -121,7 +124,7 @@ public struct MockInferenceEngine: InferenceEngine, Sendable {
 
     public func health(baseURL: String, model: String, acceptInsecureRemote: Bool) async -> InferenceHealth { .ready }
 
-    public func warmUp(model: String, baseURL: String, acceptInsecureRemote: Bool) async {}
+    public func warmUp(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> Bool { true }
 
     public func contextLength(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> Int? { nil }
 

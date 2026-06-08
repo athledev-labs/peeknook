@@ -12,7 +12,17 @@ extension SessionOrchestrator {
         switch phase {
         case .idle, .result:
             let intent: CaptureIntent = hasConversation ? .addToChat : .fresh
-            guard !isContextBlocked || intent == .fresh else { return }
+            if intent == .addToChat, isContextBlocked {
+                // The thread's context window is full, so we can't extend it. From the result view
+                // the on-screen banner already explains why add/follow-up are disabled — leave it to
+                // the user. From the idle home screen there's no such banner, so a no-op would be a
+                // dead key: start a fresh chat instead and tell the UI why via a notice.
+                if case .idle = phase {
+                    emitNotice(.contextFull)
+                    startCapture(intent: .fresh)
+                }
+                return
+            }
             startCapture(intent: intent)
         default:
             return
@@ -72,13 +82,13 @@ extension SessionOrchestrator {
             phase = .failed(.setupIncomplete)
             return
         }
-        inferenceTask?.cancel()
-        suggestionTask?.cancel()
+        // Invalidates any prior capture/inference/suggestion work and bumps both generations, so a
+        // pending launch restore or a late stream can't commit over this fresh capture.
+        abortSessionWork()
         pendingIntent = intent
         streamedAnswer = ""
         stopSpeechOutput()
         phase = .capturing
-        captureGeneration += 1
         let generation = captureGeneration
 
         inferenceTask = Task {
@@ -139,21 +149,20 @@ extension SessionOrchestrator {
         if let setup, !setup.isReady { return }
         isPrewarming = true
         Task {
-            await inference.warmUp(
+            let loaded = await inference.warmUp(
                 model: settings.textModel,
                 baseURL: settings.ollamaBaseURL,
                 acceptInsecureRemote: settings.acceptInsecureRemoteOllama
             )
-            lastInferenceAt = Date() // model is resident now
+            // Only treat the model as warm if the warm-up actually loaded it. A failed warm-up
+            // (Ollama down, model missing) must not fake warmth and make the loading copy lie.
+            if loaded { lastInferenceAt = Date() }
             isPrewarming = false
         }
     }
 
     public func cancel() {
-        captureGeneration += 1
-        inferenceTask?.cancel()
-        inferenceTask = nil
-        suggestionTask?.cancel()
+        abortSessionWork()
         streamedAnswer = ""
         stopVoiceInput()
         stopSpeechOutput()
@@ -162,7 +171,6 @@ extension SessionOrchestrator {
         if hasConversation {
             if let last = conversation.last, !last.isAssistant { conversation.removeLast() }
             suggestedFollowUps = []
-            isFetchingSuggestions = false
             phase = .result(lastAssistantText ?? "")
             return
         }
@@ -173,7 +181,7 @@ extension SessionOrchestrator {
     }
 
     public func dismissResult() {
-        suggestionTask?.cancel()
+        abortSessionWork()
         streamedAnswer = ""
         pendingPreview = nil
         pendingCapture = nil
@@ -181,6 +189,32 @@ extension SessionOrchestrator {
         discardActiveThread()
         resetConversation()
         phase = .idle
+    }
+
+    /// Cancel any in-flight capture, inference, web-lookup, or suggestion work and bump the session
+    /// generations so a late async completion (a streaming token, a launch restore, a follow-up)
+    /// can't mutate state after the user moved on. Callers own the phase/conversation reset that
+    /// follows; this only invalidates work in progress.
+    func abortSessionWork() {
+        sessionGeneration += 1
+        captureGeneration += 1
+        inferenceTask?.cancel()
+        inferenceTask = nil
+        suggestionTask?.cancel()
+        suggestionTask = nil
+        isFetchingSuggestions = false
+        isFetchingWebLookup = false
+    }
+
+    /// Surface a transient, one-shot signal to the UI (see ``SessionNotice``).
+    func emitNotice(_ notice: SessionNotice) {
+        lastNotice = notice
+        noticeToken += 1
+    }
+
+    /// Clear the last notice once the UI has presented it.
+    public func clearNotice() {
+        lastNotice = nil
     }
 
     /// Clears the in-memory chat and forgets its archive identity (without deleting the archived

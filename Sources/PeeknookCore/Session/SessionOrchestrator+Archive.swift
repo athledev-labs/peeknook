@@ -11,10 +11,15 @@ extension SessionOrchestrator {
     /// thread, not an auto-opened result.
     public func loadPersistedConversationIfEnabled() {
         guard settings.persistConversation, let archive = conversationArchive else { return }
+        let generation = sessionGeneration
         Task {
             _ = await archive.migrateLegacyIfNeeded()
             _ = await archive.reencryptPlaintextThreadsIfNeeded()
             guard let restored = await archive.mostRecent(), !restored.turns.isEmpty else { return }
+            // A capture or thread switch started while we were loading off-disk — never adopt the
+            // stale thread over the user's in-flight work. Stay defensive: only restore into a
+            // genuinely idle, empty session.
+            guard generation == sessionGeneration, case .idle = phase, conversation.isEmpty else { return }
             adopt(restored)
         }
     }
@@ -29,13 +34,14 @@ extension SessionOrchestrator {
 
     /// Open an archived chat by id: load it into memory and surface its last answer as a result.
     public func openThread(id: UUID) async {
-        guard let archive = conversationArchive,
-              let thread = await archive.load(id: id),
-              !thread.turns.isEmpty else { return }
-        inferenceTask?.cancel()
-        suggestionTask?.cancel()
+        guard let archive = conversationArchive else { return }
+        let generation = sessionGeneration
+        guard let thread = await archive.load(id: id), !thread.turns.isEmpty else { return }
+        // A capture or another thread switch started while this one loaded off-disk — the newer
+        // intent wins, so don't stomp it with the thread we were asked for earlier.
+        guard generation == sessionGeneration else { return }
+        abortSessionWork()
         suggestedFollowUps = []
-        isFetchingSuggestions = false
         streamedAnswer = ""
         adopt(thread)
         phase = .result(lastAssistantText ?? "")
@@ -47,6 +53,9 @@ extension SessionOrchestrator {
             await archive.delete(id: id)
         }
         if id == activeThreadID {
+            // Deleting the chat that's currently on screen: abort any in-flight inference first, or
+            // a late stream could re-file an answer for the thread we just removed.
+            abortSessionWork()
             resetConversation()
             phase = .idle
         }

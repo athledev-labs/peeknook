@@ -11,7 +11,7 @@ private struct StatsInferenceEngine: InferenceEngine, Sendable {
 
     func health(baseURL: String, model: String, acceptInsecureRemote: Bool) async -> InferenceHealth { .ready }
 
-    func warmUp(model: String, baseURL: String, acceptInsecureRemote: Bool) async {}
+    func warmUp(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> Bool { true }
 
     func contextLength(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> Int? { window }
 
@@ -135,5 +135,117 @@ final class ConversationArchiveFlowTests: XCTestCase {
         try await Task.sleep(nanoseconds: 200_000_000)
 
         XCTAssertEqual(orchestrator.contextPressure, .normal)
+    }
+
+    func testLaunchRestoreSkipsAdoptWhenSessionMovedOn() async {
+        // The launch restore runs in an unstructured Task that spans file IO. If the session moves
+        // on while it loads (the user starts a new chat / a capture), it must not adopt the stale
+        // thread over the user's action.
+        let (store, dir) = tempArchive()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let saved = ConversationThread(
+            turns: [
+                ChatTurn(id: 1, kind: .user("old question")),
+                ChatTurn(id: 2, kind: .assistant("stale archived answer")),
+            ],
+            turnCounter: 2
+        )
+        let saveResult = await store.save(saved)
+        XCTAssertTrue(saveResult.isSuccess)
+
+        let orchestrator = SessionOrchestrator(
+            settings: PeeknookSettings(textModel: "gemma4:e4b", persistConversation: true),
+            capture: StubCaptureProvider(sampleText: "x"),
+            inference: MockInferenceEngine(tokens: ["y"])
+        )
+        orchestrator.conversationArchive = store
+
+        // Kick off the async restore, then synchronously move the session on before its IO resolves.
+        orchestrator.loadPersistedConversationIfEnabled()
+        orchestrator.startNewChat()
+
+        // Give the restore task time to run its file IO and (pre-fix) adopt the stale thread.
+        try? await Task.sleep(nanoseconds: 300_000_000)
+
+        XCTAssertTrue(orchestrator.conversation.isEmpty, "restore adopted a stale thread after the session moved on")
+        guard case .idle = orchestrator.phase else {
+            return XCTFail("Expected idle, got \(orchestrator.phase)")
+        }
+    }
+
+    func testDeleteActiveThreadMidFollowUpStaysIdle() async {
+        // Deleting the on-screen chat while a follow-up is streaming must abort that work, or the
+        // late stream re-files an answer for a thread that no longer exists.
+        let (store, dir) = tempArchive()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let engine = ScriptedEngine(responsesPerCall: [["first answer"], Array(repeating: "x ", count: 15)])
+        let orchestrator = SessionOrchestrator(
+            settings: PeeknookSettings(previewBeforeInfer: false, textModel: "x", persistConversation: true),
+            capture: StubCaptureProvider(sampleText: "screen"),
+            inference: engine
+        )
+        orchestrator.conversationArchive = store
+
+        orchestrator.beginCapture()
+        _ = await orchestrator.waitForResult("first answer")
+        guard let active = orchestrator.activeThreadID else {
+            return XCTFail("Expected an active thread id after the first answer")
+        }
+
+        orchestrator.sendFollowUp("expand")
+        let inferring = await orchestrator.waitForPhase { if case .inferring = $0 { return true }; return false }
+        guard case .inferring = inferring else {
+            return XCTFail("Expected to catch the follow-up inferring, got \(inferring)")
+        }
+
+        orchestrator.deleteThread(id: active)
+        guard case .idle = orchestrator.phase else {
+            return XCTFail("Expected idle after deleting the active thread, got \(orchestrator.phase)")
+        }
+
+        // Stays idle: a leaked follow-up stream must not re-file an answer for the deleted thread.
+        // Poll rather than sleep-then-check so the assertion can't false-pass under CI load.
+        let held = await orchestrator.phaseHolding({ if case .idle = $0 { return true }; return false })
+        guard case .idle = held else {
+            return XCTFail("A leaked follow-up resurrected a result after delete: \(held)")
+        }
+        XCTAssertTrue(orchestrator.conversation.isEmpty)
+    }
+
+    func testOpenThreadIgnoresStaleLoadWhenSwitchedAway() async {
+        // openThread snapshots sessionGeneration before its archive load. If the user moves the
+        // session on (a new chat) while the load is in flight, the newer intent wins — the stale
+        // thread must not be adopted over the cleared session. (Sibling of the launch-restore guard,
+        // but on the user-initiated History-switcher path.)
+        let (store, dir) = tempArchive()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let threadA = ConversationThread(
+            turns: [ChatTurn(id: 1, kind: .assistant("stale thread A answer"))],
+            turnCounter: 1
+        )
+        let saveResult = await store.save(threadA)
+        XCTAssertTrue(saveResult.isSuccess)
+
+        let orchestrator = SessionOrchestrator(
+            settings: PeeknookSettings(textModel: "gemma4:e4b", persistConversation: true),
+            capture: StubCaptureProvider(sampleText: "x"),
+            inference: MockInferenceEngine(tokens: ["y"])
+        )
+        orchestrator.conversationArchive = store
+
+        // openThread does only synchronous work (the generation snapshot) before `await archive.load`,
+        // so one yield reliably parks it at that suspension on the cooperative main-actor executor.
+        let opening = Task { await orchestrator.openThread(id: threadA.id) }
+        await Task.yield()
+        orchestrator.startNewChat()
+        await opening.value
+
+        XCTAssertTrue(orchestrator.conversation.isEmpty, "openThread adopted a stale thread after the user switched away")
+        guard case .idle = orchestrator.phase else {
+            return XCTFail("Expected idle, got \(orchestrator.phase)")
+        }
     }
 }

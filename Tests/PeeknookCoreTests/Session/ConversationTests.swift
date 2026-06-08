@@ -15,6 +15,8 @@ final class ScriptedEngine: InferenceEngine, @unchecked Sendable {
     var inferenceStats: InferenceStats?
     var followUpStats: InferenceStats?
     var contextWindow: Int?
+    /// Whether `warmUp` reports the model as loaded (drives prewarm warmth tests).
+    var warmUpSucceeds = true
 
     init(responsesPerCall: [[String]]) {
         self.responsesPerCall = responsesPerCall
@@ -22,7 +24,7 @@ final class ScriptedEngine: InferenceEngine, @unchecked Sendable {
 
     func health(baseURL: String, model: String, acceptInsecureRemote: Bool) async -> InferenceHealth { .ready }
 
-    func warmUp(model: String, baseURL: String, acceptInsecureRemote: Bool) async {}
+    func warmUp(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> Bool { warmUpSucceeds }
 
     func contextLength(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> Int? { contextWindow }
 
@@ -457,5 +459,100 @@ final class ConversationTests: XCTestCase {
         }
         XCTAssertTrue(orchestrator.conversation.isEmpty)
         XCTAssertFalse(orchestrator.hasConversation)
+    }
+
+    func testNewChatDuringInferenceDoesNotResurrectResult() async {
+        // dismissResult/startNewChat must cancel the in-flight inference, or a late stream completes
+        // after the user left and flips the phase back to a result over the cleared conversation.
+        let engine = ScriptedEngine(responsesPerCall: [Array(repeating: "x ", count: 15)])
+        let orchestrator = makeOrchestrator(engine)
+
+        orchestrator.beginCapture()
+        let inferring = await orchestrator.waitForPhase { if case .inferring = $0 { return true }; return false }
+        guard case .inferring = inferring else {
+            return XCTFail("Expected to catch the inferring phase, got \(inferring)")
+        }
+
+        orchestrator.startNewChat()
+        guard case .idle = orchestrator.phase else {
+            return XCTFail("Expected idle right after New chat, got \(orchestrator.phase)")
+        }
+
+        // The phase must *stay* idle: a leaked (now-cancelled) stream completing would flip it to a
+        // result. Poll rather than sleep-then-check so the assertion can't false-pass under CI load.
+        let held = await orchestrator.phaseHolding({ if case .idle = $0 { return true }; return false })
+        guard case .idle = held else {
+            return XCTFail("A leaked inference resurrected a result after New chat: \(held)")
+        }
+        XCTAssertTrue(orchestrator.conversation.isEmpty)
+    }
+
+    func testIdleCaptureWithFullContextStartsFreshChatAndNotifies() async {
+        // ⌘⇧P from the idle home screen, with a resumable thread whose context window is full, must
+        // not be a dead key: it starts a fresh chat and emits a notice the UI can surface.
+        let engine = ScriptedEngine(responsesPerCall: [["first answer"], ["fresh answer"]])
+        engine.inferenceStats = InferenceStats(promptTokens: 950, responseTokens: 10, generationSeconds: 0.1)
+        engine.contextWindow = 1000
+        let orchestrator = makeOrchestrator(engine)
+
+        orchestrator.beginCapture()
+        try? await Task.sleep(nanoseconds: 250_000_000)
+        XCTAssertEqual(orchestrator.contextPressure, .critical)
+
+        // Leave the result for the calm home; the thread stays resumable but its context is full.
+        orchestrator.finishChat()
+        guard case .idle = orchestrator.phase else {
+            return XCTFail("Expected idle after finishChat, got \(orchestrator.phase)")
+        }
+        XCTAssertNil(orchestrator.lastNotice)
+
+        orchestrator.beginCapture()
+        XCTAssertEqual(orchestrator.lastNotice, .contextFull)
+
+        let phase = await orchestrator.waitForResult("fresh answer")
+        guard case .result("fresh answer") = phase else {
+            return XCTFail("Expected a fresh chat result, got \(phase)")
+        }
+        XCTAssertEqual(orchestrator.conversation.count, 2, "the full thread was replaced by a fresh chat")
+    }
+
+    func testCaptureFromFullResultStaysPutWithoutNotice() async {
+        // From the result view the on-screen context banner already explains the block, so the
+        // capture hotkey stays a no-op there — we only changed the idle (no-banner) case.
+        let engine = ScriptedEngine(responsesPerCall: [["first answer"]])
+        engine.inferenceStats = InferenceStats(promptTokens: 950, responseTokens: 10, generationSeconds: 0.1)
+        engine.contextWindow = 1000
+        let orchestrator = makeOrchestrator(engine)
+
+        orchestrator.beginCapture()
+        try? await Task.sleep(nanoseconds: 250_000_000)
+        XCTAssertEqual(orchestrator.contextPressure, .critical)
+        guard case .result = orchestrator.phase else {
+            return XCTFail("Expected a result, got \(orchestrator.phase)")
+        }
+
+        orchestrator.beginCapture()
+        XCTAssertNil(orchestrator.lastNotice)
+        guard case .result("first answer") = orchestrator.phase else {
+            return XCTFail("A capture from a full result should stay put, got \(orchestrator.phase)")
+        }
+        XCTAssertEqual(orchestrator.conversation.count, 2)
+    }
+
+    func testPrewarmOnlyMarksModelWarmWhenWarmUpSucceeds() async {
+        let failEngine = ScriptedEngine(responsesPerCall: [])
+        failEngine.warmUpSucceeds = false
+        let cold = makeOrchestrator(failEngine)
+        XCTAssertFalse(cold.modelLikelyWarm)
+        cold.prewarm()
+        try? await Task.sleep(nanoseconds: 120_000_000)
+        XCTAssertFalse(cold.modelLikelyWarm, "a failed warm-up must not fake a warm model")
+
+        let okEngine = ScriptedEngine(responsesPerCall: [])
+        okEngine.warmUpSucceeds = true
+        let warm = makeOrchestrator(okEngine)
+        warm.prewarm()
+        try? await Task.sleep(nanoseconds: 120_000_000)
+        XCTAssertTrue(warm.modelLikelyWarm, "a successful warm-up marks the model warm")
     }
 }
