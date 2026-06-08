@@ -13,30 +13,25 @@ public enum PeeknookServices {
     }
 
     @MainActor
-    public static func makeStack(settings: PeeknookSettings, defaults: UserDefaults) -> Stack {
+    public static func makeStack(
+        settings: PeeknookSettings,
+        defaults: UserDefaults,
+        dependencies: PeeknookDependencies = .production()
+    ) -> Stack {
         var settings = settings
         let setup = SetupCoordinator(settings: settings, defaults: defaults)
         setup.applyRecommendedModelIfNeeded()
         settings = setup.settings
 
         let usage = UsageStore(defaults: defaults)
-        let inference = OllamaInferenceEngine()
-        #if canImport(Speech) && canImport(AVFoundation)
-        let speechRecognizer: any SpeechRecognizing = AppleSpeechRecognizer()
-        let answerSpeechSynthesizer: any SpeechSynthesizing = AppleSpeechSynthesizer()
-        let previewSpeechSynthesizer: any SpeechSynthesizing = AppleSpeechSynthesizer()
-        #else
-        let speechRecognizer: any SpeechRecognizing = StubSpeechRecognizer()
-        let answerSpeechSynthesizer: any SpeechSynthesizing = StubSpeechSynthesizer()
-        let previewSpeechSynthesizer: any SpeechSynthesizing = StubSpeechSynthesizer()
-        #endif
         let orchestrator = SessionOrchestrator(
             settings: settings,
-            capture: MacCaptureProvider(),
-            inference: inference,
-            speechRecognizer: speechRecognizer,
-            speechSynthesizer: answerSpeechSynthesizer,
-            previewSpeechSynthesizer: previewSpeechSynthesizer
+            capture: dependencies.capture,
+            inference: dependencies.inference,
+            webLookup: dependencies.webLookup,
+            speechRecognizer: dependencies.speechRecognizer,
+            speechSynthesizer: dependencies.answerSpeechSynthesizer,
+            previewSpeechSynthesizer: dependencies.previewSpeechSynthesizer
         )
         orchestrator.setup = setup
         orchestrator.usage = usage
@@ -54,15 +49,14 @@ public enum PeeknookServices {
             orchestrator: orchestrator,
             setup: setup,
             defaults: defaults,
-            inference: inference
+            inference: dependencies.inference
         )
-        let modelCatalog = ModelCatalogService.makeDefault()
         return Stack(
             orchestrator: orchestrator,
             setup: setup,
             usage: usage,
             settings: settingsController,
-            modelCatalog: modelCatalog
+            modelCatalog: dependencies.modelCatalog
         )
     }
 

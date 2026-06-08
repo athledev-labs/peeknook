@@ -108,13 +108,9 @@ final class PeekSettingsControllerTests: XCTestCase {
 
     @MainActor
     func testInferenceHealthUsesInjectedEngine() async {
-        let stack = PeeknookServices.makeStack(settings: .default, defaults: defaults)
+        let deps = PeeknookDependencies.testing(inference: MockInferenceEngine())
+        let stack = PeeknookServices.makeStack(settings: .default, defaults: defaults, dependencies: deps)
         let health = await stack.settings.inferenceHealth()
-        // Default stack uses OllamaInferenceEngine; without a live server this is unavailable,
-        // but the call must complete without crashing.
-        switch health {
-        case .ready, .unavailable:
-            break
-        }
+        XCTAssertEqual(health, .ready)
     }
 }
