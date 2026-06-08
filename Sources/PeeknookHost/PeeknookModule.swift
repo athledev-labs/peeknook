@@ -33,6 +33,7 @@ public final class PeeknookModule: NookModule {
     private let setup: SetupCoordinator
     private let usage: UsageStore
     private let settings: PeekSettingsController
+    private let modelCatalog: ModelCatalogService
     private weak var appCoordinator: AppCoordinator?
     private var previewPhaseTask: Task<Void, Never>?
     private var previewPinHandle: NookPresentationPinHandle?
@@ -45,6 +46,7 @@ public final class PeeknookModule: NookModule {
         self.setup = stack.setup
         self.usage = stack.usage
         self.settings = stack.settings
+        self.modelCatalog = stack.modelCatalog
     }
 
     public func makeConfiguration() -> NookConfiguration {
@@ -53,7 +55,8 @@ public final class PeeknookModule: NookModule {
             PeekRootView(
                 orchestrator: self.orchestrator,
                 setup: self.setup,
-                settings: self.settings
+                settings: self.settings,
+                modelCatalog: self.modelCatalog
             )
         }
         configuration.setCompactTrailing {
@@ -72,6 +75,7 @@ public final class PeeknookModule: NookModule {
                 orchestrator: self.orchestrator,
                 setup: self.setup,
                 settings: self.settings,
+                modelCatalog: self.modelCatalog,
                 usage: self.usage,
                 onCaptureHotkeyChange: { [weak self] _ in
                     guard let self, let coordinator = self.appCoordinator else { return }

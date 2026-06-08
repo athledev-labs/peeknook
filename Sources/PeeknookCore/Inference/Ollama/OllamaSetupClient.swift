@@ -115,17 +115,12 @@ public struct OllamaSetupClient: Sendable {
     /// must NOT satisfy a request for "gemma4:e4b" (a base-name match did exactly that,
     /// hiding the missing model until inference 404'd).
     public static func matchesModel(installedNames: [String], wanted: String) -> Bool {
-        let target = normalizedTag(wanted)
-        guard !target.isEmpty else { return false }
-        return installedNames.contains { normalizedTag($0) == target }
+        ModelTag.matches(installedNames: installedNames, wanted: wanted)
     }
 
     /// Canonical form of an Ollama tag: trimmed, with an implied `:latest` when no tag is given.
-    /// Bare "gemma4" → "gemma4:latest". Used for tag-aware matching and dedupe.
     public static func normalizedTag(_ name: String) -> String {
-        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return "" }
-        return trimmed.contains(":") ? trimmed : "\(trimmed):latest"
+        ModelTag.normalized(name)
     }
 
     private func streamPull(

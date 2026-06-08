@@ -9,6 +9,7 @@ public struct PeekSettingsView: View {
     public var orchestrator: SessionOrchestrator
     public var setup: SetupCoordinator
     public var settings: PeekSettingsController
+    public var modelCatalog: ModelCatalogService
     public var usage: UsageStore
     public var onCaptureHotkeyChange: ((CaptureHotkey) -> Void)?
     public var onBriefHotkeyChange: ((CaptureHotkey) -> Void)?
@@ -28,6 +29,7 @@ public struct PeekSettingsView: View {
         orchestrator: SessionOrchestrator,
         setup: SetupCoordinator,
         settings: PeekSettingsController,
+        modelCatalog: ModelCatalogService,
         usage: UsageStore,
         onCaptureHotkeyChange: ((CaptureHotkey) -> Void)? = nil,
         onBriefHotkeyChange: ((CaptureHotkey) -> Void)? = nil
@@ -35,6 +37,7 @@ public struct PeekSettingsView: View {
         self.orchestrator = orchestrator
         self.setup = setup
         self.settings = settings
+        self.modelCatalog = modelCatalog
         self.usage = usage
         self.onCaptureHotkeyChange = onCaptureHotkeyChange
         self.onBriefHotkeyChange = onBriefHotkeyChange
@@ -74,6 +77,7 @@ public struct PeekSettingsView: View {
                             orchestrator: orchestrator,
                             setup: setup,
                             settings: settings,
+                            modelCatalog: modelCatalog,
                             ollamaStatusLabel: ollamaStatusLabel,
                             ollamaStatusDetail: ollamaStatusDetail,
                             ollamaStatusTone: ollamaStatusTone,

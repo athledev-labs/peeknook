@@ -167,6 +167,7 @@ struct PeekIdleCommandBar: View {
     var orchestrator: SessionOrchestrator
     var setup: SetupCoordinator
     var settings: PeekSettingsController
+    var modelCatalog: ModelCatalogService
     @Binding var pendingDownload: InferenceModelOption?
     @Binding var isBriefComposerVisible: Bool
     @Binding var briefDraft: String
@@ -234,9 +235,9 @@ struct PeekIdleCommandBar: View {
             help: "Vision model for the next capture"
         ) { close in
             PeekPreflightMenuContent.visionModelHomeMenu(
-                currentTag: orchestrator.settings.textModel,
                 models: settings.availableModels,
                 isInstalled: { setup.isModelInstalled($0) },
+                isSelected: { modelCatalog.matchesModel(installedNames: [orchestrator.settings.textModel], wanted: $0.tag) },
                 onSelect: selectModel,
                 onBrowseModels: onBrowseModels,
                 close: close

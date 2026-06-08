@@ -11,10 +11,21 @@ Peeknook is a local-first practice copilot for the MacBook notch, built on [Open
 ```sh
 swift build
 swift test
-swift run Peeknook        # launches the notch app
+swift run Peeknook        # launches the notch app (dev binary identity)
 ```
 
 For a signed `.app`, run `./Scripts/regenerate-xcodeproj.sh`, then open `Peeknook.xcodeproj`.
+`Sources/PeeknookExecutable/main.swift` is the SPM entry; `App/main.swift` is the Xcode app target
+(`com.peeknook.app`). macOS TCC (Screen Recording, Accessibility) is per bundle ID — grant permissions
+to the binary System Settings shows for your workflow (see README dev vs shipped table).
+
+### Source layout (`Sources/`)
+
+`PeeknookCore` uses domain subfolders (still one SPM target): `Capture/`, `Inference/Ollama/`,
+`Session/` (orchestrator + extensions), `Archive/`, `Settings/` (incl. `ModelCatalogService`),
+`Setup/`, `Speech/`, `Prompts/`, `Services/`, `Support/`. `PeeknookUI` nests by surface:
+`PeekHome/`, `PeekSettings/`, `PeekModelLibrary/`, `PeekStats/`, `PeekSetup/`, `Design/`.
+Tests mirror Core under `Tests/PeeknookCoreTests/{Capture,Inference,Session,Archive,Settings,Support}/`.
 
 ### Runtime prerequisites
 
@@ -73,17 +84,18 @@ Do not break the following without an explicit product decision and migration pl
 
 | Concern | Path |
 |---------|------|
-| Capture | `Sources/PeeknookCore/{CaptureProviding,MacCaptureProvider,CaptureImageEncoder,CapturePermissions}.swift` |
-| Session | `Sources/PeeknookCore/{SessionOrchestrator,SessionPhase,Conversation}.swift` |
-| Persistence | `Sources/PeeknookCore/ConversationArchive.swift` (multi-thread archive: `ConversationThread`/`ConversationSummary`/`ConversationArchiveStore`); `ConversationStore.swift` (legacy single-file reader, migration only) |
+| Capture | `Sources/PeeknookCore/Capture/{CaptureProviding,MacCaptureProvider,CaptureImageEncoder,CapturePermissions}.swift` |
+| Session | `Sources/PeeknookCore/Session/{SessionOrchestrator,SessionOrchestrator+*,SessionPhase,Conversation}.swift` |
+| Persistence | `Sources/PeeknookCore/Archive/{ConversationModels,ConversationArchiveStore}.swift`; `ConversationStore.swift` (legacy reader) |
+| Model catalog | `Sources/PeeknookCore/Settings/ModelCatalogService.swift` (UI facade; Ollama clients stay in `Inference/Ollama/`) |
 | History switcher | `Sources/PeeknookUI/PeekConversationArchiveView.swift` (glass list of past chats) |
 | a11y / localization | `Sources/PeeknookUI/{PeekAccessibility,PeekLocalization}.swift` + `Resources/Localizable.xcstrings` (route shared-component strings through `Text(peek:)`/`peekAction`) |
 | Failures | `Sources/PeeknookCore/SessionFailure.swift` (structured `SessionFailure`/`RecoveryAction`); `Sources/PeeknookUI/PeekFailureView.swift` (glass recovery card) |
-| Inference | `Sources/PeeknookCore/{InferenceEngine,OllamaInferenceEngine}.swift` |
+| Inference | `Sources/PeeknookCore/Inference/{InferenceEngine,Ollama/OllamaInferenceEngine}.swift` |
 | Prompts and modes | `Sources/PeeknookCore/{PromptBuilder,PracticeMode}.swift` |
 | Settings and usage | `Sources/PeeknookCore/{PeeknookSettings,Usage,SystemProfile}.swift` |
 | Setup | `Sources/PeeknookCore/{SetupCoordinator,OllamaSetupClient}.swift` |
-| Wiring | `Sources/PeeknookCore/PeeknookServices.swift` |
+| Wiring | `Sources/PeeknookCore/Services/PeeknookServices.swift` |
 | UI | `Sources/PeeknookUI/`, top-level `PeekHomeView`/`PeekSettingsView`/`PeekSetupView`/`PeekRootView`/`PeekCompactView`, design system in `PeekGlassStyle.swift` + `PeekToolbar.swift`, split sections under `PeekHome/`, `PeekSettings/`, `PeekSettingsComponents/` |
 | Host | `Sources/PeeknookHost/{PeeknookModule,PeeknookHostConfiguration,HostModuleRegistry}.swift` |
 | Tests | `Tests/PeeknookCoreTests/` |

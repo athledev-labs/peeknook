@@ -72,9 +72,9 @@ enum PeekPreflightMenuContent {
 
     @ViewBuilder
     static func visionModelHomeMenu(
-        currentTag: String,
         models: [InferenceModelOption],
         isInstalled: @escaping (String) -> Bool,
+        isSelected: @escaping (InferenceModelOption) -> Bool,
         onSelect: @escaping (InferenceModelOption) -> Void,
         onBrowseModels: (() -> Void)? = nil,
         close: @escaping () -> Void
@@ -87,10 +87,7 @@ enum PeekPreflightMenuContent {
                 ValueMenuRow(
                     title: option.displayName,
                     subtitle: option.downloadHint ?? option.tag,
-                    selected: OllamaSetupClient.matchesModel(
-                        installedNames: [currentTag],
-                        wanted: option.tag
-                    ),
+                    selected: isSelected(option),
                     needsDownload: !isInstalled(option.tag)
                 )
             }

@@ -8,6 +8,7 @@ public struct PeekHomeView: View {
     public var orchestrator: SessionOrchestrator
     public var setup: SetupCoordinator
     public var settings: PeekSettingsController
+    public var modelCatalog: ModelCatalogService
     public var onOpenSetup: () -> Void
     @Environment(\.nookResolvedTheme) private var theme
     @Environment(\.nookContentInsets) private var contentInsets
@@ -33,11 +34,13 @@ public struct PeekHomeView: View {
         orchestrator: SessionOrchestrator,
         setup: SetupCoordinator,
         settings: PeekSettingsController,
+        modelCatalog: ModelCatalogService,
         onOpenSetup: @escaping () -> Void = {}
     ) {
         self.orchestrator = orchestrator
         self.setup = setup
         self.settings = settings
+        self.modelCatalog = modelCatalog
         self.onOpenSetup = onOpenSetup
     }
 
@@ -55,6 +58,7 @@ public struct PeekHomeView: View {
                         orchestrator: orchestrator,
                         setup: setup,
                         settings: settings,
+                        modelCatalog: modelCatalog,
                         pendingDownload: $pendingDownload,
                         onDismiss: closeModelLibrary
                     ),
@@ -277,6 +281,7 @@ public struct PeekHomeView: View {
                             orchestrator: orchestrator,
                             setup: setup,
                             settings: settings,
+                            modelCatalog: modelCatalog,
                             pendingDownload: $pendingDownload,
                             isBriefComposerVisible: $isBriefComposerVisible,
                             briefDraft: $briefDraft,

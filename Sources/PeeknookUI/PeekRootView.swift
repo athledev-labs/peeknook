@@ -11,17 +11,20 @@ public struct PeekRootView: View {
     public var orchestrator: SessionOrchestrator
     public var setup: SetupCoordinator
     public var settings: PeekSettingsController
+    public var modelCatalog: ModelCatalogService
 
     @EnvironmentObject private var appState: AppState
 
     public init(
         orchestrator: SessionOrchestrator,
         setup: SetupCoordinator,
-        settings: PeekSettingsController
+        settings: PeekSettingsController,
+        modelCatalog: ModelCatalogService
     ) {
         self.orchestrator = orchestrator
         self.setup = setup
         self.settings = settings
+        self.modelCatalog = modelCatalog
     }
 
     private var showsSetup: Bool {
@@ -35,6 +38,7 @@ public struct PeekRootView: View {
                     setup: setup,
                     orchestrator: orchestrator,
                     settings: settings,
+                    modelCatalog: modelCatalog,
                     onContinue: completeOnboarding
                 )
             } else {
@@ -42,6 +46,7 @@ public struct PeekRootView: View {
                     orchestrator: orchestrator,
                     setup: setup,
                     settings: settings,
+                    modelCatalog: modelCatalog,
                     onOpenSetup: openSetup
                 )
             }

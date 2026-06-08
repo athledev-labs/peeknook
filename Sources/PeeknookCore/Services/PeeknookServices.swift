@@ -9,6 +9,7 @@ public enum PeeknookServices {
         public let setup: SetupCoordinator
         public let usage: UsageStore
         public let settings: PeekSettingsController
+        public let modelCatalog: ModelCatalogService
     }
 
     @MainActor
@@ -55,11 +56,13 @@ public enum PeeknookServices {
             defaults: defaults,
             inference: inference
         )
+        let modelCatalog = ModelCatalogService.makeDefault()
         return Stack(
             orchestrator: orchestrator,
             setup: setup,
             usage: usage,
-            settings: settingsController
+            settings: settingsController,
+            modelCatalog: modelCatalog
         )
     }
 

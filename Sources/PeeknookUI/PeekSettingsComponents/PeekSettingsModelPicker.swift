@@ -11,6 +11,7 @@ struct PeekSettingsModelPickerRow: View {
     let models: [InferenceModelOption]
     let customModels: [CustomModelEntry]
     let isInstalled: (String) -> Bool
+    let isSelected: (InferenceModelOption) -> Bool
     let onSelect: (InferenceModelOption) -> Void
     let onBrowseModels: () -> Void
 
@@ -55,9 +56,9 @@ struct PeekSettingsModelPickerRow: View {
 
             ValueDropdownPill(symbol: "cpu", title: displayName, help: "Vision model") { close in
                 PeekPreflightMenuContent.visionModelHomeMenu(
-                    currentTag: currentTag,
                     models: models,
                     isInstalled: isInstalled,
+                    isSelected: isSelected,
                     onSelect: onSelect,
                     onBrowseModels: onBrowseModels,
                     close: close

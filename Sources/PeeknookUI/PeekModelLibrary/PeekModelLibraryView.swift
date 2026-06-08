@@ -33,6 +33,7 @@ struct PeekModelLibraryView: View {
     var orchestrator: SessionOrchestrator
     var setup: SetupCoordinator
     var settings: PeekSettingsController
+    var modelCatalog: ModelCatalogService
     @Binding var pendingDownload: InferenceModelOption?
     var showsBackButton: Bool = false
     var onDismiss: () -> Void = {}
@@ -52,12 +53,7 @@ struct PeekModelLibraryView: View {
     private var currentTag: String { orchestrator.settings.textModel }
 
     private var curatedModels: [InferenceModelOption] {
-        TextModelCatalog.offered.sorted { lhs, rhs in
-            let lhsRec = OllamaSetupClient.matchesModel(installedNames: [lhs.tag], wanted: profile.suggestedTextModel)
-            let rhsRec = OllamaSetupClient.matchesModel(installedNames: [rhs.tag], wanted: profile.suggestedTextModel)
-            if lhsRec != rhsRec { return lhsRec }
-            return lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
-        }
+        modelCatalog.curatedModels(recommendedTag: profile.suggestedTextModel)
     }
 
     private var customModelOptions: [InferenceModelOption] {
@@ -126,6 +122,7 @@ struct PeekModelLibraryView: View {
             PeekModelCatalogSearchView(
                 settings: settings,
                 setup: setup,
+                modelCatalog: modelCatalog,
                 pendingDownload: $pendingDownload,
                 onSelect: dismissLibrary
             )
@@ -374,7 +371,7 @@ struct PeekModelLibraryView: View {
                     option: option,
                     isSelected: isSelected(option),
                     isInstalled: setup.isModelInstalled(option.tag),
-                    isRecommended: OllamaSetupClient.matchesModel(
+                    isRecommended: modelCatalog.matchesModel(
                         installedNames: [option.tag],
                         wanted: profile.suggestedTextModel
                     ),
@@ -388,8 +385,8 @@ struct PeekModelLibraryView: View {
 
     private func discoverRow(for tag: String) -> some View {
         let option = InferenceModelOption(tag: tag, displayName: tag, provider: "Ollama")
-        let vision = visionByTag[OllamaSetupClient.normalizedTag(tag)]
-        let isChecking = checkingTags.contains(OllamaSetupClient.normalizedTag(tag))
+        let vision = visionByTag[modelCatalog.normalizedTag(tag)]
+        let isChecking = checkingTags.contains(modelCatalog.normalizedTag(tag))
         let visionState: ModelLibraryVisionState = {
             if isChecking { return .checking }
             if let vision {
@@ -412,12 +409,12 @@ struct PeekModelLibraryView: View {
     }
 
     private func isSelected(_ option: InferenceModelOption) -> Bool {
-        OllamaSetupClient.matchesModel(installedNames: [currentTag], wanted: option.tag)
+        modelCatalog.matchesModel(installedNames: [currentTag], wanted: option.tag)
     }
 
     private func isPulling(_ option: InferenceModelOption) -> Bool {
         setup.isPullingModel
-            && OllamaSetupClient.matchesModel(installedNames: [orchestrator.settings.textModel], wanted: option.tag)
+            && modelCatalog.matchesModel(installedNames: [orchestrator.settings.textModel], wanted: option.tag)
     }
 
     private func scanInstalledModels() async {
@@ -438,14 +435,14 @@ struct PeekModelLibraryView: View {
         }
 
         for tag in tags {
-            let key = OllamaSetupClient.normalizedTag(tag)
+            let key = modelCatalog.normalizedTag(tag)
             guard visionByTag[key] == nil else { continue }
             checkingTags.insert(key)
         }
 
         await withTaskGroup(of: (String, Bool?).self) { group in
             for tag in tags {
-                let key = OllamaSetupClient.normalizedTag(tag)
+                let key = modelCatalog.normalizedTag(tag)
                 group.addTask {
                     let supports = await settings.supportsVision(for: tag)
                     return (key, supports)

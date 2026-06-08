@@ -22,6 +22,7 @@ private enum CatalogSearchFilter: String, CaseIterable {
 struct PeekModelCatalogSearchView: View {
     var settings: PeekSettingsController
     var setup: SetupCoordinator
+    var modelCatalog: ModelCatalogService
     @Binding var pendingDownload: InferenceModelOption?
     var onSelect: () -> Void
 
@@ -29,38 +30,36 @@ struct PeekModelCatalogSearchView: View {
     @State private var query = ""
     @State private var filterText = ""
     @State private var filter: CatalogSearchFilter = .all
-    @State private var results: [OllamaCatalogModel] = []
+    @State private var results: [RemoteCatalogModel] = []
     @State private var isSearching = false
     @State private var searchError: String?
     @State private var expandedModelID: String?
-    @State private var tagsByModel: [String: [OllamaCatalogTagDetail]] = [:]
+    @State private var tagsByModel: [String: [RemoteCatalogTag]] = [:]
     @State private var loadingTags: Set<String> = []
     @State private var searchTask: Task<Void, Never>?
     @FocusState private var queryFocused: Bool
-
-    private let catalog = OllamaCatalogClient()
 
     private var trimmedQuery: String {
         query.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private var displayedResults: [OllamaCatalogModel] {
+    private var displayedResults: [RemoteCatalogModel] {
         let needle = filterText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         return results.filter { model in
             if filter != .all {
-                let tags = tagsByModel[model.modelID]?.map(\.tag) ?? []
+                let tags = tagsByModel[model.modelID]?.map(\.id) ?? []
                 switch filter {
                 case .all:
                     break
                 case .vision:
-                    guard OllamaCatalogClient.likelySupportsVision(modelID: model.modelID, tags: tags) else {
+                    guard modelCatalog.likelySupportsVision(modelID: model.modelID, tags: tags) else {
                         return false
                     }
                 case .cloud:
                     if tags.isEmpty {
                         guard model.modelID.lowercased().contains("cloud") else { return false }
                     } else {
-                        guard tags.contains(where: OllamaCatalogClient.isCloudTag) else { return false }
+                        guard tags.contains(where: modelCatalog.isCloudTag) else { return false }
                     }
                 }
             }
@@ -183,7 +182,7 @@ struct PeekModelCatalogSearchView: View {
     }
 
     @ViewBuilder
-    private func modelSection(_ model: OllamaCatalogModel) -> some View {
+    private func modelSection(_ model: RemoteCatalogModel) -> some View {
         let isExpanded = expandedModelID == model.modelID
         VStack(alignment: .leading, spacing: 0) {
             Button {
@@ -232,7 +231,7 @@ struct PeekModelCatalogSearchView: View {
     }
 
     @ViewBuilder
-    private func tagRows(for model: OllamaCatalogModel) -> some View {
+    private func tagRows(for model: RemoteCatalogModel) -> some View {
         let tags = tagsByModel[model.modelID] ?? []
         if tags.isEmpty, loadingTags.contains(model.modelID) {
             Text("Loading tags…")
@@ -248,7 +247,7 @@ struct PeekModelCatalogSearchView: View {
                 .padding(.bottom, 6)
         } else {
             VStack(spacing: 4) {
-                ForEach(tags, id: \.tag) { detail in
+                ForEach(tags, id: \.id) { detail in
                     tagRow(model: model, detail: detail)
                 }
             }
@@ -257,29 +256,30 @@ struct PeekModelCatalogSearchView: View {
         }
     }
 
-    private func tagRow(model: OllamaCatalogModel, detail: OllamaCatalogTagDetail) -> some View {
-        let installed = setup.isModelInstalled(detail.tag)
-        let known = settings.isKnownModel(tag: detail.tag)
+    private func tagRow(model: RemoteCatalogModel, detail: RemoteCatalogTag) -> some View {
+        let installed = setup.isModelInstalled(detail.id)
+        let known = settings.isKnownModel(tag: detail.id)
+        let traits = modelCatalog.traits(modelID: model.modelID, tag: detail.id)
         return HStack(spacing: 6) {
-            Text(detail.tag)
+            Text(detail.id)
                 .font(.system(size: 9, design: .monospaced))
                 .foregroundStyle(theme.secondaryLabel)
                 .lineLimit(1)
             Spacer(minLength: 0)
-            if OllamaCatalogClient.isCloudTag(detail.tag) {
+            if traits.contains(.cloud) {
                 badge("Cloud", color: .blue)
             }
-            if OllamaCatalogClient.likelySupportsVision(modelID: model.modelID, tags: [detail.tag]) {
+            if traits.contains(.likelyVision) {
                 badge("Vision", color: .green)
             }
             Button(installed ? "Use" : known ? "Select" : "Add") {
-                pickTag(detail.tag, displayName: model.displayName)
+                pickTag(model: model, detail: detail)
             }
             .font(.system(size: 9, weight: .semibold))
             .buttonStyle(.plain)
             .foregroundStyle(Color.accentColor)
             .disabled(setup.isPullingModel)
-            .peekAction(label: installed ? "Use \(detail.tag)" : "Add \(detail.tag)")
+            .peekAction(label: installed ? "Use \(detail.id)" : "Add \(detail.id)")
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
@@ -295,7 +295,7 @@ struct PeekModelCatalogSearchView: View {
             .background(color.opacity(0.12), in: Capsule())
     }
 
-    private func tagCountLabel(for model: OllamaCatalogModel) -> String {
+    private func tagCountLabel(for model: RemoteCatalogModel) -> String {
         if let tags = tagsByModel[model.modelID] {
             return tags.isEmpty ? "-" : "\(tags.count)"
         }
@@ -319,7 +319,7 @@ struct PeekModelCatalogSearchView: View {
             }
             guard !Task.isCancelled else { return }
             do {
-                let found = try await catalog.search(query: q)
+                let found = try await modelCatalog.searchCatalog(query: q)
                 guard !Task.isCancelled else { return }
                 results = found
                 isSearching = false
@@ -333,20 +333,20 @@ struct PeekModelCatalogSearchView: View {
         }
     }
 
-    private func loadTags(for model: OllamaCatalogModel) async {
+    private func loadTags(for model: RemoteCatalogModel) async {
         guard tagsByModel[model.modelID] == nil else { return }
         loadingTags.insert(model.modelID)
         defer { loadingTags.remove(model.modelID) }
         do {
-            let tags = try await catalog.tags(for: model.modelID)
+            let tags = try await modelCatalog.catalogTags(for: model.modelID)
             tagsByModel[model.modelID] = tags
         } catch {
             tagsByModel[model.modelID] = []
         }
     }
 
-    private func pickTag(_ tag: String, displayName: String) {
-        let option = InferenceModelOption(tag: tag, displayName: displayName, provider: "Ollama")
+    private func pickTag(model: RemoteCatalogModel, detail: RemoteCatalogTag) {
+        let option = modelCatalog.inferenceOption(catalogModel: model, tag: detail)
         switch settings.pickModel(option) {
         case .selected:
             onSelect()

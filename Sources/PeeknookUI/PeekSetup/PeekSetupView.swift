@@ -8,6 +8,7 @@ public struct PeekSetupView: View {
     public var setup: SetupCoordinator
     public var orchestrator: SessionOrchestrator
     public var settings: PeekSettingsController
+    public var modelCatalog: ModelCatalogService
     public var onContinue: () -> Void
     @Environment(\.nookResolvedTheme) private var theme
     @EnvironmentObject private var appState: AppState
@@ -18,11 +19,13 @@ public struct PeekSetupView: View {
         setup: SetupCoordinator,
         orchestrator: SessionOrchestrator,
         settings: PeekSettingsController,
+        modelCatalog: ModelCatalogService,
         onContinue: @escaping () -> Void = {}
     ) {
         self.setup = setup
         self.orchestrator = orchestrator
         self.settings = settings
+        self.modelCatalog = modelCatalog
         self.onContinue = onContinue
     }
 
@@ -33,6 +36,7 @@ public struct PeekSetupView: View {
                     orchestrator: orchestrator,
                     setup: setup,
                     settings: settings,
+                    modelCatalog: modelCatalog,
                     pendingDownload: $pendingDownload,
                     showsBackButton: true,
                     onDismiss: { showsModelLibrary = false }
@@ -158,9 +162,9 @@ public struct PeekSetupView: View {
             help: "Vision model"
         ) { close in
             PeekPreflightMenuContent.visionModelHomeMenu(
-                currentTag: setup.settings.textModel,
                 models: settings.availableModels,
                 isInstalled: { setup.isModelInstalled($0) },
+                isSelected: { modelCatalog.matchesModel(installedNames: [setup.settings.textModel], wanted: $0.tag) },
                 onSelect: selectModel,
                 onBrowseModels: { showsModelLibrary = true },
                 close: close

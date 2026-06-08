@@ -25,7 +25,3 @@ public struct PromptAssembly: Sendable, Equatable {
 
     public var trimmedBrief: String? { sessionBrief }
 }
-
-private extension String {
-    var nilIfEmpty: String? { isEmpty ? nil : self }
-}
