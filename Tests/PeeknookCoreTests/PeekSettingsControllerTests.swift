@@ -19,7 +19,9 @@ final class PeekSettingsControllerTests: XCTestCase {
 
         controller.setCaptureScope(.display)
         controller.setQuickMode(true)
-        controller.setOllamaBaseURL("http://192.168.1.10:11434")
+        XCTAssertFalse(controller.setOllamaBaseURL("http://192.168.1.10:11434"))
+        controller.setAcceptInsecureRemoteOllama(true)
+        XCTAssertTrue(controller.setOllamaBaseURL("http://192.168.1.10:11434"))
 
         XCTAssertEqual(stack.orchestrator.settings.captureScope, .display)
         XCTAssertEqual(stack.setup.settings.captureScope, .display)

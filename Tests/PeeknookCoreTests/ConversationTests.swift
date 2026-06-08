@@ -13,17 +13,20 @@ final class ScriptedEngine: InferenceEngine, @unchecked Sendable {
     /// Canned suggestion-pass result.
     var followUps: [String] = []
     var inferenceStats: InferenceStats?
+    var followUpStats: InferenceStats?
     var contextWindow: Int?
 
     init(responsesPerCall: [[String]]) {
         self.responsesPerCall = responsesPerCall
     }
 
-    func health(baseURL: String, model: String) async -> InferenceHealth { .ready }
+    func health(baseURL: String, model: String, acceptInsecureRemote: Bool) async -> InferenceHealth { .ready }
 
-    var followUpStats: InferenceStats?
+    func warmUp(model: String, baseURL: String, acceptInsecureRemote: Bool) async {}
 
-    func contextLength(model: String, baseURL: String) async -> Int? { contextWindow }
+    func contextLength(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> Int? { contextWindow }
+
+    func capabilities(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> [String]? { nil }
 
     func generateFollowUps(request: InferenceRequest) async -> FollowUpGenerationResult {
         suggestionRequests.append(request)
@@ -377,6 +380,28 @@ final class ConversationTests: XCTestCase {
         XCTAssertEqual(imageMsgs.count, 3, "all three screenshots still ground via text")
         XCTAssertNil(imageMsgs[0].imageBase64)
         XCTAssertNil(imageMsgs[1].imageBase64)
+        XCTAssertNotNil(imageMsgs[2].imageBase64)
+    }
+
+    func testInferenceReplayRespectsLastTwoSetting() async {
+        let engine = ScriptedEngine(responsesPerCall: [["first"], ["second"], ["third"]])
+        let orchestrator = SessionOrchestrator(
+            settings: PeeknookSettings(previewBeforeInfer: false, textModel: "x", inferenceImageReplay: .lastTwo),
+            capture: StubCaptureProvider(sampleText: "screen"),
+            inference: engine
+        )
+
+        orchestrator.beginCapture()
+        try? await Task.sleep(nanoseconds: 200_000_000)
+        orchestrator.addImage()
+        try? await Task.sleep(nanoseconds: 200_000_000)
+        orchestrator.addImage()
+        try? await Task.sleep(nanoseconds: 200_000_000)
+
+        let msgs = engine.requests.last?.messages ?? []
+        let imageMsgs = msgs.filter { $0.role == .user && $0.text.contains("## Task") }
+        XCTAssertNil(imageMsgs[0].imageBase64)
+        XCTAssertNotNil(imageMsgs[1].imageBase64)
         XCTAssertNotNil(imageMsgs[2].imageBase64)
     }
 

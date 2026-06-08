@@ -142,6 +142,56 @@ public enum AnswerDepth: String, CaseIterable, Sendable {
     public var quickMode: Bool { self == .quick }
 }
 
+/// How many screenshots ride as vision payloads in Ollama requests. UI and archive keep all
+/// captures; this only bounds inference replay (suggestions always send zero images).
+public enum InferenceImageReplay: String, Codable, Sendable, CaseIterable, Identifiable {
+    case latestOnly
+    case lastTwo
+    case allInThread
+
+    public var id: String { rawValue }
+
+    public var maxImagePayloads: Int {
+        switch self {
+        case .latestOnly: return 1
+        case .lastTwo: return 2
+        case .allInThread: return Int.max
+        }
+    }
+
+    public var displayName: String {
+        switch self {
+        case .latestOnly: "Latest only"
+        case .lastTwo: "Latest two"
+        case .allInThread: "All in chat"
+        }
+    }
+
+    public var menuDetail: String {
+        switch self {
+        case .latestOnly: "One screenshot per request (default)"
+        case .lastTwo: "Two most recent screenshots"
+        case .allInThread: "Every screenshot in the thread"
+        }
+    }
+
+    public var barLabel: String {
+        switch self {
+        case .latestOnly: "1 image"
+        case .lastTwo: "2 images"
+        case .allInThread: "All"
+        }
+    }
+
+    public var settingsIcon: String {
+        switch self {
+        case .latestOnly: "photo"
+        case .lastTwo: "photo.on.rectangle"
+        case .allInThread: "photo.stack"
+        }
+    }
+}
+
 public protocol CaptureProviding: Sendable {
     /// - Parameter quick: capture at lower fidelity (smaller image) to cut vision-prefill
     ///   latency, the dominant cost of local inference.

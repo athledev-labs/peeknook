@@ -90,7 +90,8 @@ final class OllamaInferenceEngineHTTPTests: XCTestCase {
             mode: .general,
             messages: [.init(role: .user, text: "explain", imageBase64: nil)],
             model: "gemma4:e4b",
-            ollamaBaseURL: "http://stub.test:11434"
+            ollamaBaseURL: "http://stub.test:11434",
+            acceptInsecureRemoteOllama: true
         )
 
         var tokens: [String] = []
@@ -129,7 +130,8 @@ final class OllamaInferenceEngineHTTPTests: XCTestCase {
             mode: .general,
             messages: [.init(role: .user, text: "x", imageBase64: nil)],
             model: "gemma4:e4b",
-            ollamaBaseURL: "http://stub.test:11434"
+            ollamaBaseURL: "http://stub.test:11434",
+            acceptInsecureRemoteOllama: true
         )
 
         var answer = ""
@@ -143,9 +145,10 @@ final class OllamaInferenceEngineHTTPTests: XCTestCase {
     }
 
     func testUsesRemoteOllamaHostParsing() {
-        XCTAssertFalse(PeeknookSettings(ollamaBaseURL: "http://127.0.0.1:11434").usesRemoteOllama)
-        XCTAssertFalse(PeeknookSettings(ollamaBaseURL: "http://localhost:11434").usesRemoteOllama)
-        XCTAssertTrue(PeeknookSettings(ollamaBaseURL: "http://192.168.1.10:11434").usesRemoteOllama)
-        XCTAssertTrue(PeeknookSettings(ollamaBaseURL: "http://ollama.home:11434").usesRemoteOllama)
+        XCTAssertFalse(OllamaURLPolicy.usesRemoteOllama("http://127.0.0.1:11434"))
+        XCTAssertFalse(OllamaURLPolicy.usesRemoteOllama("http://localhost:11434"))
+        XCTAssertFalse(OllamaURLPolicy.usesRemoteOllama("http://[::1]:11434"))
+        XCTAssertTrue(OllamaURLPolicy.usesRemoteOllama("http://192.168.1.10:11434"))
+        XCTAssertTrue(OllamaURLPolicy.usesRemoteOllama("http://ollama.home:11434"))
     }
 }

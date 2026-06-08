@@ -38,6 +38,7 @@ struct PeekSettingsCaptureSection: View {
 
             captureScopeRow
             answerDepthRow
+            inferenceImageReplayRow
 
             PeekSettingsToggleRow(
                 icon: orchestrator.settings.renderAnswerMarkdown ? "textformat" : "textformat.alt",
@@ -107,6 +108,22 @@ struct PeekSettingsCaptureSection: View {
             PeekPreflightMenuContent.answerDepthHomeMenu(
                 current: depth,
                 onSelect: { settings.setQuickMode($0) },
+                close: close
+            )
+        }
+    }
+
+    private var inferenceImageReplayRow: some View {
+        let replay = orchestrator.settings.inferenceImageReplay
+        return PeekSettingsMenuRow(
+            icon: replay.settingsIcon,
+            title: "Images sent to model",
+            detail: replay.menuDetail,
+            value: replay.barLabel
+        ) { close in
+            PeekPreflightMenuContent.inferenceImageReplayHomeMenu(
+                current: replay,
+                onSelect: { settings.setInferenceImageReplay($0) },
                 close: close
             )
         }

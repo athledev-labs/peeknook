@@ -64,6 +64,27 @@ final class ConversationPersistenceTests: XCTestCase {
         XCTAssertTrue(summaries.isEmpty, "Persistence off should never write a thread")
     }
 
+    func testArchivePersistenceIssueSurfacesWhenSaveFails() async throws {
+        let parent = FileManager.default.temporaryDirectory
+            .appendingPathComponent("peeknook-persist-fail-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: parent) }
+        try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
+        let blocked = parent.appendingPathComponent("blocked-dir")
+        try "not a directory".write(to: blocked, atomically: true, encoding: .utf8)
+
+        let store = ConversationArchiveStore(directory: blocked)
+        let orchestrator = SessionOrchestrator(
+            settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b", persistConversation: true),
+            capture: StubCaptureProvider(sampleText: "hello"),
+            inference: MockInferenceEngine(tokens: ["hi"])
+        )
+        orchestrator.conversationArchive = store
+        orchestrator.beginCapture()
+        try await Task.sleep(nanoseconds: 350_000_000)
+        try await Task.sleep(nanoseconds: 200_000_000)
+        XCTAssertEqual(orchestrator.archivePersistenceIssue, .directoryUnavailable)
+    }
+
     func testDiscardActiveThreadRemovesItFromArchive() async throws {
         let (store, dir) = tempArchive()
         defer { try? FileManager.default.removeItem(at: dir) }

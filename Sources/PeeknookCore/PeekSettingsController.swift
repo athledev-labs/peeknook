@@ -78,6 +78,30 @@ public final class PeekSettingsController {
         update { $0.webLookupEnabled = enabled }
     }
 
+    public func setInferenceImageReplay(_ replay: InferenceImageReplay) {
+        guard settings.inferenceImageReplay != replay else { return }
+        update { $0.inferenceImageReplay = replay }
+    }
+
+    public func setAcceptInsecureRemoteOllama(_ enabled: Bool) {
+        guard settings.acceptInsecureRemoteOllama != enabled else { return }
+        update { $0.acceptInsecureRemoteOllama = enabled }
+    }
+
+    /// Validates and persists an Ollama server URL. Returns false when the URL is rejected.
+    @discardableResult
+    public func setOllamaBaseURL(_ url: String) -> Bool {
+        let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard settings.ollamaBaseURL != trimmed else { return true }
+        switch OllamaURLPolicy.validate(trimmed, acceptInsecureRemote: settings.acceptInsecureRemoteOllama) {
+        case .valid:
+            update { $0.ollamaBaseURL = trimmed }
+            return true
+        case .invalidURL, .unsupportedScheme, .insecureRemoteHTTP:
+            return false
+        }
+    }
+
     public func setDisplayName(_ name: String) {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard settings.displayName != trimmed else { return }
@@ -121,11 +145,6 @@ public final class PeekSettingsController {
     public func setBriefHotkey(_ hotkey: CaptureHotkey) {
         guard settings.briefHotkey != hotkey else { return }
         update { $0.briefHotkey = hotkey }
-    }
-
-    public func setOllamaBaseURL(_ url: String) {
-        guard settings.ollamaBaseURL != url else { return }
-        update { $0.ollamaBaseURL = url }
     }
 
     public func setCaptureHotkey(_ hotkey: CaptureHotkey) {
@@ -201,7 +220,11 @@ public final class PeekSettingsController {
     /// Vision support for any tag, used by the model library when scanning installed models or
     /// validating a custom tag before add.
     public func supportsVision(for tag: String) async -> Bool? {
-        await inference.supportsVision(model: tag, baseURL: settings.ollamaBaseURL)
+        await inference.supportsVision(
+            model: tag,
+            baseURL: settings.ollamaBaseURL,
+            acceptInsecureRemote: settings.acceptInsecureRemoteOllama
+        )
     }
 
     /// Installed Ollama tags that aren't already in the picker (curated + custom), sorted for display.
@@ -245,7 +268,11 @@ public final class PeekSettingsController {
     }
 
     public func inferenceHealth() async -> InferenceHealth {
-        await inference.health(baseURL: settings.ollamaBaseURL, model: settings.textModel)
+        await inference.health(
+            baseURL: settings.ollamaBaseURL,
+            model: settings.textModel,
+            acceptInsecureRemote: settings.acceptInsecureRemoteOllama
+        )
     }
 }
 

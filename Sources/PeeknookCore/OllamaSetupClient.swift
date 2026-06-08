@@ -23,9 +23,9 @@ public struct OllamaSetupClient: Sendable {
         self.session = session
     }
 
-    public func installedModelNames(baseURL: String) async -> [String] {
+    public func installedModelNames(baseURL: String, acceptInsecureRemote: Bool = false) async -> [String] {
         do {
-            let base = try resolveBaseURL(baseURL)
+            let base = try resolveBaseURL(baseURL, acceptInsecureRemote: acceptInsecureRemote)
             let url = base.appendingPathComponent("api/tags")
             var req = URLRequest(url: url)
             req.httpMethod = "GET"
@@ -39,9 +39,9 @@ public struct OllamaSetupClient: Sendable {
         }
     }
 
-    public func status(baseURL: String, model: String) async -> OllamaSetupStatus {
+    public func status(baseURL: String, model: String, acceptInsecureRemote: Bool = false) async -> OllamaSetupStatus {
         do {
-            let base = try resolveBaseURL(baseURL)
+            let base = try resolveBaseURL(baseURL, acceptInsecureRemote: acceptInsecureRemote)
             try await ping(baseURL: base)
             let installed = try await isModelInstalled(baseURL: base, model: model)
             return OllamaSetupStatus(
@@ -64,11 +64,11 @@ public struct OllamaSetupClient: Sendable {
         }
     }
 
-    public func pullModel(baseURL: String, model: String) -> AsyncThrowingStream<OllamaPullEvent, Error> {
+    public func pullModel(baseURL: String, model: String, acceptInsecureRemote: Bool = false) -> AsyncThrowingStream<OllamaPullEvent, Error> {
         AsyncThrowingStream { continuation in
             let task = Task {
                 do {
-                    let base = try resolveBaseURL(baseURL)
+                    let base = try resolveBaseURL(baseURL, acceptInsecureRemote: acceptInsecureRemote)
                     try await streamPull(baseURL: base, model: model, continuation: continuation)
                 } catch {
                     continuation.finish(throwing: error)
@@ -80,11 +80,8 @@ public struct OllamaSetupClient: Sendable {
 
     // MARK: - HTTP
 
-    private func resolveBaseURL(_ string: String) throws -> URL {
-        guard let url = URL(string: string), url.scheme != nil else {
-            throw InferenceError.invalidBaseURL
-        }
-        return url
+    private func resolveBaseURL(_ string: String, acceptInsecureRemote: Bool) throws -> URL {
+        try OllamaURLPolicy.resolveOrThrow(string, acceptInsecureRemote: acceptInsecureRemote)
     }
 
     private func ping(baseURL: URL) async throws {

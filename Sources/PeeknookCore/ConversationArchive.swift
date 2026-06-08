@@ -134,6 +134,8 @@ public enum ConversationArchiveError: Error, Sendable, Equatable {
     case directoryUnavailable
     case threadWriteFailed
     case indexWriteFailed
+    case decryptFailed
+    case keyUnavailable
 
     public var userFacingMessage: String {
         switch self {
@@ -145,6 +147,10 @@ public enum ConversationArchiveError: Error, Sendable, Equatable {
             return "Couldn't write your conversation to disk."
         case .indexWriteFailed:
             return "Couldn't update the conversation history index."
+        case .decryptFailed:
+            return "Couldn't read a saved conversation. It may be corrupted."
+        case .keyUnavailable:
+            return "Couldn't access the encryption key for saved conversations."
         }
     }
 }
@@ -176,18 +182,21 @@ public actor ConversationArchiveStore {
     private let legacyFileURL: URL?
     private let maxThreads: Int
     private let maxBytes: Int
+    private let protection: (any ConversationArchiveProtection)?
 
     public init(
         directory: URL,
         legacyFileURL: URL? = nil,
         maxThreads: Int = ConversationArchiveStore.defaultMaxThreads,
-        maxBytes: Int = ConversationArchiveStore.defaultMaxBytes
+        maxBytes: Int = ConversationArchiveStore.defaultMaxBytes,
+        protection: (any ConversationArchiveProtection)? = nil
     ) {
         self.directory = directory
         self.indexURL = directory.appendingPathComponent("index.v2.json")
         self.legacyFileURL = legacyFileURL
         self.maxThreads = maxThreads
         self.maxBytes = maxBytes
+        self.protection = protection
     }
 
     public static func makeDefault() -> ConversationArchiveStore {
@@ -196,7 +205,8 @@ public actor ConversationArchiveStore {
         let peeknook = base.appendingPathComponent("Peeknook", isDirectory: true)
         return ConversationArchiveStore(
             directory: peeknook.appendingPathComponent("Conversations", isDirectory: true),
-            legacyFileURL: peeknook.appendingPathComponent("conversation.v1.json")
+            legacyFileURL: peeknook.appendingPathComponent("conversation.v1.json"),
+            protection: KeychainArchiveProtection.makeDefault()
         )
     }
 
@@ -208,8 +218,8 @@ public actor ConversationArchiveStore {
     }
 
     public func load(id: UUID) -> ConversationThread? {
-        guard let data = try? Data(contentsOf: threadURL(id)) else { return nil }
-        return try? JSONDecoder().decode(ConversationThread.self, from: data)
+        guard let raw = try? Data(contentsOf: threadURL(id)) else { return nil }
+        return decodeThread(from: raw)
     }
 
     /// Newest thread, used to resume the most recent chat at launch.
@@ -223,11 +233,24 @@ public actor ConversationArchiveStore {
     public func save(_ thread: ConversationThread) -> Result<Void, ConversationArchiveError> {
         guard !thread.turns.isEmpty else { return .success(()) }
 
-        let data: Data
+        let encoded: Data
         do {
-            data = try JSONEncoder().encode(thread)
+            encoded = try JSONEncoder().encode(thread)
         } catch {
             return .failure(.encodeFailed)
+        }
+
+        let data: Data
+        if let protection {
+            do {
+                data = try protection.seal(encoded)
+            } catch ArchiveProtectionError.keyUnavailable {
+                return .failure(.keyUnavailable)
+            } catch {
+                return .failure(.encodeFailed)
+            }
+        } else {
+            data = encoded
         }
 
         do {
@@ -293,8 +316,14 @@ public actor ConversationArchiveStore {
             lastPromptTokens: legacy.lastPromptTokens
         )
         guard let encoded = try? JSONEncoder().encode(thread) else { return nil }
+        let fileData: Data
+        if let protection, let sealed = try? protection.seal(encoded) {
+            fileData = sealed
+        } else {
+            fileData = encoded
+        }
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        try? encoded.write(to: threadURL(thread.id), options: .atomic)
+        try? fileData.write(to: threadURL(thread.id), options: .atomic)
         writeIndex(ConversationArchiveIndex(version: Self.indexVersion, summaries: [thread.summary]))
         try? FileManager.default.removeItem(at: legacyFileURL)
         return thread
@@ -304,6 +333,18 @@ public actor ConversationArchiveStore {
 
     private func threadURL(_ id: UUID) -> URL {
         directory.appendingPathComponent("\(id.uuidString).json")
+    }
+
+    /// Decrypt when protected, or decode legacy plaintext threads.
+    private func decodeThread(from raw: Data) -> ConversationThread? {
+        if let protection, ArchiveEnvelope.isEncrypted(raw) {
+            guard let plaintext = try? protection.open(raw) else { return nil }
+            return try? JSONDecoder().decode(ConversationThread.self, from: plaintext)
+        }
+        if let thread = try? JSONDecoder().decode(ConversationThread.self, from: raw) {
+            return thread
+        }
+        return nil
     }
 
     private func readIndex() -> ConversationArchiveIndex {

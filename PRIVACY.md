@@ -19,13 +19,17 @@ When you capture, Peeknook takes a screenshot of the window or display under you
 
 ### Optional selected text
 
-If you grant Accessibility permission, Peeknook may read selected text from the focused field to supplement the screenshot. This is optional.
+If you grant Accessibility permission, Peeknook may read **selected text** from the focused field to supplement the screenshot. Focused field values (including password fields) are not read. This is optional.
+
+When **Web lookup** is enabled, Peeknook skips searches when capture context looks like a secret (API keys, tokens).
 
 ### Prompts and answers
 
 Your questions and the model's answers are kept in the active conversation thread in memory. If you enable **Save conversations**, the full thread (screenshots included) is written to local files under:
 
 `~/Library/Application Support/Peeknook/Conversations/`
+
+Thread files are **encrypted at rest** with a device-local key stored in the Keychain. The index listing thread titles remains unencrypted metadata.
 
 ### Usage stats
 
@@ -44,7 +48,7 @@ You control the following opt-in features:
 | Feature | Default | What leaves your Mac |
 |---------|---------|----------------------|
 | Web lookup | Off | Search query to DuckDuckGo HTML (`html.duckduckgo.com`) |
-| Remote Ollama URL | Off (local default) | Screenshots and chat sent to the server you configure |
+| Remote Ollama URL | Off (local default) | Screenshots and chat sent to the server you configure (HTTPS required unless you opt in to insecure HTTP) |
 | Model library catalog browse | On when used | Tag metadata requests to the Ollama catalog API |
 | Save conversations | Off | Nothing leaves your Mac; files stay local |
 | Voice input | Off | On-device speech recognition (Microphone + Speech Recognition permissions) |

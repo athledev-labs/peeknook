@@ -50,6 +50,27 @@ enum PeekPreflightMenuContent {
     }
 
     @ViewBuilder
+    static func inferenceImageReplayHomeMenu(
+        current: InferenceImageReplay,
+        onSelect: @escaping (InferenceImageReplay) -> Void,
+        close: @escaping () -> Void
+    ) -> some View {
+        ForEach(PeekPreflightOptions.inferenceImageReplays) { option in
+            Button {
+                onSelect(option)
+                close()
+            } label: {
+                ValueMenuRow(
+                    title: option.displayName,
+                    subtitle: option.menuDetail,
+                    selected: current == option
+                )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    @ViewBuilder
     static func visionModelHomeMenu(
         currentTag: String,
         models: [InferenceModelOption],

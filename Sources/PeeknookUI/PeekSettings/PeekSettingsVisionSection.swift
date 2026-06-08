@@ -86,9 +86,25 @@ struct PeekSettingsVisionSection: View {
                     icon: "link",
                     title: "Server address",
                     text: ollamaURLBinding,
-                    placeholder: "http://127.0.0.1:11434",
+                    placeholder: orchestrator.settings.usesRemoteOllama
+                        ? "https://your-server:11434"
+                        : "http://127.0.0.1:11434",
                     monospaced: true
                 )
+                if orchestrator.settings.remoteOllamaUsesInsecureHTTP {
+                    PeekSettingsNote(
+                        text: "Remote servers must use HTTPS, or enable “Allow insecure HTTP” below."
+                    )
+                }
+                if orchestrator.settings.usesRemoteOllama {
+                    PeekSettingsToggleRow(
+                        icon: orchestrator.settings.acceptInsecureRemoteOllama
+                            ? "lock.open.fill" : "lock.shield",
+                        title: "Allow insecure HTTP",
+                        detail: "Send screenshots to a remote Ollama server without TLS (not recommended)",
+                        isOn: acceptInsecureRemoteBinding
+                    )
+                }
                 PeekSettingsNote(
                     text: "Default is this Mac. Change only if Ollama runs elsewhere."
                 )
@@ -102,14 +118,22 @@ struct PeekSettingsVisionSection: View {
     private var privacyBanner: some View {
         let webLookup = orchestrator.settings.webLookupEnabled
         let remoteOllama = orchestrator.settings.usesRemoteOllama
+        let insecureRemote = orchestrator.settings.remoteOllamaUsesInsecureHTTP
+            || (remoteOllama && orchestrator.settings.acceptInsecureRemoteOllama)
         let icon = webLookup ? "globe.americas.fill" : (remoteOllama ? "point.3.connected.trianglepath.dotted" : "lock.fill")
-        let tint: Color = webLookup ? .orange : (remoteOllama ? theme.accent : .green)
+        let tint: Color = webLookup ? .orange : (insecureRemote ? .orange : (remoteOllama ? theme.accent : .green))
         let message: String = {
             if webLookup && remoteOllama {
                 return "Ollama runs elsewhere; web lookup sends search queries to DuckDuckGo."
             }
             if webLookup {
                 return "Answers stay local; web lookup sends search queries to DuckDuckGo."
+            }
+            if remoteOllama && orchestrator.settings.acceptInsecureRemoteOllama {
+                return "Screenshots go to your Ollama server without encryption (HTTP)."
+            }
+            if insecureRemote {
+                return "Remote Ollama must use HTTPS. Update the server address in Advanced."
             }
             if remoteOllama {
                 return "Screenshots and answers go to your Ollama server, not a cloud API."
@@ -173,6 +197,13 @@ struct PeekSettingsVisionSection: View {
         Binding(
             get: { orchestrator.settings.ollamaBaseURL },
             set: { settings.setOllamaBaseURL($0) }
+        )
+    }
+
+    private var acceptInsecureRemoteBinding: Binding<Bool> {
+        Binding(
+            get: { orchestrator.settings.acceptInsecureRemoteOllama },
+            set: { settings.setAcceptInsecureRemoteOllama($0) }
         )
     }
 }

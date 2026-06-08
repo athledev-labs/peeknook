@@ -24,6 +24,7 @@ public struct WebLookupSnapshot: Equatable, Sendable, Codable, Identifiable {
     public enum Failure: String, Codable, Sendable, Equatable {
         case unavailable
         case rateLimited
+        case sensitiveContent
     }
 
     public let id: UUID
@@ -107,7 +108,15 @@ public struct WebSearchClient: Sendable {
     }
 
     /// Build a search query from capture context, prefers selected text, then window title.
+    /// Returns nil when the context looks sensitive (API keys, tokens, password managers).
     public static func query(from capture: CaptureResult) -> String? {
+        if SensitiveTextHeuristics.shouldSkipWebLookup(
+            text: capture.text,
+            windowTitle: capture.windowTitle,
+            appName: capture.appName
+        ) {
+            return nil
+        }
         if let text = capture.text?.trimmingCharacters(in: .whitespacesAndNewlines), text.count >= 4 {
             let firstLine = text.split(separator: "\n", maxSplits: 1).first.map(String.init) ?? text
             return String(firstLine.prefix(120))

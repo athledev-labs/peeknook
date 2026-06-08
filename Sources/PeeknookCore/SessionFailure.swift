@@ -120,6 +120,14 @@ public extension SessionFailure {
                 primaryRecovery: .checkOllama,
                 secondaryRecovery: .tryAgain
             )
+        case .insecureRemoteHTTP:
+            return SessionFailure(
+                kind: .ollamaUnreachable,
+                title: "Remote Ollama needs HTTPS",
+                message: "Screenshots would leave this Mac in cleartext over HTTP. Use https:// in Settings, or enable “Allow insecure HTTP” under Vision → Advanced.",
+                primaryRecovery: .checkOllama,
+                secondaryRecovery: .tryAgain
+            )
         case .ollamaUnreachable(let message):
             return SessionFailure(
                 kind: .ollamaUnreachable,

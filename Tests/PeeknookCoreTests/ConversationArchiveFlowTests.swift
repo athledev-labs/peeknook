@@ -9,7 +9,11 @@ private struct StatsInferenceEngine: InferenceEngine, Sendable {
     var promptTokens: Int
     var window: Int
 
-    func health(baseURL: String, model: String) async -> InferenceHealth { .ready }
+    func health(baseURL: String, model: String, acceptInsecureRemote: Bool) async -> InferenceHealth { .ready }
+
+    func warmUp(model: String, baseURL: String, acceptInsecureRemote: Bool) async {}
+
+    func contextLength(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> Int? { window }
 
     func stream(request: InferenceRequest) -> AsyncThrowingStream<InferenceEvent, Error> {
         AsyncThrowingStream { continuation in
@@ -26,7 +30,7 @@ private struct StatsInferenceEngine: InferenceEngine, Sendable {
         }
     }
 
-    func contextLength(model: String, baseURL: String) async -> Int? { window }
+    func capabilities(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> [String]? { nil }
 }
 
 @MainActor

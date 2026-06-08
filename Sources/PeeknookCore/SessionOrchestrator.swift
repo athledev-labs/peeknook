@@ -580,7 +580,11 @@ public final class SessionOrchestrator {
         if let setup, !setup.isReady { return }
         isPrewarming = true
         Task {
-            await inference.warmUp(model: settings.textModel, baseURL: settings.ollamaBaseURL)
+            await inference.warmUp(
+                model: settings.textModel,
+                baseURL: settings.ollamaBaseURL,
+                acceptInsecureRemote: settings.acceptInsecureRemoteOllama
+            )
             lastInferenceAt = Date() // model is resident now
             isPrewarming = false
         }
@@ -694,7 +698,20 @@ public final class SessionOrchestrator {
         streamedAnswer = ""
         webLookupSnapshot = nil
 
-        if settings.webLookupEnabled, let capture, let query = WebSearchClient.query(from: capture) {
+        if settings.webLookupEnabled, let capture {
+            let sensitive = SensitiveTextHeuristics.shouldSkipWebLookup(
+                text: capture.text,
+                windowTitle: capture.windowTitle,
+                appName: capture.appName
+            )
+            if sensitive {
+                webLookupSnapshot = WebLookupSnapshot(
+                    query: "",
+                    results: [],
+                    lookupFailed: true,
+                    lookupFailure: .sensitiveContent
+                )
+            } else if let query = WebSearchClient.query(from: capture) {
             isFetchingWebLookup = true
             defer { isFetchingWebLookup = false }
             let allowed = await WebSearchRateLimiter.shared.allowSearch()
@@ -718,14 +735,19 @@ public final class SessionOrchestrator {
                     )
                 }
             }
+            }
         }
 
+        let inferencePolicy = InferenceReplayPolicy(
+            maxImagePayloads: settings.inferenceImageReplay.maxImagePayloads
+        )
         let request = InferenceRequest(
             mode: settings.mode,
-            messages: inferenceMessages(from: conversation, webLookup: webLookupSnapshot),
+            messages: inferenceMessages(from: conversation, webLookup: webLookupSnapshot, policy: inferencePolicy),
             model: settings.textModel,
             ollamaBaseURL: settings.ollamaBaseURL,
-            quickMode: settings.quickMode
+            quickMode: settings.quickMode,
+            acceptInsecureRemoteOllama: settings.acceptInsecureRemoteOllama
         )
         let stream = inference.stream(request: request)
 
@@ -844,7 +866,8 @@ public final class SessionOrchestrator {
             messages: inferenceMessages(from: conversation, policy: .suggestions),
             model: settings.textModel,
             ollamaBaseURL: settings.ollamaBaseURL,
-            quickMode: settings.quickMode
+            quickMode: settings.quickMode,
+            acceptInsecureRemoteOllama: settings.acceptInsecureRemoteOllama
         )
         let expectedTurn = turnCounter
         suggestionTask = Task {
@@ -880,7 +903,11 @@ public final class SessionOrchestrator {
     private func ensureContextWindowLoaded() {
         guard contextWindow == nil else { return }
         Task {
-            if let length = await inference.contextLength(model: settings.textModel, baseURL: settings.ollamaBaseURL) {
+            if let length = await inference.contextLength(
+                model: settings.textModel,
+                baseURL: settings.ollamaBaseURL,
+                acceptInsecureRemote: settings.acceptInsecureRemoteOllama
+            ) {
                 contextWindow = length
             }
         }

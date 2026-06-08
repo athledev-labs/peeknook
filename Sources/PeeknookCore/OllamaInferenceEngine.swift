@@ -9,9 +9,9 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
         self.session = session
     }
 
-    public func health(baseURL: String, model: String) async -> InferenceHealth {
+    public func health(baseURL: String, model: String, acceptInsecureRemote: Bool) async -> InferenceHealth {
         do {
-            let base = try await resolveBaseURL(baseURL)
+            let base = try resolveBaseURL(baseURL, acceptInsecureRemote: acceptInsecureRemote)
             _ = try await fetchVersion(baseURL: base)
             try await ensureModel(baseURL: base, model: model)
             return .ready
@@ -24,7 +24,10 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
         AsyncThrowingStream { continuation in
             let task = Task {
                 do {
-                    let base = try await resolveBaseURL(request.ollamaBaseURL)
+                    let base = try resolveBaseURL(
+                        request.ollamaBaseURL,
+                        acceptInsecureRemote: request.acceptInsecureRemoteOllama
+                    )
                     try await ensureModel(baseURL: base, model: request.model)
                     try await streamChat(
                         baseURL: base,
@@ -41,11 +44,8 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
 
     // MARK: - Ollama HTTP
 
-    private func resolveBaseURL(_ string: String) async throws -> URL {
-        guard let url = URL(string: string), url.scheme != nil else {
-            throw InferenceError.invalidBaseURL
-        }
-        return url
+    private func resolveBaseURL(_ string: String, acceptInsecureRemote: Bool) throws -> URL {
+        try OllamaURLPolicy.resolveOrThrow(string, acceptInsecureRemote: acceptInsecureRemote)
     }
 
     private func fetchVersion(baseURL: URL) async throws {
@@ -98,6 +98,10 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
         for turn in request.messages {
             messages.append(.init(role: turn.role.rawValue, content: turn.text, images: turn.imageBase64.map { [$0] }))
         }
+        #if DEBUG
+        let imageCount = request.messages.filter { $0.imageBase64 != nil }.count
+        InferenceDebugLog.recordImagePayloadCount(imageCount, model: request.model)
+        #endif
         func makeBody(think: Bool?) -> OllamaChatRequest {
             OllamaChatRequest(
                 model: request.model,
@@ -168,7 +172,10 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
 
     public func generateFollowUps(request: InferenceRequest) async -> FollowUpGenerationResult {
         do {
-            let base = try await resolveBaseURL(request.ollamaBaseURL)
+            let base = try resolveBaseURL(
+                request.ollamaBaseURL,
+                acceptInsecureRemote: request.acceptInsecureRemoteOllama
+            )
             let url = base.appendingPathComponent("api/chat")
             var req = URLRequest(url: url)
             req.httpMethod = "POST"
@@ -243,8 +250,8 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
 
     // MARK: - Context window
 
-    public func contextLength(model: String, baseURL: String) async -> Int? {
-        guard let base = try? await resolveBaseURL(baseURL) else { return nil }
+    public func contextLength(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> Int? {
+        guard let base = try? resolveBaseURL(baseURL, acceptInsecureRemote: acceptInsecureRemote) else { return nil }
         let url = base.appendingPathComponent("api/show")
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
@@ -258,8 +265,8 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
 
     // MARK: - Capabilities
 
-    public func capabilities(model: String, baseURL: String) async -> [String]? {
-        guard let base = try? await resolveBaseURL(baseURL) else { return nil }
+    public func capabilities(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> [String]? {
+        guard let base = try? resolveBaseURL(baseURL, acceptInsecureRemote: acceptInsecureRemote) else { return nil }
         let url = base.appendingPathComponent("api/show")
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
@@ -293,8 +300,8 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
 
     // MARK: - Warm-up
 
-    public func warmUp(model: String, baseURL: String) async {
-        guard let base = try? await resolveBaseURL(baseURL) else { return }
+    public func warmUp(model: String, baseURL: String, acceptInsecureRemote: Bool) async {
+        guard let base = try? resolveBaseURL(baseURL, acceptInsecureRemote: acceptInsecureRemote) else { return }
         let url = base.appendingPathComponent("api/chat")
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
@@ -349,6 +356,7 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
 
 public enum InferenceError: Error, Sendable, LocalizedError {
     case invalidBaseURL
+    case insecureRemoteHTTP
     case ollamaUnreachable(String)
     case modelMissing(String, hint: String)
     case http(status: Int, message: String)
@@ -357,6 +365,8 @@ public enum InferenceError: Error, Sendable, LocalizedError {
         switch self {
         case .invalidBaseURL:
             "Invalid Ollama URL in Settings."
+        case .insecureRemoteHTTP:
+            "Remote Ollama must use HTTPS, or enable “Allow insecure HTTP” in Settings → Vision."
         case .ollamaUnreachable(let msg):
             msg
         case .modelMissing(let model, let hint):

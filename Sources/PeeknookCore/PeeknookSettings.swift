@@ -42,6 +42,10 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     public var speechVoiceIdentifier: String
     /// Global shortcut to focus the session-brief composer (default ⌘⇧B).
     public var briefHotkey: CaptureHotkey
+    /// How many screenshots replay as vision payloads per inference request (suggestions stay at 0).
+    public var inferenceImageReplay: InferenceImageReplay
+    /// Opt-in: allow plain HTTP to a non-loopback Ollama host (screenshots in cleartext).
+    public var acceptInsecureRemoteOllama: Bool
 
     public init(
         mode: PracticeMode = .general,
@@ -62,7 +66,9 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         speakAnswersEnabled: Bool = false,
         highlightSpeechWhileReading: Bool = true,
         speechVoiceIdentifier: String = "",
-        briefHotkey: CaptureHotkey = .defaultBrief
+        briefHotkey: CaptureHotkey = .defaultBrief,
+        inferenceImageReplay: InferenceImageReplay = .latestOnly,
+        acceptInsecureRemoteOllama: Bool = false
     ) {
         self.mode = mode
         self.previewBeforeInfer = previewBeforeInfer
@@ -83,20 +89,25 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.highlightSpeechWhileReading = highlightSpeechWhileReading
         self.speechVoiceIdentifier = speechVoiceIdentifier
         self.briefHotkey = briefHotkey
+        self.inferenceImageReplay = inferenceImageReplay
+        self.acceptInsecureRemoteOllama = acceptInsecureRemoteOllama
     }
 
     /// True when inference is configured to a host other than the default local Ollama loopback.
     public var usesRemoteOllama: Bool {
+        OllamaURLPolicy.usesRemoteOllama(ollamaBaseURL)
+    }
+
+    /// True when a remote Ollama URL uses plain HTTP without the insecure opt-in.
+    public var remoteOllamaUsesInsecureHTTP: Bool {
+        guard usesRemoteOllama else { return false }
         guard let url = URL(string: ollamaBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)),
-              let host = url.host?.lowercased() else {
-            let lower = ollamaBaseURL.lowercased()
-            return !lower.contains("127.0.0.1") && !lower.contains("localhost")
-        }
-        return host != "127.0.0.1" && host != "localhost"
+              let scheme = url.scheme?.lowercased() else { return false }
+        return scheme == "http" && !acceptInsecureRemoteOllama
     }
 
     private enum CodingKeys: String, CodingKey {
-        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, customModels, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, highlightSpeechWhileReading, speechVoiceIdentifier, briefHotkey
+        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, customModels, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, highlightSpeechWhileReading, speechVoiceIdentifier, briefHotkey, inferenceImageReplay, acceptInsecureRemoteOllama
     }
 
     // Tolerant decode, a saved blob missing a newer key keeps the rest of the user's
@@ -123,6 +134,8 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.highlightSpeechWhileReading = try c.decodeIfPresent(Bool.self, forKey: .highlightSpeechWhileReading) ?? true
         self.speechVoiceIdentifier = try c.decodeIfPresent(String.self, forKey: .speechVoiceIdentifier) ?? ""
         self.briefHotkey = try c.decodeIfPresent(CaptureHotkey.self, forKey: .briefHotkey) ?? .defaultBrief
+        self.inferenceImageReplay = try c.decodeIfPresent(InferenceImageReplay.self, forKey: .inferenceImageReplay) ?? .latestOnly
+        self.acceptInsecureRemoteOllama = try c.decodeIfPresent(Bool.self, forKey: .acceptInsecureRemoteOllama) ?? false
     }
 
     public static let `default` = PeeknookSettings(

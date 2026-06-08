@@ -84,12 +84,16 @@ public final class SetupCoordinator {
 
         let status = await ollama.status(
             baseURL: settings.ollamaBaseURL,
-            model: settings.textModel
+            model: settings.textModel,
+            acceptInsecureRemote: settings.acceptInsecureRemoteOllama
         )
 
         if status.isReachable {
             ollamaStep = .complete
-            installedModelNames = await ollama.installedModelNames(baseURL: settings.ollamaBaseURL)
+            installedModelNames = await ollama.installedModelNames(
+                baseURL: settings.ollamaBaseURL,
+                acceptInsecureRemote: settings.acceptInsecureRemoteOllama
+            )
         } else {
             ollamaStep = .failed(status.reachabilityMessage)
             modelStep = .pending
@@ -119,7 +123,8 @@ public final class SetupCoordinator {
             do {
                 for try await event in ollama.pullModel(
                     baseURL: settings.ollamaBaseURL,
-                    model: settings.textModel
+                    model: settings.textModel,
+                    acceptInsecureRemote: settings.acceptInsecureRemoteOllama
                 ) {
                     if Task.isCancelled { break }
                     switch event {

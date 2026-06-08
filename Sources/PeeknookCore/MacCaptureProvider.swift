@@ -71,18 +71,25 @@ public struct MacCaptureProvider: CaptureProviding, Sendable {
 
         let focused = focusedValue as! AXUIElement
 
+        if isSecureAccessibilityElement(focused) { return nil }
+
         if let selected = copyAttributeString(focused, kAXSelectedTextAttribute as CFString),
            !selected.isEmpty {
             return selected
         }
 
-        if let value = copyAttributeString(focused, kAXValueAttribute as CFString),
-           !value.isEmpty,
-           value.count < 8_000 {
-            return value
-        }
-
+        // Skip reading focused field values — passwords and tokens live here without selection.
         return nil
+    }
+
+    @MainActor
+    private static func isSecureAccessibilityElement(_ element: AXUIElement) -> Bool {
+        let subrole = copyAttributeString(element, kAXSubroleAttribute as CFString)
+        let roleDescription = copyAttributeString(element, kAXRoleDescriptionAttribute as CFString)
+        return CaptureAccessibilityPolicy.shouldSkipAccessibilityText(
+            subrole: subrole,
+            roleDescription: roleDescription
+        )
     }
 
     @MainActor
