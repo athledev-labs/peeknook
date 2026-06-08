@@ -43,8 +43,7 @@ struct PeekHomeResultView: View {
             resultFooter
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .padding(.leading, contentInsets.leading)
-        .padding(.trailing, contentInsets.trailing)
+        .padding(.bottom, contentInsets.bottom)
     }
 
     /// Collapsed result: the latest answer in one owned, capped scroll region so a long single
@@ -144,102 +143,87 @@ struct PeekHomeResultView: View {
     }
 
     private var resultCommandBar: some View {
-        PeekHomeLayout.anchoredBottomRow(
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 4) {
-                    if orchestrator.hasConversationHistory {
-                        NookToolbarButton(
-                            title: "History",
-                            symbol: "clock.arrow.circlepath",
-                            help: showsFullConversation
-                                ? "Show only the latest answer"
-                                : "View the full conversation thread",
-                            prominent: showsFullConversation
-                        ) {
-                            onToggleHistory()
-                        }
-                    }
-                    if showsFullConversation {
-                        NookToolbarButton(
-                            title: "Export",
-                            symbol: "square.and.arrow.up",
-                            help: "Copy the whole thread as Markdown"
-                        ) {
-                            orchestrator.copyConversationMarkdown()
-                        }
-                    }
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 4) {
+                if orchestrator.hasConversationHistory {
                     NookToolbarButton(
-                        title: "Brief",
-                        symbol: orchestrator.sessionBrief.isEmpty ? "text.alignleft" : "text.alignleft.fill",
-                        hotkey: orchestrator.settings.briefHotkey,
-                        help: PeekSessionBriefStrip.buttonHelp(for: orchestrator),
-                        testIdentifier: PeekTestID.brief,
-                        prominent: isBriefComposerVisible || !orchestrator.sessionBrief.isEmpty
+                        title: "History",
+                        symbol: "clock.arrow.circlepath",
+                        help: showsFullConversation
+                            ? "Show only the latest answer"
+                            : "View the full conversation thread",
+                        prominent: showsFullConversation
                     ) {
-                        PeekSessionBriefStrip.toggleComposer(
-                            orchestrator: orchestrator,
-                            isComposerVisible: $isBriefComposerVisible,
-                            draft: $briefDraft,
-                            focusField: focusBriefField
-                        )
-                    }
-                    NookToolbarButton(
-                        title: "Capture",
-                        symbol: "camera.viewfinder",
-                        hotkey: orchestrator.settings.captureHotkey,
-                        help: orchestrator.hasConversation
-                            ? "Capture the latest screen and continue this chat"
-                            : "Capture again from anywhere on your Mac",
-                        testIdentifier: PeekTestID.capture
-                    ) {
-                        orchestrator.beginCapture()
-                    }
-                    .disabled(!setup.isReady)
-                    NookToolbarButton(
-                        title: "Follow up",
-                        symbol: "bubble.left.and.bubble.right",
-                        help: "Ask a follow-up about this answer",
-                        prominent: isFollowUpComposerVisible
-                    ) {
-                        toggleFollowUpComposer()
-                    }
-                    if orchestrator.settings.speakAnswersEnabled {
-                        NookToolbarButton(
-                            title: orchestrator.isSpeakingLastAnswer ? "Stop" : "Speak",
-                            symbol: orchestrator.isSpeakingLastAnswer ? "stop.fill" : "speaker.wave.2",
-                            help: orchestrator.isSpeakingLastAnswer
-                                ? "Stop reading the answer aloud"
-                                : "Read the answer aloud"
-                        ) {
-                            if orchestrator.isSpeakingLastAnswer {
-                                orchestrator.stopSpeaking()
-                            } else {
-                                orchestrator.speakLastAnswer()
-                            }
-                        }
-                    }
-                    NookToolbarButton(
-                        title: "Done",
-                        symbol: "house",
-                        help: "End this chat and return to the home screen",
-                        testIdentifier: PeekTestID.done,
-                        prominent: true
-                    ) {
-                        onFinishChat()
-                    }
-                    NookToolbarButton(
-                        title: "New chat",
-                        symbol: "arrow.counterclockwise",
-                        help: "Discard this thread and start fresh",
-                        testIdentifier: PeekTestID.newChat
-                    ) {
-                        onRequestNewChat()
+                        onToggleHistory()
                     }
                 }
-            },
-            insets: .zero,
-            top: 4
-        )
+                if showsFullConversation {
+                    NookToolbarButton(
+                        title: "Export",
+                        symbol: "square.and.arrow.up",
+                        help: "Copy the whole thread as Markdown"
+                    ) {
+                        orchestrator.copyConversationMarkdown()
+                    }
+                }
+                NookToolbarButton(
+                    title: "Brief",
+                    symbol: orchestrator.sessionBrief.isEmpty ? "text.alignleft" : "text.alignleft.fill",
+                    hotkey: orchestrator.settings.briefHotkey,
+                    help: PeekSessionBriefStrip.buttonHelp(for: orchestrator),
+                    testIdentifier: PeekTestID.brief,
+                    prominent: isBriefComposerVisible || !orchestrator.sessionBrief.isEmpty
+                ) {
+                    PeekSessionBriefStrip.toggleComposer(
+                        orchestrator: orchestrator,
+                        isComposerVisible: $isBriefComposerVisible,
+                        draft: $briefDraft,
+                        focusField: focusBriefField
+                    )
+                }
+                NookToolbarButton(
+                    title: "Follow up",
+                    symbol: "bubble.left.and.bubble.right",
+                    help: "Ask a follow-up about this answer",
+                    prominent: isFollowUpComposerVisible
+                ) {
+                    toggleFollowUpComposer()
+                }
+                if orchestrator.settings.speakAnswersEnabled {
+                    NookToolbarButton(
+                        title: orchestrator.isSpeakingLastAnswer ? "Stop" : "Speak",
+                        symbol: orchestrator.isSpeakingLastAnswer ? "stop.fill" : "speaker.wave.2",
+                        help: orchestrator.isSpeakingLastAnswer
+                            ? "Stop reading the answer aloud"
+                            : "Read the answer aloud"
+                    ) {
+                        if orchestrator.isSpeakingLastAnswer {
+                            orchestrator.stopSpeaking()
+                        } else {
+                            orchestrator.speakLastAnswer()
+                        }
+                    }
+                }
+                NookToolbarButton(
+                    title: "Done",
+                    symbol: "house",
+                    help: "End this chat and return to the home screen",
+                    testIdentifier: PeekTestID.done,
+                    prominent: true
+                ) {
+                    onFinishChat()
+                }
+                NookToolbarButton(
+                    title: "New chat",
+                    symbol: "arrow.counterclockwise",
+                    help: "Discard this thread and start fresh",
+                    testIdentifier: PeekTestID.newChat
+                ) {
+                    onRequestNewChat()
+                }
+            }
+        }
+        .padding(.top, 4)
     }
 
     private var suggestionRefreshSeed: Int {

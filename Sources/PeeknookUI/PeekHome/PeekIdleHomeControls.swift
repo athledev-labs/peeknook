@@ -189,29 +189,33 @@ struct PeekIdleCommandBar: View {
                 )
             }
             HStack(alignment: .center, spacing: 8) {
-                if let preview = IdleResumePreview.from(orchestrator) {
-                    PeekResumeButton(preview: preview, onResume: onResume)
-                }
-                NookToolbarButton(
-                    title: "Brief",
-                    symbol: orchestrator.sessionBrief.isEmpty ? "text.alignleft" : "text.alignleft.fill",
-                    hotkey: orchestrator.settings.briefHotkey,
-                    help: PeekSessionBriefStrip.buttonHelp(for: orchestrator),
-                    testIdentifier: PeekTestID.brief,
-                    prominent: isBriefComposerVisible || !orchestrator.sessionBrief.isEmpty
-                ) {
-                    PeekSessionBriefStrip.toggleComposer(
-                        orchestrator: orchestrator,
-                        isComposerVisible: $isBriefComposerVisible,
-                        draft: $briefDraft,
-                        focusField: focusBriefField
-                    )
-                }
-                .fixedSize()
-                HStack(spacing: 6) {
-                    modelMenu
-                    depthMenu
-                    scopeMenu
+                PeekScrollView(.horizontal) {
+                    HStack(alignment: .center, spacing: 8) {
+                        if let preview = IdleResumePreview.from(orchestrator) {
+                            PeekResumeButton(preview: preview, onResume: onResume)
+                        }
+                        NookToolbarButton(
+                            title: "Brief",
+                            symbol: orchestrator.sessionBrief.isEmpty ? "text.alignleft" : "text.alignleft.fill",
+                            hotkey: orchestrator.settings.briefHotkey,
+                            help: PeekSessionBriefStrip.buttonHelp(for: orchestrator),
+                            testIdentifier: PeekTestID.brief,
+                            prominent: isBriefComposerVisible || !orchestrator.sessionBrief.isEmpty
+                        ) {
+                            PeekSessionBriefStrip.toggleComposer(
+                                orchestrator: orchestrator,
+                                isComposerVisible: $isBriefComposerVisible,
+                                draft: $briefDraft,
+                                focusField: focusBriefField
+                            )
+                        }
+                        .fixedSize()
+                        HStack(spacing: 6) {
+                            modelMenu
+                            depthMenu
+                            scopeMenu
+                        }
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 NookToolbarButton(
@@ -226,7 +230,9 @@ struct PeekIdleCommandBar: View {
                 .disabled(!setup.isReady)
                 .fixedSize()
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .animation(.spring(response: 0.34, dampingFraction: 0.86), value: isBriefComposerVisible)
     }
 

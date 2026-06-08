@@ -79,6 +79,7 @@ public struct PeekHomeView: View {
                 homeColumn
             }
         }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
         .peekModelDownloadConfirmation(pending: $pendingDownload) { option in
             settings.beginModelDownload(option)
         }
@@ -229,105 +230,99 @@ public struct PeekHomeView: View {
     }
 
     private var homeColumn: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            PeekFadedScrollView(maxHeight: PeekPanelLayout.idleHomeMaxHeight) {
+        Group {
+            if case .result = orchestrator.phase {
+                PeekHomeResultView(
+                    orchestrator: orchestrator,
+                    setup: setup,
+                    showsFullConversation: $showsFullConversation,
+                    followUpText: $followUpText,
+                    isFollowUpComposerVisible: $isFollowUpComposerVisible,
+                    isBriefComposerVisible: $isBriefComposerVisible,
+                    briefDraft: $briefDraft,
+                    focusFollowUpField: $isFollowUpFieldFocused,
+                    focusBriefField: $isBriefFieldFocused,
+                    onToggleHistory: { setHistoryVisible(!showsFullConversation) },
+                    onFinishChat: finishChat,
+                    onRequestNewChat: requestNewChat
+                )
+            } else {
                 VStack(alignment: .leading, spacing: 0) {
-                    if case .idle = orchestrator.phase {
-                        PeekIdleHomeContent(settings: orchestrator.settings)
+                    PeekFadedScrollView(maxHeight: PeekPanelLayout.idleHomeMaxHeight) {
+                        idleScrollContent
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
                     }
-                    if !setup.isReady {
-                        setupBanner
-                            .padding(.top, 8)
-                    }
-                    if orchestrator.settings.persistConversation, let issue = orchestrator.archivePersistenceIssue {
-                        PeekArchivePersistenceBanner(
-                            message: issue.userFacingMessage,
-                            onDismiss: orchestrator.dismissArchivePersistenceIssue
+                    VStack(alignment: .leading, spacing: homePhaseSpacing) {
+                        PeekHomePhaseContent(
+                            orchestrator: orchestrator,
+                            showsFullConversation: showsFullConversation,
+                            canRetry: setup.isReady,
+                            onRecover: handleRecovery
                         )
-                        .padding(.top, 8)
-                        .transition(.opacity.combined(with: .move(edge: .top)))
+                        if case .idle = orchestrator.phase {
+                            PeekIdleCommandBar(
+                                orchestrator: orchestrator,
+                                setup: setup,
+                                settings: settings,
+                                modelCatalog: modelCatalog,
+                                pendingDownload: $pendingDownload,
+                                isBriefComposerVisible: $isBriefComposerVisible,
+                                briefDraft: $briefDraft,
+                                focusBriefField: $isBriefFieldFocused,
+                                onBrowseModels: openModelLibrary,
+                                onCapture: { orchestrator.beginCapture() },
+                                onResume: resumeChat
+                            )
+                            .padding(.top, 4)
+                        } else {
+                            PeekHomeActiveControls(
+                                orchestrator: orchestrator,
+                                setup: setup,
+                                onConfirmPreview: { orchestrator.confirmPreview() },
+                                onCancel: { orchestrator.cancel() }
+                            )
+                        }
                     }
-                    if let notice = orchestrator.lastNotice {
-                        PeekSessionNoticeBanner(
-                            notice: notice,
-                            conversationArchived: orchestrator.settings.persistConversation,
-                            onDismiss: { withAnimation(.easeOut(duration: 0.2)) { orchestrator.clearNotice() } }
-                        )
-                        .padding(.top, 8)
-                        .transition(.opacity.combined(with: .move(edge: .top)))
-                    }
-                    if PracticeMode.shipped.count > 1 {
-                        modePicker
-                            .padding(.top, 8)
-                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(.leading, contentInsets.leading)
-                .padding(.trailing, contentInsets.trailing)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .padding(.top, 8)
             }
-            mainColumn
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .padding(.top, 8)
         .animation(.easeOut(duration: 0.2), value: orchestrator.lastNotice)
     }
 
     @ViewBuilder
-    private var mainColumn: some View {
-        if case .result = orchestrator.phase {
-            PeekHomeResultView(
-                orchestrator: orchestrator,
-                setup: setup,
-                showsFullConversation: $showsFullConversation,
-                followUpText: $followUpText,
-                isFollowUpComposerVisible: $isFollowUpComposerVisible,
-                isBriefComposerVisible: $isBriefComposerVisible,
-                briefDraft: $briefDraft,
-                focusFollowUpField: $isFollowUpFieldFocused,
-                focusBriefField: $isBriefFieldFocused,
-                onToggleHistory: { setHistoryVisible(!showsFullConversation) },
-                onFinishChat: finishChat,
-                onRequestNewChat: requestNewChat
-            )
-        } else {
-            VStack(alignment: .leading, spacing: homePhaseSpacing) {
-                PeekHomePhaseContent(
-                    orchestrator: orchestrator,
-                    showsFullConversation: showsFullConversation,
-                    canRetry: setup.isReady,
-                    onRecover: handleRecovery
+    private var idleScrollContent: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if case .idle = orchestrator.phase {
+                PeekIdleHomeContent(settings: orchestrator.settings)
+            }
+            if !setup.isReady {
+                setupBanner
+                    .padding(.top, 8)
+            }
+            if orchestrator.settings.persistConversation, let issue = orchestrator.archivePersistenceIssue {
+                PeekArchivePersistenceBanner(
+                    message: issue.userFacingMessage,
+                    onDismiss: orchestrator.dismissArchivePersistenceIssue
                 )
-                .frame(maxWidth: .infinity, alignment: .topLeading)
-                .padding(.leading, contentInsets.leading)
-                .padding(.trailing, contentInsets.trailing)
-                if case .idle = orchestrator.phase {
-                    PeekHomeLayout.anchoredBottomRow(
-                        PeekIdleCommandBar(
-                            orchestrator: orchestrator,
-                            setup: setup,
-                            settings: settings,
-                            modelCatalog: modelCatalog,
-                            pendingDownload: $pendingDownload,
-                            isBriefComposerVisible: $isBriefComposerVisible,
-                            briefDraft: $briefDraft,
-                            focusBriefField: $isBriefFieldFocused,
-                            onBrowseModels: openModelLibrary,
-                            onCapture: { orchestrator.beginCapture() },
-                            onResume: resumeChat
-                        ),
-                        insets: contentInsets,
-                        top: 4
-                    )
-                } else {
-                    PeekHomeLayout.anchoredBottomRow(
-                        PeekHomeActiveControls(
-                            orchestrator: orchestrator,
-                            setup: setup,
-                            onConfirmPreview: { orchestrator.confirmPreview() },
-                            onCancel: { orchestrator.cancel() }
-                        ),
-                        insets: contentInsets
-                    )
-                }
+                .padding(.top, 8)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+            if let notice = orchestrator.lastNotice {
+                PeekSessionNoticeBanner(
+                    notice: notice,
+                    conversationArchived: orchestrator.settings.persistConversation,
+                    onDismiss: { withAnimation(.easeOut(duration: 0.2)) { orchestrator.clearNotice() } }
+                )
+                .padding(.top, 8)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+            if PracticeMode.shipped.count > 1 {
+                modePicker
+                    .padding(.top, 8)
             }
         }
     }

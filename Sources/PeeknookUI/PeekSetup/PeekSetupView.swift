@@ -46,10 +46,9 @@ public struct PeekSetupView: View {
                 setupContent
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.leading, contentInsets.leading)
-        .padding(.trailing, contentInsets.trailing)
-        .padding(.vertical, 14)
+        .padding(.top, 14)
+        .padding(.bottom, contentInsets.bottom)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
         .frame(maxHeight: PeekPanelLayout.setupMaxHeight)
         .onAppear { setup.startAutoRefresh() }
         .onDisappear { setup.stopAutoRefresh() }

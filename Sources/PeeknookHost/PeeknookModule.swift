@@ -117,6 +117,7 @@ public final class PeeknookModule: NookModule {
         }
         // Peeknook's module glyph, not the default OpenNook notch mark (see NookMarkView).
         configuration.topBar.leadingIcon = Self.moduleDescriptor.icon
+        configuration.topBar.width = .contentColumn
         configuration.expandedWidth = 520
         configuration.style = NookStyle(
             topCornerRadius: 19,

@@ -96,10 +96,9 @@ public struct PeekSettingsView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.leading, contentInsets.leading)
-                .padding(.trailing, contentInsets.trailing)
-                .padding(.bottom, 14)
+                .padding(.bottom, contentInsets.bottom + 6)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .onChange(of: scrollToSectionID) { _, sectionID in
                 guard let sectionID else { return }
                 Task { @MainActor in

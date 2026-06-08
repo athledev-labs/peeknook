@@ -26,5 +26,6 @@ struct PeekHomeActiveControls: View {
             }
             Spacer(minLength: 0)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
