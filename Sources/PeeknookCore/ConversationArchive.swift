@@ -182,14 +182,14 @@ public actor ConversationArchiveStore {
     private let legacyFileURL: URL?
     private let maxThreads: Int
     private let maxBytes: Int
-    private let protection: (any ConversationArchiveProtection)?
+    private let protection: any ConversationArchiveProtection
 
     public init(
         directory: URL,
         legacyFileURL: URL? = nil,
         maxThreads: Int = ConversationArchiveStore.defaultMaxThreads,
         maxBytes: Int = ConversationArchiveStore.defaultMaxBytes,
-        protection: (any ConversationArchiveProtection)? = nil
+        protection: any ConversationArchiveProtection
     ) {
         self.directory = directory
         self.indexURL = directory.appendingPathComponent("index.v2.json")
@@ -199,14 +199,14 @@ public actor ConversationArchiveStore {
         self.protection = protection
     }
 
-    public static func makeDefault() -> ConversationArchiveStore {
+    public static func makeDefault() throws -> ConversationArchiveStore {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
         let peeknook = base.appendingPathComponent("Peeknook", isDirectory: true)
         return ConversationArchiveStore(
             directory: peeknook.appendingPathComponent("Conversations", isDirectory: true),
             legacyFileURL: peeknook.appendingPathComponent("conversation.v1.json"),
-            protection: KeychainArchiveProtection.makeDefault()
+            protection: try KeychainArchiveProtection()
         )
     }
 
@@ -241,16 +241,12 @@ public actor ConversationArchiveStore {
         }
 
         let data: Data
-        if let protection {
-            do {
-                data = try protection.seal(encoded)
-            } catch ArchiveProtectionError.keyUnavailable {
-                return .failure(.keyUnavailable)
-            } catch {
-                return .failure(.encodeFailed)
-            }
-        } else {
-            data = encoded
+        do {
+            data = try protection.seal(encoded)
+        } catch ArchiveProtectionError.keyUnavailable {
+            return .failure(.keyUnavailable)
+        } catch {
+            return .failure(.encodeFailed)
         }
 
         do {
@@ -260,7 +256,7 @@ public actor ConversationArchiveStore {
         }
 
         do {
-            try data.write(to: threadURL(thread.id), options: .atomic)
+            try writeProtected(data, to: threadURL(thread.id))
         } catch {
             return .failure(.threadWriteFailed)
         }
@@ -317,16 +313,36 @@ public actor ConversationArchiveStore {
         )
         guard let encoded = try? JSONEncoder().encode(thread) else { return nil }
         let fileData: Data
-        if let protection, let sealed = try? protection.seal(encoded) {
-            fileData = sealed
-        } else {
-            fileData = encoded
+        do {
+            fileData = try protection.seal(encoded)
+        } catch {
+            return nil
         }
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        try? fileData.write(to: threadURL(thread.id), options: .atomic)
+        try? writeProtected(fileData, to: threadURL(thread.id))
         writeIndex(ConversationArchiveIndex(version: Self.indexVersion, summaries: [thread.summary]))
         try? FileManager.default.removeItem(at: legacyFileURL)
         return thread
+    }
+
+    /// Re-seal any legacy plaintext thread files. Returns how many were upgraded.
+    @discardableResult
+    public func reencryptPlaintextThreadsIfNeeded() -> Int {
+        guard let files = try? FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: nil
+        ) else { return 0 }
+
+        var reencrypted = 0
+        for file in files where file.lastPathComponent.hasSuffix(".json") && file.lastPathComponent != "index.v2.json" {
+            guard let raw = try? Data(contentsOf: file),
+                  !ArchiveEnvelope.isEncrypted(raw),
+                  let thread = try? JSONDecoder().decode(ConversationThread.self, from: raw) else { continue }
+            if case .success = save(thread) {
+                reencrypted += 1
+            }
+        }
+        return reencrypted
     }
 
     // MARK: - Internals
@@ -337,7 +353,7 @@ public actor ConversationArchiveStore {
 
     /// Decrypt when protected, or decode legacy plaintext threads.
     private func decodeThread(from raw: Data) -> ConversationThread? {
-        if let protection, ArchiveEnvelope.isEncrypted(raw) {
+        if ArchiveEnvelope.isEncrypted(raw) {
             guard let plaintext = try? protection.open(raw) else { return nil }
             return try? JSONDecoder().decode(ConversationThread.self, from: plaintext)
         }
@@ -369,12 +385,16 @@ public actor ConversationArchiveStore {
         }
 
         do {
-            try data.write(to: indexURL, options: .atomic)
+            try writeProtected(data, to: indexURL)
         } catch {
             return .failure(.indexWriteFailed)
         }
 
         return .success(())
+    }
+
+    private func writeProtected(_ data: Data, to url: URL) throws {
+        try data.write(to: url, options: [.atomic, .completeFileProtection])
     }
 
     /// Drop oldest threads (by `updatedAt`) until under both the count and byte caps.

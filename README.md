@@ -78,7 +78,9 @@ Capture (⌘⇧P) stays disabled until then. **Accessibility** is optional and o
 
 ## Models (Gemma 4 via Ollama)
 
-Peeknook talks to **local Ollama** only (`http://127.0.0.1:11434`). Default model tags by RAM:
+Peeknook sends each capture to **your configured Ollama instance**. The default is **local Ollama** on this Mac (`http://127.0.0.1:11434`). In Settings → Vision → Advanced you can point at a **remote Ollama server** (HTTPS by default; optional **Allow insecure HTTP** for cleartext). You can also select Ollama **`:cloud` tags** from the model library; those run through Ollama and may execute off this Mac per Ollama's cloud offering.
+
+Default model tags by RAM:
 
 | RAM | Default tag |
 |-----|-------------|
@@ -94,13 +96,19 @@ ollama pull gemma4:e4b           # or the tag Settings suggests
 
 > The `ollama` **formula** bottle has shipped without its `llama-server` runner (requests 500 with "llama-server binary not found"). Use the `ollama-app` **cask** above.
 
+### Remote Ollama and cloud tags
+
+- **Remote server:** useful when Ollama runs on another machine on your network. Screenshots and chat are sent to that host.
+- **`:cloud` tags:** shown with a **Cloud** badge in the model browser. Peeknook does not host inference; payloads go to your Ollama endpoint, which may use Ollama's cloud runtime for those tags.
+- **Model library browse** contacts `https://ollama-models-api.devcomfort.workers.dev` for search/tag metadata only (no screenshots). Browse is not used during capture.
+
 ### Bring your own model
 
 Gemma 4 is the default, but the picker is open: **Vision model → Add a model…** (in Home, Setup, or Settings) accepts any Ollama tag, pulls it if needed, and selects it, so you can try the latest open models in your notch without a code change. Custom models persist and can be removed from Settings.
 
 Because every capture sends a screenshot, **pick a model that supports image input**. Peeknook reads the model's `/api/show` capabilities and warns when a chosen model is text-only. Note: some otherwise-multimodal models (e.g. NVIDIA's Nemotron 3 family) currently run **text-only** under Ollama because Ollama doesn't load their separate vision projector (`mmproj`) files, those will ignore the screenshot until upstream support lands.
 
-Grant **Screen Recording** (required, the front-window screenshot the vision model reads) when macOS prompts. **Accessibility** is optional and only adds selected text alongside the screenshot.
+Grant **Screen Recording** (required) when macOS prompts. Every capture includes a screenshot of the chosen window or display; visible on-screen content (including login UIs) is sent to your Ollama instance. **Accessibility** is optional and only adds **selected** text alongside the screenshot; it does not read focused password fields, but the screenshot still shows what is on screen.
 
 ### Third-party model licenses
 
@@ -116,7 +124,9 @@ Peeknook does not ship model weights. You download them through Ollama. Applicab
 
 ## Privacy
 
-Peeknook is local-first by default: capture runs only when you trigger it, inference goes to your Ollama instance, and conversation archive is off unless you turn it on. Opt-in web lookup sends queries to DuckDuckGo. See [PRIVACY.md](PRIVACY.md) for the full policy.
+Peeknook is **local-first by default**: capture runs only when you trigger it, inference defaults to local Ollama, and conversation archive is off unless you enable **Save conversations**. Opt-in **Web lookup** sends queries to DuckDuckGo; **remote Ollama**, **`:cloud` tags**, and **model-library browse** can send data off this Mac as described in [PRIVACY.md](PRIVACY.md).
+
+Saved chats (when enabled) are encrypted on disk but capped at **25 threads / ~250 MB** (oldest pruned). **Done** keeps a chat in the archive; **New chat** deletes it.
 
 ## License
 

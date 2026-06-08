@@ -333,6 +333,7 @@ public final class SessionOrchestrator {
         guard settings.persistConversation, let archive = conversationArchive else { return }
         Task {
             _ = await archive.migrateLegacyIfNeeded()
+            _ = await archive.reencryptPlaintextThreadsIfNeeded()
             guard let restored = await archive.mostRecent(), !restored.turns.isEmpty else { return }
             adopt(restored)
         }
@@ -412,6 +413,11 @@ public final class SessionOrchestrator {
 
     public func dismissArchivePersistenceIssue() {
         archivePersistenceIssue = nil
+    }
+
+    /// Called when archive bootstrap fails (Keychain unavailable) so the user sees a banner before the first save.
+    public func reportArchiveBootstrapFailure(_ error: ConversationArchiveError) {
+        archivePersistenceIssue = error
     }
 
     /// Delete just the chat on screen from the archive, called when the user discards a thread.

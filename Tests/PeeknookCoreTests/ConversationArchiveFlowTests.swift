@@ -38,7 +38,7 @@ final class ConversationArchiveFlowTests: XCTestCase {
     private func tempArchive() -> (ConversationArchiveStore, URL) {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("peeknook-flow-\(UUID().uuidString)", isDirectory: true)
-        return (ConversationArchiveStore(directory: dir), dir)
+        return (ConversationArchiveTestSupport.makeStore(directory: dir), dir)
     }
 
     func testOpenThreadRestoresArchivedChatAsResult() async {

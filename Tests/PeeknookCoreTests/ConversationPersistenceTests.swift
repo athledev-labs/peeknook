@@ -8,7 +8,7 @@ final class ConversationPersistenceTests: XCTestCase {
     private func tempArchive() -> (ConversationArchiveStore, URL) {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("peeknook-archive-\(UUID().uuidString)", isDirectory: true)
-        return (ConversationArchiveStore(directory: dir), dir)
+        return (ConversationArchiveTestSupport.makeStore(directory: dir), dir)
     }
 
     func testEnabledPersistenceSavesAndReloadsAcrossOrchestrators() async throws {
@@ -72,7 +72,7 @@ final class ConversationPersistenceTests: XCTestCase {
         let blocked = parent.appendingPathComponent("blocked-dir")
         try "not a directory".write(to: blocked, atomically: true, encoding: .utf8)
 
-        let store = ConversationArchiveStore(directory: blocked)
+        let store = ConversationArchiveTestSupport.makeStore(directory: blocked)
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b", persistConversation: true),
             capture: StubCaptureProvider(sampleText: "hello"),

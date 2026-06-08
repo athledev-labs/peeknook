@@ -21,7 +21,7 @@ final class ConversationArchiveStoreTests: XCTestCase {
     func testSaveListLoadDelete() async throws {
         let dir = tempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let store = ConversationArchiveStore(directory: dir)
+        let store = ConversationArchiveTestSupport.makeStore(directory: dir)
 
         let a = thread("first", updatedAt: Date(timeIntervalSinceNow: -60))
         let b = thread("second", updatedAt: Date())
@@ -48,7 +48,7 @@ final class ConversationArchiveStoreTests: XCTestCase {
     func testSaveSkipsEmptyThread() async {
         let dir = tempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let store = ConversationArchiveStore(directory: dir)
+        let store = ConversationArchiveTestSupport.makeStore(directory: dir)
         let emptySave = await store.save(ConversationThread(turns: []))
         XCTAssertTrue(emptySave.isSuccess)
         let summaries = await store.summaries()
@@ -58,7 +58,7 @@ final class ConversationArchiveStoreTests: XCTestCase {
     func testUpdatingExistingThreadDoesNotDuplicate() async {
         let dir = tempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let store = ConversationArchiveStore(directory: dir)
+        let store = ConversationArchiveTestSupport.makeStore(directory: dir)
 
         var t = thread("draft")
         let firstSave = await store.save(t)
@@ -77,7 +77,7 @@ final class ConversationArchiveStoreTests: XCTestCase {
     func testDeleteAllClearsArchive() async {
         let dir = tempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let store = ConversationArchiveStore(directory: dir)
+        let store = ConversationArchiveTestSupport.makeStore(directory: dir)
         let saveA = await store.save(thread("a"))
         let saveB = await store.save(thread("b"))
         XCTAssertTrue(saveA.isSuccess)
@@ -90,7 +90,7 @@ final class ConversationArchiveStoreTests: XCTestCase {
     func testRetentionPrunesOldestOverCountCap() async {
         let dir = tempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let store = ConversationArchiveStore(directory: dir, maxThreads: 3)
+        let store = ConversationArchiveTestSupport.makeStore(directory: dir, maxThreads: 3)
 
         var ids: [UUID] = []
         for i in 0..<5 {
@@ -121,7 +121,7 @@ final class ConversationArchiveStoreTests: XCTestCase {
         )
         try JSONEncoder().encode(legacy).write(to: legacyURL)
 
-        let store = ConversationArchiveStore(directory: dir, legacyFileURL: legacyURL)
+        let store = ConversationArchiveTestSupport.makeStore(directory: dir, legacyFileURL: legacyURL)
         let migrated = await store.migrateLegacyIfNeeded()
 
         XCTAssertNotNil(migrated)
@@ -137,7 +137,10 @@ final class ConversationArchiveStoreTests: XCTestCase {
     func testMigrationSkippedWhenArchiveAlreadyExists() async throws {
         let dir = tempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let store = ConversationArchiveStore(directory: dir, legacyFileURL: dir.appendingPathComponent("conversation.v1.json"))
+        let store = ConversationArchiveTestSupport.makeStore(
+            directory: dir,
+            legacyFileURL: dir.appendingPathComponent("conversation.v1.json")
+        )
         let existingSave = await store.save(thread("existing"))
         XCTAssertTrue(existingSave.isSuccess)
 
@@ -158,7 +161,7 @@ final class ConversationArchiveStoreTests: XCTestCase {
         let dir = parent.appendingPathComponent("blocked-dir")
         try? "not a directory".write(to: dir, atomically: true, encoding: .utf8)
 
-        let store = ConversationArchiveStore(directory: dir)
+        let store = ConversationArchiveTestSupport.makeStore(directory: dir)
         let result = await store.save(thread("blocked"))
 
         XCTAssertEqual(result.archiveFailure, .directoryUnavailable)

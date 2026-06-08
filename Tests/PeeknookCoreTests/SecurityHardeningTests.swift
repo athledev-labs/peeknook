@@ -123,6 +123,76 @@ final class SecurityHardeningTests: XCTestCase {
         ))
     }
 
+    func testEmbeddedSecretAfterColonIsBlocked() {
+        let secret = "api key: sk-test-abcdefghijklmnopqrstuvwxyz1234567890"
+        XCTAssertTrue(SensitiveTextHeuristics.looksSensitive(secret))
+        let capture = CaptureResult(
+            text: secret,
+            sourceLabel: "test",
+            screenshotBase64: "x"
+        )
+        XCTAssertNil(WebSearchClient.query(from: capture))
+    }
+
+    func testEnvAssignmentSecretIsBlocked() {
+        XCTAssertTrue(SensitiveTextHeuristics.looksSensitive(
+            "OPENAI_API_KEY=sk-proj-abcdefghijklmnopqrstuvwxyz1234567890"
+        ))
+    }
+
+    func testPrefixMentionInProseIsAllowed() {
+        XCTAssertFalse(SensitiveTextHeuristics.looksSensitive("Stripe API keys start with sk- prefix"))
+        XCTAssertFalse(SensitiveTextHeuristics.looksSensitive("import sklearn"))
+    }
+
+    func testMultiLineSecretOnSecondLineIsBlocked() {
+        let text = "explain this error\nghp_1234567890abcdefghijklmnopqrstuvwxyz"
+        XCTAssertTrue(SensitiveTextHeuristics.looksSensitive(text))
+    }
+
+    func testPasswordManagerContextBlocksWebLookupWithoutSecretText() {
+        XCTAssertTrue(SensitiveTextHeuristics.shouldSkipWebLookup(
+            text: "Notes about HTTP",
+            windowTitle: "Personal Vault",
+            appName: "1Password"
+        ))
+    }
+
+    func testSaveFailsWhenProtectionUnavailable() async {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("peeknook-fail-seal-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let store = ConversationArchiveTestSupport.makeStore(
+            directory: dir,
+            protection: FailingArchiveProtection()
+        )
+        let thread = ConversationThread(turns: [ChatTurn(id: 1, kind: .user("secret"))])
+        let result = await store.save(thread)
+
+        XCTAssertEqual(result.archiveFailure, ConversationArchiveError.keyUnavailable)
+        let files = (try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? []
+        XCTAssertTrue(files.isEmpty, "Must not write plaintext when seal fails")
+    }
+
+    func testReencryptPlaintextThreadsIfNeeded() async throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("peeknook-reencrypt-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let thread = ConversationThread(turns: [ChatTurn(id: 1, kind: .user("legacy"))])
+        let plaintext = try JSONEncoder().encode(thread)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try plaintext.write(to: dir.appendingPathComponent("\(thread.id.uuidString).json"))
+
+        let store = ConversationArchiveTestSupport.makeStore(directory: dir)
+        let count = await store.reencryptPlaintextThreadsIfNeeded()
+        XCTAssertEqual(count, 1)
+
+        let raw = try Data(contentsOf: dir.appendingPathComponent("\(thread.id.uuidString).json"))
+        XCTAssertTrue(ArchiveEnvelope.isEncrypted(raw))
+    }
+
     func testWebSearchQuerySkipsSensitiveText() {
         let capture = CaptureResult(
             text: "sk-test-abcdefghijklmnopqrstuvwxyz1234567890",

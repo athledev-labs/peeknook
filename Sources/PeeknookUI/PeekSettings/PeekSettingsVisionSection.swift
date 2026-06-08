@@ -136,7 +136,7 @@ struct PeekSettingsVisionSection: View {
                 return "Remote Ollama must use HTTPS. Update the server address in Advanced."
             }
             if remoteOllama {
-                return "Screenshots and answers go to your Ollama server, not a cloud API."
+                return "Screenshots and answers go to your Ollama server. :cloud model tags may run on Ollama's cloud infrastructure."
             }
             return "Capture and answers run on this Mac via Ollama."
         }()

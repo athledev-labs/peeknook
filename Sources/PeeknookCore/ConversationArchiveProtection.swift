@@ -78,10 +78,6 @@ public struct KeychainArchiveProtection: ConversationArchiveProtection {
         try inner.open(sealed)
     }
 
-    public static func makeDefault() -> ConversationArchiveProtection? {
-        try? KeychainArchiveProtection()
-    }
-
     private static func loadOrCreateKey() throws -> SymmetricKey {
         if let existing = try loadKey() { return existing }
         let key = SymmetricKey(size: .bits256)

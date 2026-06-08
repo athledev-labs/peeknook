@@ -58,6 +58,8 @@ struct PeekSettingsCaptureSection: View {
                 isOn: previewBeforeInferBinding
             )
 
+            PeekSettingsNote(text: "Screenshots capture on-screen pixels. Avoid capturing windows that show passwords, tokens, or other sensitive content.")
+
             PeekSettingsToggleRow(
                 icon: orchestrator.settings.suggestFollowUps ? "text.bubble.fill" : "text.bubble",
                 title: "Suggest follow-ups",
@@ -75,7 +77,7 @@ struct PeekSettingsCaptureSection: View {
             PeekSettingsToggleRow(
                 icon: orchestrator.settings.persistConversation ? "tray.full.fill" : "tray",
                 title: "Save conversations",
-                detail: "Archive past chats and their screenshots on this Mac. Turning this off deletes the archive.",
+                detail: "Archive past chats and screenshots on this Mac (up to 25 chats / ~250 MB). Done keeps a chat; New chat deletes it. Turning this off deletes the whole archive.",
                 isOn: persistConversationBinding
             )
         }
