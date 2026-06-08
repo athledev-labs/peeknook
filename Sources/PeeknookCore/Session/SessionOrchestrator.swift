@@ -9,12 +9,11 @@ import AppKit
 @MainActor
 @Observable
 public final class SessionOrchestrator {
-    // Read-only outside the module: only the orchestrator's own extensions (other files in this
-    // same target — +Capture, +Inference, +Archive) drive the phase machine, so the setter is
-    // `internal`, not `private`. `private(set)` would lock out those same-target extension files,
-    // since Swift `private` excludes extensions declared outside the property's own file. UI and
-    // Host observe these; they never assign them.
-    public internal(set) var phase: SessionPhase = .idle
+    // Read-only outside the module: phase is driven by ``SessionPhaseMachine`` via ``applyPhaseEvent``.
+    public var phase: SessionPhase { phaseMachine.phase }
+    private var phaseMachine = SessionPhaseMachine()
+    let lifecycle = SessionLifecycleCoordinator()
+    let webLookupRunner = WebLookupRunner()
     public internal(set) var streamedAnswer: String = ""
     /// Committed conversation, image turns (each captured screenshot), the user's follow-up
     /// questions, and assistant answers, oldest first. Empty until the first answer lands.
@@ -71,17 +70,7 @@ public final class SessionOrchestrator {
     let speechRecognizer: any SpeechRecognizing
     let answerSpeechSynthesizer: any SpeechSynthesizing
     let previewSpeechSynthesizer: any SpeechSynthesizing
-    let webSearch = WebSearchClient()
-    var inferenceTask: Task<Void, Never>?
-    var suggestionTask: Task<Void, Never>?
     var archiveIOTask: Task<Void, Never>?
-    /// Bumped on cancel so a late capture task cannot commit after the user aborts.
-    var captureGeneration = 0
-    /// Coarser epoch than ``captureGeneration``: bumped whenever in-flight session work is
-    /// invalidated (`abortSessionWork`) or a new capture begins. Async completions that span an
-    /// await — a streaming token, a launch restore, an archive load — snapshot it before suspending
-    /// and bail if it changed, so they can't mutate state after the user moved on.
-    var sessionGeneration = 0
     var isPrewarming = false
 
     /// Last transient, one-shot signal for the UI (e.g. a toast/banner) that isn't part of the
@@ -89,10 +78,6 @@ public final class SessionOrchestrator {
     /// to a repeat of the same notice; the UI clears it via ``clearNotice()`` after presenting.
     public internal(set) var lastNotice: SessionNotice?
     public internal(set) var noticeToken = 0
-    var pendingPreview: CapturePreview?
-    var pendingCapture: CaptureResult?
-    var pendingIntent: CaptureIntent = .fresh
-
     /// Whether a capture starts a new chat or extends the current one.
     enum CaptureIntent {
         case fresh      // replace the conversation (first capture / Retake)
@@ -185,5 +170,20 @@ public final class SessionOrchestrator {
             if case .assistant(let text) = turn.kind { return text }
         }
         return nil
+    }
+
+    var captureGeneration: Int { lifecycle.captureGeneration }
+    var sessionGeneration: Int { lifecycle.sessionGeneration }
+
+    @discardableResult
+    func applyPhaseEvent(_ event: SessionEvent) -> SessionTransitionResult {
+        let context = SessionTransitionContext(
+            hasConversation: hasConversation,
+            isContextBlocked: contextPressure == .critical,
+            setupReady: setup?.isReady ?? true,
+            previewBeforeInfer: settings.previewBeforeInfer,
+            pendingCaptureAvailable: lifecycle.pendingCapture != nil
+        )
+        return phaseMachine.apply(event, context: context)
     }
 }

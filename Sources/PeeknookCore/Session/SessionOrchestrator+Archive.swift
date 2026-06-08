@@ -11,16 +11,13 @@ extension SessionOrchestrator {
     /// thread, not an auto-opened result.
     public func loadPersistedConversationIfEnabled() {
         guard settings.persistConversation, let archive = conversationArchive else { return }
-        let generation = sessionGeneration
+        let generation = lifecycle.snapshotSession()
         Task {
             _ = await archive.migrateLegacyIfNeeded()
             _ = await archive.reencryptPlaintextThreadsIfNeeded()
             _ = await archive.reencryptPlaintextIndexIfNeeded()
             guard let restored = await archive.mostRecent(), !restored.turns.isEmpty else { return }
-            // A capture or thread switch started while we were loading off-disk — never adopt the
-            // stale thread over the user's in-flight work. Stay defensive: only restore into a
-            // genuinely idle, empty session.
-            guard generation == sessionGeneration, case .idle = phase, conversation.isEmpty else { return }
+            guard lifecycle.isCurrentSession(generation), case .idle = phase, conversation.isEmpty else { return }
             adopt(restored)
         }
     }
@@ -35,21 +32,15 @@ extension SessionOrchestrator {
 
     /// Open an archived chat by id: load it into memory and surface its last answer as a result.
     public func openThread(id: UUID) async {
-        // Never surface archived content when the user has persistence off — the History switcher is
-        // hidden then, but guard here too so a stale id can't resurrect an opted-out chat.
-        // Never surface archived content when the user has persistence off — the History switcher is
-        // hidden then, but guard here too so a stale id can't resurrect an opted-out chat.
         guard settings.persistConversation, let archive = conversationArchive else { return }
-        let generation = sessionGeneration
+        let generation = lifecycle.snapshotSession()
         guard let thread = await archive.load(id: id), !thread.turns.isEmpty else { return }
-        // A capture or another thread switch started while this one loaded off-disk — the newer
-        // intent wins, so don't stomp it with the thread we were asked for earlier.
-        guard generation == sessionGeneration else { return }
+        guard lifecycle.isCurrentSession(generation) else { return }
         abortSessionWork()
         suggestedFollowUps = []
         streamedAnswer = ""
         adopt(thread)
-        phase = .result(lastAssistantText ?? "")
+        _ = applyPhaseEvent(.openThreadRestored(answer: lastAssistantText ?? ""))
     }
 
     /// Delete one archived chat. If it's the one on screen, also clear it from memory and return idle.
@@ -62,7 +53,7 @@ extension SessionOrchestrator {
             // a late stream could re-file an answer for the thread we just removed.
             abortSessionWork()
             resetConversation()
-            phase = .idle
+            _ = applyPhaseEvent(.deleteActiveThreadToIdle)
         }
     }
 

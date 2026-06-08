@@ -16,53 +16,21 @@ extension SessionOrchestrator {
     func runTurn(capturedNow capture: CaptureResult?) async {
         guard !conversation.isEmpty else { return }
         inferenceModelWasWarm = modelLikelyWarm
-        phase = .inferring
+        guard case .applied = applyPhaseEvent(.inferenceStarted) else { return }
         streamedAnswer = ""
         webLookupSnapshot = nil
 
+        let sessionGen = lifecycle.snapshotSession()
+
         if settings.webLookupEnabled, let capture {
-            let sensitive = SensitiveTextHeuristics.shouldSkipWebLookup(
-                text: capture.text,
-                windowTitle: capture.windowTitle,
-                appName: capture.appName
-            )
-            if sensitive {
-                webLookupSnapshot = WebLookupSnapshot(
-                    query: "",
-                    results: [],
-                    lookupFailed: true,
-                    lookupFailure: .sensitiveContent
-                )
-            } else if let query = WebSearchClient.query(from: capture) {
             isFetchingWebLookup = true
-            defer { isFetchingWebLookup = false }
-            let allowed = await WebSearchRateLimiter.shared.allowSearch()
-            if !allowed {
-                webLookupSnapshot = WebLookupSnapshot(
-                    query: query,
-                    results: [],
-                    lookupFailed: true,
-                    lookupFailure: .rateLimited
-                )
-            } else {
-                do {
-                    let results = try await webSearch.search(query: query)
-                    webLookupSnapshot = WebLookupSnapshot(query: query, results: results)
-                } catch {
-                    webLookupSnapshot = WebLookupSnapshot(
-                        query: query,
-                        results: [],
-                        lookupFailed: true,
-                        lookupFailure: .unavailable
-                    )
-                }
-            }
-            }
+            let snapshot = await webLookupRunner.lookup(capture: capture)
+            isFetchingWebLookup = false
+            guard lifecycle.isCurrentSession(sessionGen), !Task.isCancelled else { return }
+            webLookupSnapshot = snapshot
         }
 
-        // The web lookup can span several awaits; if the user cancelled (or started a new chat)
-        // while it ran, this turn was abandoned — don't open an inference stream for it.
-        if Task.isCancelled { return }
+        guard lifecycle.isCurrentSession(sessionGen), !Task.isCancelled else { return }
 
         let inferencePolicy = InferenceReplayPolicy(
             maxImagePayloads: settings.inferenceImageReplay.maxImagePayloads
@@ -85,25 +53,20 @@ extension SessionOrchestrator {
                 switch event {
                 case .token(let token):
                     streamedAnswer += token
-                    lastInferenceAt = Date() // model is loaded & producing, it's warm now
+                    lastInferenceAt = Date()
                 case .completed(let stats):
                     finalStats = stats
                     didComplete = true
                 }
                 if didComplete { break }
             }
-            // The stream ends without `.completed` only when cancelled, don't record a
-            // phantom capture or flip to a result the user cancelled.
-            guard didComplete, !Task.isCancelled else { return }
+            guard didComplete, !Task.isCancelled, lifecycle.isCurrentSession(sessionGen) else { return }
             lastInferenceAt = Date()
             let answer = streamedAnswer.trimmingCharacters(in: .whitespacesAndNewlines)
-            // Defensive: a misconfigured/reasoning model can stream only hidden thinking and no
-            // content. Surface that honestly instead of committing a blank answer bubble.
             guard !answer.isEmpty else {
-                phase = .failed(.emptyAnswer)
+                _ = applyPhaseEvent(.inferenceEmpty)
                 return
             }
-            // A new screenshot is a capture (image bytes); a text follow-up reuses it (tokens only).
             if let capture {
                 usage?.record(capture: capture, inference: finalStats, modelTag: settings.textModel)
             } else {
@@ -113,16 +76,14 @@ extension SessionOrchestrator {
             turnCounter += 1
             let usage = finalStats.map { TurnUsage(stats: $0, contextWindow: contextWindow) }
             conversation.append(ChatTurn(id: turnCounter, kind: .assistant(answer), turnUsage: usage))
-            phase = .result(answer)
+            _ = applyPhaseEvent(.inferenceCompleted(answer: answer))
             persistConversationNow()
             speakLastAnswer()
-            // Suggestions are a separate, schema-constrained pass, kick it off without
-            // blocking the answer; pills pop in a moment later.
             fetchSuggestions()
             ensureContextWindowLoaded()
         } catch {
-            if !Task.isCancelled {
-                phase = .failed(.from(error: error))
+            if !Task.isCancelled, lifecycle.isCurrentSession(sessionGen) {
+                _ = applyPhaseEvent(.inferenceFailed(.from(error: error)))
             }
         }
     }
@@ -180,7 +141,7 @@ extension SessionOrchestrator {
     /// `suggestFollowUps` setting, it's a separate, non-blocking call, so quick mode (which is
     /// about answer terseness) doesn't disable it. Applies only if the same answer is on screen.
     private func fetchSuggestions() {
-        suggestionTask?.cancel()
+        lifecycle.suggestionTask?.cancel()
         suggestedFollowUps = []
         guard settings.suggestFollowUps else {
             isFetchingSuggestions = false
@@ -196,12 +157,14 @@ extension SessionOrchestrator {
             acceptInsecureRemoteOllama: settings.acceptInsecureRemoteOllama
         )
         let expectedTurn = turnCounter
-        suggestionTask = Task {
+        let sessionGen = lifecycle.snapshotSession()
+        lifecycle.suggestionTask = Task {
             defer { isFetchingSuggestions = false }
             let result = await inference.generateFollowUps(request: request)
             if Task.isCancelled { return }
-            // Only show pills if we're still on the very answer they were generated for.
-            guard case .result = phase, turnCounter == expectedTurn else { return }
+            guard lifecycle.isCurrentSession(sessionGen),
+                  case .result = phase,
+                  turnCounter == expectedTurn else { return }
             suggestedFollowUps = result.suggestions
             attachSuggestionUsage(result.stats, forAnswerTurnID: turnCounter)
         }

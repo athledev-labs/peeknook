@@ -13,10 +13,6 @@ extension SessionOrchestrator {
         case .idle, .result:
             let intent: CaptureIntent = hasConversation ? .addToChat : .fresh
             if intent == .addToChat, isContextBlocked {
-                // The thread's context window is full, so we can't extend it. From the result view
-                // the on-screen banner already explains why add/follow-up are disabled — leave it to
-                // the user. From the idle home screen there's no such banner, so a no-op would be a
-                // dead key: start a fresh chat instead and tell the UI why via a notice.
                 if case .idle = phase {
                     emitNotice(.contextFull)
                     startCapture(intent: .fresh)
@@ -43,20 +39,17 @@ extension SessionOrchestrator {
 
     /// Leave the result view for the calm home screen while keeping the thread for resume.
     public func finishChat() {
-        guard case .result = phase else { return }
-        suggestionTask?.cancel()
+        guard case .applied = applyPhaseEvent(.finishChat) else { return }
+        lifecycle.suggestionTask?.cancel()
         streamedAnswer = ""
-        pendingPreview = nil
-        pendingCapture = nil
+        lifecycle.clearPendingCapture()
         suggestedFollowUps = []
         isFetchingSuggestions = false
-        phase = .idle
     }
 
     /// Return to the last answer when a finished chat is still in memory.
     public func resumeChat() {
-        guard case .idle = phase, hasConversation else { return }
-        phase = .result(lastAssistantText ?? "")
+        _ = applyPhaseEvent(.resumeChat(answer: lastAssistantText ?? ""))
     }
 
     /// Discard the current thread and return to idle.
@@ -79,44 +72,42 @@ extension SessionOrchestrator {
     private func startCapture(intent: CaptureIntent) {
         setup?.refreshCapturePermission()
         if let setup, !setup.isReady {
-            phase = .failed(.setupIncomplete)
+            _ = applyPhaseEvent(.setupNotReady)
             return
         }
-        // Invalidates any prior capture/inference/suggestion work and bumps both generations, so a
-        // pending launch restore or a late stream can't commit over this fresh capture.
         abortSessionWork()
-        pendingIntent = intent
+        lifecycle.pendingIntent = intent
         streamedAnswer = ""
         stopSpeechOutput()
-        phase = .capturing
-        let generation = captureGeneration
+        guard case .applied = applyPhaseEvent(.beginCapture) else { return }
+        let generation = lifecycle.snapshotCapture()
 
-        inferenceTask = Task {
+        lifecycle.inferenceTask = Task {
             do {
                 let result = try await capture.capture(scope: settings.captureScope, quick: settings.quickMode)
-                guard generation == captureGeneration, !Task.isCancelled else { return }
-                pendingCapture = result
-                pendingPreview = CapturePreview(capture: result)
-                if settings.previewBeforeInfer, let preview = pendingPreview {
-                    phase = .previewing(preview)
+                guard lifecycle.isCurrentCapture(generation), !Task.isCancelled else { return }
+                lifecycle.pendingCapture = result
+                lifecycle.pendingPreview = CapturePreview(capture: result)
+                if settings.previewBeforeInfer, let preview = lifecycle.pendingPreview {
+                    _ = applyPhaseEvent(.capturePreviewing(preview))
                 } else {
                     commitCapture(result, intent: intent)
                 }
             } catch is CancellationError {
                 return
             } catch let error as CaptureError {
-                guard generation == captureGeneration else { return }
-                phase = .failed(.from(captureError: error))
+                guard lifecycle.isCurrentCapture(generation) else { return }
+                _ = applyPhaseEvent(.captureFailed(.from(captureError: error)))
             } catch {
-                guard generation == captureGeneration else { return }
-                phase = .failed(.generic(message: error.localizedDescription))
+                guard lifecycle.isCurrentCapture(generation) else { return }
+                _ = applyPhaseEvent(.captureFailed(.generic(message: error.localizedDescription)))
             }
         }
     }
 
     public func confirmPreview() {
-        guard case .previewing = phase, let capture = pendingCapture else { return }
-        commitCapture(capture, intent: pendingIntent)
+        guard case .previewing = phase, let capture = lifecycle.pendingCapture else { return }
+        commitCapture(capture, intent: lifecycle.pendingIntent)
     }
 
     /// Appends the confirmed screenshot as an image turn (resetting first for a fresh chat) and
@@ -125,7 +116,7 @@ extension SessionOrchestrator {
         if intent == .fresh { resetConversation() }
         turnCounter += 1
         conversation.append(ChatTurn(id: turnCounter, kind: .image(capture)))
-        inferenceTask = Task { await runTurn(capturedNow: capture) }
+        lifecycle.inferenceTask = Task { await runTurn(capturedNow: capture) }
     }
 
     /// Ask a follow-up about the chat so far, reuses the screenshots already in the model's
@@ -133,13 +124,12 @@ extension SessionOrchestrator {
     public func sendFollowUp(_ raw: String) {
         let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, case .result = phase, !conversation.isEmpty, !isContextBlocked else { return }
-        inferenceTask?.cancel()
-        suggestionTask?.cancel()
+        lifecycle.cancelInferenceAndSuggestions()
         suggestedFollowUps = []
         isFetchingSuggestions = false
         turnCounter += 1
         conversation.append(ChatTurn(id: turnCounter, kind: .user(text)))
-        inferenceTask = Task { await runTurn(capturedNow: nil) }
+        lifecycle.inferenceTask = Task { await runTurn(capturedNow: nil) }
     }
 
     /// Pre-load the model when the notch opens so the user's first capture is warm, not cold.
@@ -154,8 +144,6 @@ extension SessionOrchestrator {
                 baseURL: settings.ollamaBaseURL,
                 acceptInsecureRemote: settings.acceptInsecureRemoteOllama
             )
-            // Only treat the model as warm if the warm-up actually loaded it. A failed warm-up
-            // (Ollama down, model missing) must not fake warmth and make the loading copy lie.
             if loaded { lastInferenceAt = Date() }
             isPrewarming = false
         }
@@ -166,42 +154,31 @@ extension SessionOrchestrator {
         streamedAnswer = ""
         stopVoiceInput()
         stopSpeechOutput()
-        // Stopping mid-extension (a follow-up or an added image) keeps the answered thread -
-        // drop only the unanswered tail and return to the last answer.
         if hasConversation {
             if let last = conversation.last, !last.isAssistant { conversation.removeLast() }
             suggestedFollowUps = []
-            phase = .result(lastAssistantText ?? "")
+            _ = applyPhaseEvent(.cancelPreservingResult(answer: lastAssistantText ?? ""))
             return
         }
-        pendingPreview = nil
-        pendingCapture = nil
+        lifecycle.clearPendingCapture()
         resetConversation()
-        phase = .idle
+        _ = applyPhaseEvent(.cancelToIdle)
     }
 
     public func dismissResult() {
         abortSessionWork()
         streamedAnswer = ""
-        pendingPreview = nil
-        pendingCapture = nil
+        lifecycle.clearPendingCapture()
         sessionBrief = ""
         discardActiveThread()
         resetConversation()
-        phase = .idle
+        _ = applyPhaseEvent(.dismissToIdle)
     }
 
     /// Cancel any in-flight capture, inference, web-lookup, or suggestion work and bump the session
-    /// generations so a late async completion (a streaming token, a launch restore, a follow-up)
-    /// can't mutate state after the user moved on. Callers own the phase/conversation reset that
-    /// follows; this only invalidates work in progress.
+    /// generations so a late async completion can't mutate state after the user moved on.
     func abortSessionWork() {
-        sessionGeneration += 1
-        captureGeneration += 1
-        inferenceTask?.cancel()
-        inferenceTask = nil
-        suggestionTask?.cancel()
-        suggestionTask = nil
+        lifecycle.invalidateAllWork()
         isFetchingSuggestions = false
         isFetchingWebLookup = false
     }
