@@ -14,19 +14,31 @@ public protocol CaptureBlobStoring: Sendable {
 public enum CaptureBlobError: Error, Sendable, Equatable {
     case invalidBase64
     case writeFailed
+    case readFailed
 }
 
-/// Thread-safe JPEG blob files under `<conversations>/blobs/<uuid>.jpg`.
+/// Thread-safe screenshot blob files under `<conversations>/blobs/<uuid>.jpg`.
+/// When ``ConversationArchiveProtection`` is wired in, JPEG bytes are AES-GCM sealed with the same
+/// device-local key as thread JSON. Legacy installs may still have plaintext JPEG blobs on disk;
+/// those are read transparently until rewritten.
 public final class CaptureBlobStore: CaptureBlobStoring, @unchecked Sendable {
     private let directory: URL
+    private let protection: (any ConversationArchiveProtection)?
     private let lock = NSLock()
 
-    public init(directory: URL) {
+    public init(directory: URL, protection: (any ConversationArchiveProtection)? = nil) {
         self.directory = directory
+        self.protection = protection
     }
 
-    public static func makeDefault(conversationsDirectory: URL) -> CaptureBlobStore {
-        CaptureBlobStore(directory: conversationsDirectory.appendingPathComponent("blobs", isDirectory: true))
+    public static func makeDefault(
+        conversationsDirectory: URL,
+        protection: (any ConversationArchiveProtection)? = nil
+    ) -> CaptureBlobStore {
+        CaptureBlobStore(
+            directory: conversationsDirectory.appendingPathComponent("blobs", isDirectory: true),
+            protection: protection
+        )
     }
 
     public func store(jpegBase64: String) throws -> UUID {
@@ -34,11 +46,21 @@ public final class CaptureBlobStore: CaptureBlobStoring, @unchecked Sendable {
             throw CaptureBlobError.invalidBase64
         }
         let id = UUID()
+        let payload: Data
+        if let protection {
+            do {
+                payload = try protection.seal(data)
+            } catch {
+                throw CaptureBlobError.writeFailed
+            }
+        } else {
+            payload = data
+        }
         lock.lock()
         defer { lock.unlock() }
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         do {
-            try data.write(to: blobURL(id), options: [.atomic, .completeFileProtection])
+            try payload.write(to: blobURL(id), options: [.atomic, .completeFileProtection])
         } catch {
             throw CaptureBlobError.writeFailed
         }
@@ -48,8 +70,20 @@ public final class CaptureBlobStore: CaptureBlobStoring, @unchecked Sendable {
     public func loadBase64(id: UUID) throws -> String? {
         lock.lock()
         defer { lock.unlock() }
-        guard let data = try? Data(contentsOf: blobURL(id)), !data.isEmpty else { return nil }
-        return data.base64EncodedString()
+        guard let raw = try? Data(contentsOf: blobURL(id)), !raw.isEmpty else { return nil }
+        let jpeg: Data
+        if ArchiveEnvelope.isEncrypted(raw), let protection {
+            do {
+                jpeg = try protection.open(raw)
+            } catch {
+                throw CaptureBlobError.readFailed
+            }
+        } else if ArchiveEnvelope.isEncrypted(raw) {
+            throw CaptureBlobError.readFailed
+        } else {
+            jpeg = raw
+        }
+        return jpeg.base64EncodedString()
     }
 
     public func delete(ids: Set<UUID>) throws {

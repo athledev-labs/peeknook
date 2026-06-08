@@ -4,7 +4,8 @@ import Foundation
 
 @MainActor
 extension SessionOrchestrator {
-    /// External screenshot storage shared with the conversation archive when persistence is on.
+    /// External screenshot storage shared with the conversation archive. Blobs are written only when
+    /// ``PeeknookSettings/persistConversation`` is enabled.
     public var captureBlobStore: CaptureBlobStore? {
         get { _captureBlobStore }
         set { _captureBlobStore = newValue }
@@ -22,7 +23,8 @@ extension SessionOrchestrator {
     }
 
     func storedCapture(_ capture: CaptureResult) -> CaptureResult {
-        guard let base64 = capture.screenshotBase64,
+        guard settings.persistConversation,
+              let base64 = capture.screenshotBase64,
               !base64.isEmpty,
               let store = captureBlobStore else { return capture }
         guard let id = try? store.store(jpegBase64: base64) else { return capture }

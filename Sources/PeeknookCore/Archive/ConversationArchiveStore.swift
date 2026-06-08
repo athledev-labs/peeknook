@@ -43,7 +43,10 @@ public actor ConversationArchiveStore {
         self.maxThreads = maxThreads
         self.maxBytes = maxBytes
         self.protection = protection
-        self.blobStore = blobStore ?? CaptureBlobStore.makeDefault(conversationsDirectory: directory)
+        self.blobStore = blobStore ?? CaptureBlobStore.makeDefault(
+            conversationsDirectory: directory,
+            protection: protection
+        )
     }
 
     public static func makeDefault() throws -> ConversationArchiveStore {
@@ -121,24 +124,25 @@ public actor ConversationArchiveStore {
         var index = readIndex()
         index.summaries.removeAll { $0.id == thread.id }
         index.summaries.append(thread.summary(fileBytes: data.count))
-        prune(&index)
-
-        let priorIndex = readIndex()
-        switch writeIndex(index) {
-        case .success:
-            break
-        case .failure:
-            return .failure(.indexWriteFailed)
-        }
+        let prunedThreadIDs = planRetention(for: &index)
 
         do {
             try writeProtected(data, to: threadURL(thread.id))
         } catch {
-            _ = writeIndex(priorIndex)
             return .failure(.threadWriteFailed)
         }
-        recordSealed()
-        return .success(())
+
+        switch writeIndex(index) {
+        case .success:
+            if !prunedThreadIDs.isEmpty {
+                removeThreads(ids: prunedThreadIDs)
+            }
+            recordSealed()
+            return .success(())
+        case .failure:
+            try? FileManager.default.removeItem(at: threadURL(thread.id))
+            return .failure(.indexWriteFailed)
+        }
     }
 
     public func delete(id: UUID) {
@@ -378,13 +382,13 @@ public actor ConversationArchiveStore {
         try data.write(to: url, options: [.atomic, .completeFileProtection])
     }
 
-    /// Drop oldest threads (by `updatedAt`) until under both the count and byte caps.
-    private func prune(_ index: inout ConversationArchiveIndex) {
+    /// Updates the index for retention caps and returns thread ids to delete only after the save commits.
+    private func planRetention(for index: inout ConversationArchiveIndex) -> Set<UUID> {
+        var toDelete = Set<UUID>()
         index.summaries.sort { $0.updatedAt > $1.updatedAt }
 
         while index.summaries.count > maxThreads, let oldest = index.summaries.last {
-            deleteBlobsReferencedByThread(id: oldest.id)
-            try? FileManager.default.removeItem(at: threadURL(oldest.id))
+            toDelete.insert(oldest.id)
             index.summaries.removeLast()
         }
 
@@ -393,10 +397,17 @@ public actor ConversationArchiveStore {
         }
         while totalBytes > maxBytes, index.summaries.count > 1, let oldest = index.summaries.last {
             let removed = oldest.fileBytes ?? fileSize(for: oldest.id)
-            deleteBlobsReferencedByThread(id: oldest.id)
-            try? FileManager.default.removeItem(at: threadURL(oldest.id))
+            toDelete.insert(oldest.id)
             index.summaries.removeLast()
             totalBytes -= removed
+        }
+        return toDelete
+    }
+
+    private func removeThreads(ids: Set<UUID>) {
+        for id in ids {
+            deleteBlobsReferencedByThread(id: id)
+            try? FileManager.default.removeItem(at: threadURL(id))
         }
     }
 

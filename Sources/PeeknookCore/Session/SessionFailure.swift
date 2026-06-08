@@ -62,6 +62,15 @@ public extension SessionFailure {
         primaryRecovery: .openSetup
     )
 
+    /// Ollama closed the stream before sending a completion event.
+    static let incompleteAnswerStream = SessionFailure(
+        kind: .generic,
+        title: "Answer stream ended early",
+        message: "Ollama stopped before finishing the response. Try again, or check that Ollama is still running.",
+        primaryRecovery: .tryAgain,
+        secondaryRecovery: .checkOllama
+    )
+
     /// The model completed but streamed no text (often a reasoning model spending its budget on
     /// hidden thinking), retrying usually clears it, or switch models.
     static let emptyAnswer = SessionFailure(

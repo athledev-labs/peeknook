@@ -28,7 +28,9 @@ When **Web lookup** is enabled, Peeknook skips searches when capture context loo
 
 ### Prompts and answers
 
-Your questions and the model's answers are kept in the active conversation thread in memory. If you enable **Save conversations**, the full thread (screenshots included) is written to local files.
+Your questions and the model's answers are kept in the active conversation thread in memory. While **Save conversations** is off, screenshot pixels stay in memory only for the active chat — Peeknook does not write screenshot files to disk during capture.
+
+If you enable **Save conversations**, the full thread (screenshots included) is written to local files.
 
 **Shipped app (sandboxed):**
 
@@ -38,7 +40,7 @@ Your questions and the model's answers are kept in the active conversation threa
 
 `~/Library/Application Support/Peeknook/Conversations/`
 
-Each chat is one encrypted `<uuid>.json` file. A separate **`index.v2.json`** lists thread metadata for History: thread id, derived title, created/updated timestamps, turn count, and whether the thread includes a screenshot. The index is **encrypted** the same way as the thread files (AES-GCM with a device-local Keychain key) and contains no screenshot pixels or full message bodies; a plaintext index written by an earlier version is re-encrypted automatically on the next launch. Once the archive has been sealed at least once (tracked by a tamper-resistant Keychain marker), a later plaintext index or thread is rejected on read, so a downgraded file planted on disk can't surface.
+Each chat is one encrypted `<uuid>.json` file. Screenshot pixels are stored separately under `blobs/<uuid>.jpg` in the same Conversations folder, **encrypted with the same AES-GCM Keychain key** as the thread JSON (legacy installs may still have plaintext blob files until those threads are saved again). A separate **`index.v2.json`** lists thread metadata for History: thread id, derived title, created/updated timestamps, turn count, and whether the thread includes a screenshot. The index is **encrypted** the same way as the thread files and contains no screenshot pixels or full message bodies; a plaintext index written by an earlier version is re-encrypted automatically on the next launch. Once the archive has been sealed at least once (tracked by a tamper-resistant Keychain marker), a later plaintext index or thread is rejected on read, so a downgraded file planted on disk can't surface.
 
 The archive keeps at most **25 threads** and about **250 MB** total; when limits are exceeded, the **oldest** threads are deleted automatically.
 
@@ -63,7 +65,7 @@ You control the following opt-in or configuration-dependent features:
 | Remote Ollama URL | Off (local default) | Screenshots, prompts, and answers to the Ollama host you configure. HTTPS is required unless you enable **Allow insecure HTTP** (cleartext). |
 | Ollama `:cloud` model tags | Off (not the default model) | Same as inference above: payloads go to your configured Ollama endpoint; `:cloud` tags may be executed on Ollama's cloud infrastructure per Ollama's behavior. |
 | Model library catalog browse | Only when you browse | Search terms and model/tag names to `https://ollama-models-api.devcomfort.workers.dev` (community proxy for ollama.com library metadata). No screenshots. |
-| Save conversations | Off | Nothing leaves your Mac; encrypted thread files and the metadata index stay local and encrypted. |
+| Save conversations | Off | Nothing leaves your Mac; active screenshots stay in memory only (no blob files on disk). When on, encrypted thread JSON, encrypted screenshot blobs, and the encrypted metadata index stay local. |
 | Voice input | Off | On-device speech recognition (Microphone + Speech Recognition permissions) |
 | Read answers aloud | Off | On-device text-to-speech; no network |
 

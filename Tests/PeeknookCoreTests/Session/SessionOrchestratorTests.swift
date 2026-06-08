@@ -124,6 +124,22 @@ final class SessionOrchestratorTests: XCTestCase {
         }
     }
 
+    func testIncompleteInferenceStreamTransitionsToFailed() async {
+        let orchestrator = SessionOrchestrator(
+            settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b"),
+            capture: StubCaptureProvider(sampleText: "screen"),
+            inference: MockInferenceEngine(tokens: ["partial"], sendsCompletion: false)
+        )
+
+        orchestrator.beginCapture()
+        let phase = await orchestrator.waitForFailed { $0.kind == .generic }
+        guard case .failed(let failure) = phase else {
+            XCTFail("Expected failed phase, got \(phase)")
+            return
+        }
+        XCTAssertEqual(failure.title, SessionFailure.incompleteAnswerStream.title)
+    }
+
     func testBeginCaptureFromResultStartsFreshCapture() async {
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b"),

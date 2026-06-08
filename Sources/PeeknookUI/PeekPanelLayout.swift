@@ -13,6 +13,13 @@ enum PeekPanelLayout {
         return min(440, max(260, visibleHeight * 0.36))
     }
 
+    /// Idle home header (greeting, setup/archive/notice banners). Scrolls when stacked content exceeds this.
+    static var idleHomeMaxHeight: CGFloat {
+        guard let screen = notchScreen else { return 180 }
+        let visibleHeight = screen.visibleFrame.height
+        return min(220, max(120, visibleHeight * 0.2))
+    }
+
     /// Home conversation, grows with content up to this cap, then scrolls.
     static var conversationMaxHeight: CGFloat {
         guard let screen = notchScreen else { return 280 }

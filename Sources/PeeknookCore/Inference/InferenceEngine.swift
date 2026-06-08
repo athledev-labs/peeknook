@@ -127,15 +127,19 @@ public struct MockInferenceEngine: InferenceEngine, Sendable {
     public var tokens: [String]
     public var delayNanoseconds: UInt64
     public var completionStats: InferenceStats?
+    /// When `false`, simulates a truncated Ollama stream that never yields `.completed`.
+    public var sendsCompletion: Bool
 
     public init(
         tokens: [String] = ["안녕", " ", "informal ", "greeting."],
         delayNanoseconds: UInt64 = 0,
-        completionStats: InferenceStats? = nil
+        completionStats: InferenceStats? = nil,
+        sendsCompletion: Bool = true
     ) {
         self.tokens = tokens
         self.delayNanoseconds = delayNanoseconds
         self.completionStats = completionStats
+        self.sendsCompletion = sendsCompletion
     }
 
     public func health(baseURL: String, model: String, acceptInsecureRemote: Bool) async -> InferenceHealth { .ready }
@@ -155,7 +159,9 @@ public struct MockInferenceEngine: InferenceEngine, Sendable {
                     if Task.isCancelled { break }
                     continuation.yield(.token(token))
                 }
-                continuation.yield(.completed(completionStats))
+                if sendsCompletion {
+                    continuation.yield(.completed(completionStats))
+                }
                 continuation.finish()
             }
             continuation.onTermination = { _ in task.cancel() }

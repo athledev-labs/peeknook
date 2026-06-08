@@ -228,34 +228,39 @@ public struct PeekHomeView: View {
 
     private var homeColumn: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if case .idle = orchestrator.phase {
-                PeekIdleHomeContent(settings: orchestrator.settings)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    if case .idle = orchestrator.phase {
+                        PeekIdleHomeContent(settings: orchestrator.settings)
+                    }
+                    if !setup.isReady {
+                        setupBanner
+                            .padding(.top, 8)
+                    }
+                    if orchestrator.settings.persistConversation, let issue = orchestrator.archivePersistenceIssue {
+                        PeekArchivePersistenceBanner(
+                            message: issue.userFacingMessage,
+                            onDismiss: orchestrator.dismissArchivePersistenceIssue
+                        )
+                        .padding(.top, 8)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+                    if let notice = orchestrator.lastNotice {
+                        PeekSessionNoticeBanner(
+                            notice: notice,
+                            conversationArchived: orchestrator.settings.persistConversation,
+                            onDismiss: { withAnimation(.easeOut(duration: 0.2)) { orchestrator.clearNotice() } }
+                        )
+                        .padding(.top, 8)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+                    if PracticeMode.shipped.count > 1 {
+                        modePicker
+                            .padding(.top, 8)
+                    }
+                }
             }
-            if !setup.isReady {
-                setupBanner
-                    .padding(.top, 8)
-            }
-            if orchestrator.settings.persistConversation, let issue = orchestrator.archivePersistenceIssue {
-                PeekArchivePersistenceBanner(
-                    message: issue.userFacingMessage,
-                    onDismiss: orchestrator.dismissArchivePersistenceIssue
-                )
-                .padding(.top, 8)
-                .transition(.opacity.combined(with: .move(edge: .top)))
-            }
-            if let notice = orchestrator.lastNotice {
-                PeekSessionNoticeBanner(
-                    notice: notice,
-                    conversationArchived: orchestrator.settings.persistConversation,
-                    onDismiss: { withAnimation(.easeOut(duration: 0.2)) { orchestrator.clearNotice() } }
-                )
-                .padding(.top, 8)
-                .transition(.opacity.combined(with: .move(edge: .top)))
-            }
-            if PracticeMode.shipped.count > 1 {
-                modePicker
-                    .padding(.top, 8)
-            }
+            .frame(maxHeight: PeekPanelLayout.idleHomeMaxHeight)
             mainColumn
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)

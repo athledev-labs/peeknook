@@ -87,6 +87,33 @@ final class ConversationArchiveStoreTests: XCTestCase {
         XCTAssertTrue(summaries.isEmpty)
     }
 
+    func testFailedThreadWriteDoesNotPruneExistingThreads() async throws {
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = ConversationArchiveTestSupport.makeStore(directory: dir, maxThreads: 2)
+
+        let oldest = thread("oldest", updatedAt: Date(timeIntervalSinceNow: 0))
+        let middle = thread("middle", updatedAt: Date(timeIntervalSinceNow: 1))
+        let saveOldest = await store.save(oldest)
+        let saveMiddle = await store.save(middle)
+        XCTAssertTrue(saveOldest.isSuccess)
+        XCTAssertTrue(saveMiddle.isSuccess)
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: dir.path)
+
+        let newest = thread("newest", updatedAt: Date(timeIntervalSinceNow: 2))
+        let failed = await store.save(newest)
+        XCTAssertEqual(failed.archiveFailure, .threadWriteFailed)
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: dir.path)
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: dir.appendingPathComponent("\(oldest.id.uuidString).json").path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: dir.appendingPathComponent("\(middle.id.uuidString).json").path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: dir.appendingPathComponent("\(newest.id.uuidString).json").path))
+        let summaries = await store.summaries()
+        XCTAssertEqual(summaries.count, 2)
+    }
+
     func testRetentionPrunesOldestOverCountCap() async {
         let dir = tempDir()
         defer { try? FileManager.default.removeItem(at: dir) }

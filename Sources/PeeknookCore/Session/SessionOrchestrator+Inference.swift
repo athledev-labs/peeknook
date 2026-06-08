@@ -71,7 +71,11 @@ extension SessionOrchestrator {
                 }
                 if didComplete { break }
             }
-            guard didComplete, !Task.isCancelled, lifecycle.isCurrentSession(sessionGen) else { return }
+            guard !Task.isCancelled, lifecycle.isCurrentSession(sessionGen) else { return }
+            guard didComplete else {
+                _ = applyPhaseEvent(.inferenceFailed(.incompleteAnswerStream))
+                return
+            }
             lastInferenceAt = Date()
             let answer = streamedAnswer.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !answer.isEmpty else {

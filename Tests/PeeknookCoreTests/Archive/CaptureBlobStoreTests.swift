@@ -23,6 +23,30 @@ final class CaptureBlobStoreTests: XCTestCase {
         XCTAssertNil(try store.loadBase64(id: id))
     }
 
+    func testEncryptedBlobRoundTrip() throws {
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let protection = FixedKeyArchiveProtection()
+        let store = CaptureBlobStore(directory: dir, protection: protection)
+
+        let id = try store.store(jpegBase64: sampleBase64)
+        let raw = try Data(contentsOf: dir.appendingPathComponent("\(id.uuidString).jpg"))
+        XCTAssertTrue(ArchiveEnvelope.isEncrypted(raw))
+        XCTAssertEqual(try store.loadBase64(id: id), sampleBase64)
+    }
+
+    func testLegacyPlaintextBlobStillLoads() throws {
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let id = UUID()
+        let jpeg = Data(base64Encoded: sampleBase64)!
+        try jpeg.write(to: dir.appendingPathComponent("\(id.uuidString).jpg"))
+
+        let store = CaptureBlobStore(directory: dir, protection: FixedKeyArchiveProtection())
+        XCTAssertEqual(try store.loadBase64(id: id), sampleBase64)
+    }
+
     func testCaptureResultEncodesBlobReferenceWithoutInlineBase64() throws {
         let capture = CaptureResult(
             text: nil,
@@ -46,7 +70,8 @@ final class CaptureBlobStoreTests: XCTestCase {
     func testArchiveSaveExternalizesInlineScreenshots() async throws {
         let dir = tempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let store = ConversationArchiveTestSupport.makeStore(directory: dir)
+        let protection = FixedKeyArchiveProtection(key: ConversationArchiveTestSupport.sharedTestKey)
+        let store = ConversationArchiveTestSupport.makeStore(directory: dir, protection: protection)
 
         let capture = CaptureResult(text: nil, sourceLabel: "Safari", screenshotBase64: sampleBase64)
         let thread = ConversationThread(turns: [
@@ -60,7 +85,10 @@ final class CaptureBlobStoreTests: XCTestCase {
         let blobFiles = try FileManager.default.contentsOfDirectory(at: blobsDir, includingPropertiesForKeys: nil)
         XCTAssertEqual(blobFiles.count, 1)
 
-        let blobStore = CaptureBlobStore(directory: dir.appendingPathComponent("blobs", isDirectory: true))
+        let blobStore = CaptureBlobStore(
+            directory: dir.appendingPathComponent("blobs", isDirectory: true),
+            protection: protection
+        )
         let loaded = await store.load(id: thread.id)
         guard case .image(let restored) = loaded?.turns.first?.kind else {
             return XCTFail("expected image turn")
@@ -68,6 +96,7 @@ final class CaptureBlobStoreTests: XCTestCase {
         XCTAssertNil(restored.screenshotBase64)
         XCTAssertNotNil(restored.screenshotBlobID)
         XCTAssertEqual(try blobStore.loadBase64(id: restored.screenshotBlobID!), sampleBase64)
+        XCTAssertTrue(ArchiveEnvelope.isEncrypted(try Data(contentsOf: blobStore.blobURL(restored.screenshotBlobID!))))
     }
 
     func testArchiveLoadMigratesLegacyInlineThread() async throws {
@@ -92,8 +121,8 @@ final class CaptureBlobStoreTests: XCTestCase {
     func testThreadDeleteRemovesReferencedBlobs() async throws {
         let dir = tempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let store = ConversationArchiveTestSupport.makeStore(directory: dir)
-        let blobStore = CaptureBlobStore(directory: dir.appendingPathComponent("blobs", isDirectory: true))
+        let protection = FixedKeyArchiveProtection(key: ConversationArchiveTestSupport.sharedTestKey)
+        let store = ConversationArchiveTestSupport.makeStore(directory: dir, protection: protection)
 
         let capture = CaptureResult(text: nil, sourceLabel: "Window", screenshotBase64: sampleBase64)
         let thread = ConversationThread(turns: [ChatTurn(id: 1, kind: .image(capture))])
@@ -106,18 +135,26 @@ final class CaptureBlobStoreTests: XCTestCase {
             return XCTFail("expected blob reference")
         }
 
+        let blobStore = CaptureBlobStore(
+            directory: dir.appendingPathComponent("blobs", isDirectory: true),
+            protection: protection
+        )
         await store.delete(id: thread.id)
         XCTAssertNil(try blobStore.loadBase64(id: blobID))
     }
 
     @MainActor
-    func testOrchestratorOffloadsScreenshotAfterCapture() async {
+    func testOrchestratorOffloadsScreenshotWhenPersistenceEnabled() async {
         let dir = tempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let blobStore = CaptureBlobStore(directory: dir.appendingPathComponent("blobs", isDirectory: true))
+        let protection = FixedKeyArchiveProtection()
+        let blobStore = CaptureBlobStore(
+            directory: dir.appendingPathComponent("blobs", isDirectory: true),
+            protection: protection
+        )
 
         let orchestrator = SessionOrchestrator(
-            settings: PeeknookSettings(previewBeforeInfer: false),
+            settings: PeeknookSettings(previewBeforeInfer: false, persistConversation: true),
             capture: StubCaptureProvider(sampleText: "screen", screenshotBase64: sampleBase64),
             inference: MockInferenceEngine(tokens: ["done"])
         )
@@ -131,5 +168,31 @@ final class CaptureBlobStoreTests: XCTestCase {
         }
         XCTAssertNil(stored.screenshotBase64)
         XCTAssertNotNil(stored.screenshotBlobID)
+    }
+
+    @MainActor
+    func testOrchestratorKeepsInlineScreenshotWhenPersistenceDisabled() async {
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let blobStore = CaptureBlobStore(directory: dir.appendingPathComponent("blobs", isDirectory: true))
+
+        let orchestrator = SessionOrchestrator(
+            settings: PeeknookSettings(previewBeforeInfer: false, persistConversation: false),
+            capture: StubCaptureProvider(sampleText: "screen", screenshotBase64: sampleBase64),
+            inference: MockInferenceEngine(tokens: ["done"])
+        )
+        orchestrator.captureBlobStore = blobStore
+
+        orchestrator.beginCapture()
+        _ = await orchestrator.waitForResult("done")
+
+        guard case .image(let stored) = orchestrator.conversation.first?.kind else {
+            return XCTFail("expected image turn")
+        }
+        XCTAssertEqual(stored.screenshotBase64, sampleBase64)
+        XCTAssertNil(stored.screenshotBlobID)
+        XCTAssertTrue(
+            (try? FileManager.default.contentsOfDirectory(atPath: dir.appendingPathComponent("blobs").path))?.isEmpty ?? true
+        )
     }
 }
