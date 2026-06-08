@@ -46,6 +46,7 @@ struct PeekHomeAnswerCard: View {
                 }
                 .buttonStyle(.plain)
                 .help(didCopy ? "Copied" : "Copy answer")
+                .peekAction(label: didCopy ? "Copied" : "Copy answer")
                 .opacity(isHovered || didCopy ? 1 : 0.45)
             }
         }

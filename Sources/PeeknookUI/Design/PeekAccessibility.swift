@@ -38,7 +38,7 @@ extension View {
     func peekLoading(_ label: String) -> some View {
         accessibilityElement(children: .ignore)
             .accessibilityAddTraits(.updatesFrequently)
-            .accessibilityLabel(Text(label))
+            .accessibilityLabel(Text(LocalizedStringKey(label), bundle: .module))
     }
 
     /// Expose a custom switch row as one VoiceOver toggle: a single element carrying the on/off
@@ -86,7 +86,7 @@ private struct PeekAccessibilityHint: ViewModifier {
 
     func body(content: Content) -> some View {
         if let hint {
-            content.accessibilityHint(Text(hint))
+            content.accessibilityHint(Text(LocalizedStringKey(hint), bundle: .module))
         } else {
             content
         }

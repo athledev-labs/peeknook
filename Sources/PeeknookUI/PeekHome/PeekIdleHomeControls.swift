@@ -82,7 +82,7 @@ struct PeekSessionBriefStrip: View {
                 .font(.system(size: 12))
                 .focused(focusField)
                 .onSubmit(saveBrief)
-                .accessibilityLabel(Text("Session brief"))
+                .accessibilityLabel(Text(peek: "Session brief"))
                 .padding(.horizontal, 10)
                 .padding(.vertical, 7)
                 .background(theme.tertiaryLabel.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))

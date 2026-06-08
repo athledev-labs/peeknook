@@ -223,6 +223,7 @@ private struct SetupStepRow: View {
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(iconColor)
                 .frame(width: 18)
+                .peekDecorative()
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)

@@ -45,7 +45,7 @@ struct PeekFailureView: View {
             }
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isStaticText)
-            .accessibilityLabel(Text("\(failure.title). \(failure.message)"))
+            .accessibilityLabel(Text(verbatim: "\(failure.title). \(failure.message)"))
 
             HStack(spacing: 4) {
                 action(failure.primaryRecovery, prominent: true)

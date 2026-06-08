@@ -59,6 +59,7 @@ struct PeekConversationArchiveView: View {
             Image(systemName: "clock.arrow.circlepath")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(theme.secondaryLabel)
+                .peekDecorative()
             Text(peek: "Past chats")
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(theme.primaryLabel)
@@ -129,6 +130,7 @@ private struct ArchiveRow: View {
                         .font(.system(size: 11))
                         .foregroundStyle(theme.tertiaryLabel)
                         .frame(width: 16)
+                        .peekDecorative()
                     VStack(alignment: .leading, spacing: 1) {
                         Text(summary.title)
                             .font(.system(size: 12, weight: .medium))
@@ -145,6 +147,7 @@ private struct ArchiveRow: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .peekAction(label: summary.title, hint: subtitle)
 
             Button(action: onDelete) {
                 Image(systemName: "trash")
@@ -154,6 +157,7 @@ private struct ArchiveRow: View {
             }
             .buttonStyle(.plain)
             .help("Delete this chat")
+            .peekAction(label: "Delete chat", hint: "Delete this chat")
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)

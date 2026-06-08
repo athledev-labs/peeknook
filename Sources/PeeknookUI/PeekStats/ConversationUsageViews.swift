@@ -136,6 +136,7 @@ struct TurnUsageBreakdown: View {
                         .foregroundStyle(theme.tertiaryLabel)
                 }
                 .buttonStyle(.plain)
+                .peekAction(label: "Close breakdown")
             }
             breakdownRow("Answer prompt", value: TokenFormat.compact(point.usage.promptTokens), detail: "Full thread sent to the model")
             if point.promptDelta > 0 {
@@ -201,29 +202,38 @@ struct PeekArchivePersistenceBanner: View {
     let onDismiss: () -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
-            Image(systemName: "externaldrive.badge.exclamationmark")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(Color.orange)
-                .frame(width: 16)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(peek: "Couldn't save chat")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(theme.primaryLabel)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(message)
-                    .font(.system(size: 10))
-                    .foregroundStyle(theme.secondaryLabel)
-                    .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "externaldrive.badge.exclamationmark")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color.orange)
+                    .frame(width: 16)
+                    .peekDecorative()
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(peek: "Couldn't save chat")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(theme.primaryLabel)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(message)
+                        .font(.system(size: 10))
+                        .foregroundStyle(theme.secondaryLabel)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isStaticText)
+                .accessibilityLabel(Text(verbatim: "\(PeekLocalized("Couldn't save chat")). \(message)"))
+                Spacer(minLength: 0)
+            }
+            HStack(spacing: 4) {
                 NookToolbarButton(
                     title: "Dismiss",
                     symbol: "xmark",
                     help: "Hide this warning",
                     action: onDismiss
                 )
-                .padding(.top, 1)
+                Spacer(minLength: 0)
             }
-            Spacer(minLength: 0)
+            .padding(.leading, 24)
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -232,8 +242,6 @@ struct PeekArchivePersistenceBanner: View {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .strokeBorder(Color.orange.opacity(0.3), lineWidth: 1)
         )
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Couldn't save chat. \(message)")
     }
 }
 
@@ -250,30 +258,40 @@ struct PeekContextWarningBanner: View {
         if pressure == .normal {
             EmptyView()
         } else {
-            HStack(alignment: .top, spacing: 8) {
-                Image(systemName: "gauge.with.dots.needle.100percent")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(tint)
-                    .frame(width: 16)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(title)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(theme.primaryLabel)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Text(message)
-                        .font(.system(size: 10))
-                        .foregroundStyle(theme.secondaryLabel)
-                        .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "gauge.with.dots.needle.100percent")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(tint)
+                        .frame(width: 16)
+                        .peekDecorative()
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(peek: title)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(theme.primaryLabel)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(peek: message)
+                            .font(.system(size: 10))
+                            .foregroundStyle(theme.secondaryLabel)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityAddTraits(.isStaticText)
+                    .accessibilityLabel(Text(verbatim: "\(title). \(message)"))
+                    Spacer(minLength: 0)
+                }
+                HStack(spacing: 4) {
                     NookToolbarButton(
                         title: "New chat",
                         symbol: "arrow.counterclockwise",
                         help: "Start a fresh chat to reset the context window",
+                        testIdentifier: PeekTestID.newChat,
                         prominent: true,
                         action: onStartNewChat
                     )
-                    .padding(.top, 1)
+                    Spacer(minLength: 0)
                 }
-                Spacer(minLength: 0)
+                .padding(.leading, 24)
             }
             .padding(10)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -282,8 +300,6 @@ struct PeekContextWarningBanner: View {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .strokeBorder(tint.opacity(0.3), lineWidth: 1)
             )
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("\(title). \(message)")
         }
     }
 
@@ -336,5 +352,10 @@ struct PeekContextMeter: View {
             Spacer(minLength: 0)
         }
         .help("\(used) / \(total) tokens in context for this chat")
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(peek: "Context usage"))
+        .accessibilityValue(
+            Text(verbatim: "\(TokenFormat.compact(used)) / \(TokenFormat.compact(total)) \(PeekLocalized("context"))")
+        )
     }
 }

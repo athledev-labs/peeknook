@@ -55,6 +55,7 @@ struct StageLabel: View {
             .font(.system(size: 12))
             .foregroundStyle(theme.secondaryLabel)
             .shimmering()
+            .peekLoading(text)
     }
 }
 

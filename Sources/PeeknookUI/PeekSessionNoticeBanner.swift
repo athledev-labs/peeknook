@@ -18,29 +18,38 @@ struct PeekSessionNoticeBanner: View {
     let onDismiss: () -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
-            Image(systemName: symbol)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(theme.accent)
-                .frame(width: 16)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(theme.primaryLabel)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(message)
-                    .font(.system(size: 10))
-                    .foregroundStyle(theme.secondaryLabel)
-                    .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: symbol)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(theme.accent)
+                    .frame(width: 16)
+                    .peekDecorative()
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(theme.primaryLabel)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(message)
+                        .font(.system(size: 10))
+                        .foregroundStyle(theme.secondaryLabel)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isStaticText)
+                .accessibilityLabel(Text(verbatim: "\(title). \(message)"))
+                Spacer(minLength: 0)
+            }
+            HStack(spacing: 4) {
                 NookToolbarButton(
                     title: "Got it",
                     symbol: "checkmark",
                     help: "Dismiss this note",
                     action: onDismiss
                 )
-                .padding(.top, 1)
+                Spacer(minLength: 0)
             }
-            Spacer(minLength: 0)
+            .padding(.leading, 24)
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -49,8 +58,6 @@ struct PeekSessionNoticeBanner: View {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .strokeBorder(theme.accent.opacity(0.3), lineWidth: 1)
         )
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(title). \(message)")
     }
 
     private var symbol: String {

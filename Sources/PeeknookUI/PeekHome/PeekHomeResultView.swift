@@ -124,7 +124,7 @@ struct PeekHomeResultView: View {
                 .font(.system(size: 12))
                 .focused(focusFollowUpField)
                 .onSubmit(submitFollowUp)
-                .accessibilityLabel(Text("Ask a follow-up"))
+                .accessibilityLabel(Text(peek: "Ask a follow-up"))
                 .padding(.horizontal, 10)
                 .padding(.vertical, 7)
                 .background(theme.tertiaryLabel.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))

@@ -118,9 +118,11 @@ struct ValueDropdownPill<MenuContent: View>: View {
         .fixedSize()
         .onHover { isHovered = $0 }
         .help(help ?? title)
-        .accessibilityLabel(Text(help ?? title))
-        .accessibilityValue(Text(title))
-        .accessibilityHint(Text("Shows options"))
+        .accessibilityElement(children: .ignore)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel(Text(LocalizedStringKey(help ?? title), bundle: .module))
+        .accessibilityValue(Text(verbatim: title))
+        .accessibilityHint(Text(peek: "Shows options"))
         .popover(isPresented: $isOpen, arrowEdge: .bottom) {
             VStack(alignment: .leading, spacing: 2) {
                 menu { isOpen = false }

@@ -66,10 +66,12 @@ struct PeekWebLookupTableView: View {
                 if isLoading {
                     HStack(spacing: 6) {
                         ProgressView().controlSize(.small)
-                        Text("Searching the web…")
+                            .peekDecorative()
+                        Text(peek: "Searching the web…")
                             .font(.system(size: 10))
                             .foregroundStyle(theme.secondaryLabel)
                     }
+                    .peekLoading("Searching the web…")
                 } else if let snapshot, snapshot.results.isEmpty {
                     Text("No web results for \"\(snapshot.query)\".")
                         .font(.system(size: 10))

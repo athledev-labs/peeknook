@@ -35,7 +35,7 @@ struct PeekHomePhaseContent: View {
     @ViewBuilder
     private func previewContent(_ preview: CapturePreview) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Model will see this")
+            Text(peek: "Model will see this")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(theme.secondaryLabel)
             Text(preview.targetLabel)
@@ -55,10 +55,13 @@ struct PeekHomePhaseContent: View {
                         RoundedRectangle(cornerRadius: 8)
                             .strokeBorder(theme.tertiaryLabel.opacity(0.35), lineWidth: 1)
                     )
+                    .accessibilityLabel(Text(peek: "Screenshot preview"))
+                    .accessibilityAddTraits(.isImage)
             } else {
                 Label("No preview image, capture may have failed. Try again.", systemImage: "exclamationmark.triangle")
                     .font(.system(size: 11))
                     .foregroundStyle(.orange)
+                    .accessibilityElement(children: .combine)
             }
             Text(preview.sourceLabel)
                 .font(.system(size: 10))
@@ -71,6 +74,7 @@ struct PeekHomePhaseContent: View {
                     .textSelection(.enabled)
             }
         }
+        .accessibilityElement(children: .contain)
     }
 
     /// Capture and inference share one resolver for their honest status line (see
@@ -102,6 +106,8 @@ struct PeekHomePhaseContent: View {
             Label(presentation.label, systemImage: presentation.symbol)
                 .font(.system(size: 12))
                 .foregroundStyle(theme.secondaryLabel)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(Text(LocalizedStringKey(presentation.label), bundle: .module))
         }
     }
 }
