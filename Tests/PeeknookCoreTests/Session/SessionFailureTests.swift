@@ -31,7 +31,7 @@ final class SessionFailureTests: XCTestCase {
     func testEmptyAnswerStreamProducesEmptyAnswerFailure() async {
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b"),
-            capture: StubCaptureProvider(sampleText: "hello"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "hello")]),
             inference: MockInferenceEngine(tokens: [])
         )
 
@@ -49,7 +49,7 @@ final class SessionFailureTests: XCTestCase {
     func testRetryAfterFailureOnlyRunsFromFailedPhase() async {
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b"),
-            capture: StubCaptureProvider(sampleText: "x"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "x")]),
             inference: MockInferenceEngine(tokens: ["ok"])
         )
 

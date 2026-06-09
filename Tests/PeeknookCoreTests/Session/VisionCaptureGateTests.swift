@@ -11,7 +11,7 @@ final class VisionCaptureGateTests: XCTestCase {
     func testTextOnlyModelBlocksCaptureBeforeStreaming() async {
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "llama3:8b"),
-            capture: StubCaptureProvider(sampleText: "hello"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "hello")]),
             inference: MockInferenceEngine(
                 tokens: ["should-not-stream"],
                 declaredCapabilities: ["completion"]   // installed, no vision → .textOnly
@@ -35,7 +35,7 @@ final class VisionCaptureGateTests: XCTestCase {
     func testVisionModelProceedsToInference() async {
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b"),
-            capture: StubCaptureProvider(sampleText: "hello"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "hello")]),
             inference: MockInferenceEngine(
                 tokens: ["ok"],
                 declaredCapabilities: ["completion", "vision"]
@@ -55,7 +55,7 @@ final class VisionCaptureGateTests: XCTestCase {
         // which must NOT block (the existing orchestrator tests rely on this path staying open).
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b"),
-            capture: StubCaptureProvider(sampleText: "hello"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "hello")]),
             inference: MockInferenceEngine(tokens: ["ok"])
         )
 

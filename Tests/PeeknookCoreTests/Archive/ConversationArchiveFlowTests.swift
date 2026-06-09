@@ -56,7 +56,7 @@ final class ConversationArchiveFlowTests: XCTestCase {
 
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(textModel: "gemma4:e4b", persistConversation: true),
-            capture: StubCaptureProvider(sampleText: "x"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "x")]),
             inference: MockInferenceEngine(tokens: ["y"])
         )
         orchestrator.conversationArchive = store
@@ -78,7 +78,7 @@ final class ConversationArchiveFlowTests: XCTestCase {
 
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b", persistConversation: true),
-            capture: StubCaptureProvider(sampleText: "hello"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "hello")]),
             inference: MockInferenceEngine(tokens: ["hi"])
         )
         orchestrator.conversationArchive = store
@@ -103,7 +103,7 @@ final class ConversationArchiveFlowTests: XCTestCase {
     func testContextPressureCriticalNearWindowLimit() async throws {
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b"),
-            capture: StubCaptureProvider(sampleText: "hello"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "hello")]),
             inference: StatsInferenceEngine(tokens: ["ok"], promptTokens: 950, window: 1000)
         )
         orchestrator.beginCapture()
@@ -116,7 +116,7 @@ final class ConversationArchiveFlowTests: XCTestCase {
     func testContextPressureHighBelowCritical() async throws {
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b"),
-            capture: StubCaptureProvider(sampleText: "hello"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "hello")]),
             inference: StatsInferenceEngine(tokens: ["ok"], promptTokens: 850, window: 1000)
         )
         orchestrator.beginCapture()
@@ -128,7 +128,7 @@ final class ConversationArchiveFlowTests: XCTestCase {
     func testContextPressureNormalWhenWindowUnknown() async throws {
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b"),
-            capture: StubCaptureProvider(sampleText: "hello"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "hello")]),
             inference: MockInferenceEngine(tokens: ["ok"])
         )
         orchestrator.beginCapture()
@@ -156,7 +156,7 @@ final class ConversationArchiveFlowTests: XCTestCase {
 
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(textModel: "gemma4:e4b", persistConversation: true),
-            capture: StubCaptureProvider(sampleText: "x"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "x")]),
             inference: MockInferenceEngine(tokens: ["y"])
         )
         orchestrator.conversationArchive = store
@@ -187,7 +187,7 @@ final class ConversationArchiveFlowTests: XCTestCase {
 
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(textModel: "gemma4:e4b", persistConversation: false),
-            capture: StubCaptureProvider(sampleText: "x"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "x")]),
             inference: MockInferenceEngine(tokens: ["y"])
         )
         orchestrator.conversationArchive = store
@@ -209,7 +209,7 @@ final class ConversationArchiveFlowTests: XCTestCase {
         let engine = ScriptedEngine(responsesPerCall: [["first answer"], Array(repeating: "x ", count: 15)])
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "x", persistConversation: true),
-            capture: StubCaptureProvider(sampleText: "screen"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "screen")]),
             inference: engine
         )
         orchestrator.conversationArchive = store
@@ -254,7 +254,7 @@ final class ConversationArchiveFlowTests: XCTestCase {
 
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(textModel: "gemma4:e4b", persistConversation: true),
-            capture: StubCaptureProvider(sampleText: "x"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "x")]),
             inference: MockInferenceEngine(tokens: ["y"])
         )
         orchestrator.conversationArchive = store

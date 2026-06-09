@@ -27,7 +27,7 @@ public enum PeeknookServices {
         let usage = UsageStore(defaults: defaults)
         let orchestrator = SessionOrchestrator(
             settings: settings,
-            capture: dependencies.capture,
+            captureRegistry: dependencies.captureRegistry,
             inference: dependencies.inference,
             webLookup: dependencies.webLookup,
             speechRecognizer: dependencies.speechRecognizer,

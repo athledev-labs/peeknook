@@ -283,7 +283,7 @@ final class SettingsAndPromptTests: XCTestCase {
         let answerSynth = StubSpeechSynthesizer()
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(textModel: "x", speakAnswersEnabled: true),
-            capture: StubCaptureProvider(sampleText: "x"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "x")]),
             inference: ScriptedEngine(responsesPerCall: []),
             speechSynthesizer: answerSynth,
             previewSpeechSynthesizer: previewSynth
@@ -299,7 +299,7 @@ final class SettingsAndPromptTests: XCTestCase {
         let answerSynth = StubSpeechSynthesizer()
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(textModel: "x", speakAnswersEnabled: true),
-            capture: StubCaptureProvider(sampleText: "x"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "x")]),
             inference: MockInferenceEngine(tokens: ["hello"]),
             speechSynthesizer: answerSynth
         )
@@ -316,7 +316,7 @@ final class SettingsAndPromptTests: XCTestCase {
         let answerSynth = StubSpeechSynthesizer()
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(textModel: "x", speakAnswersEnabled: true),
-            capture: StubCaptureProvider(sampleText: "x"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "x")]),
             inference: MockInferenceEngine(tokens: ["Knight ", "takes ", "e5"]),
             speechSynthesizer: answerSynth,
             previewSpeechSynthesizer: previewSynth
@@ -350,7 +350,7 @@ final class SettingsAndPromptTests: XCTestCase {
         recognizer.startError = .onDeviceUnavailable
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(textModel: "x", voiceInputEnabled: true),
-            capture: StubCaptureProvider(sampleText: "x"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "x")]),
             inference: ScriptedEngine(responsesPerCall: []),
             speechRecognizer: recognizer
         )

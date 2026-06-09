@@ -17,7 +17,7 @@ final class ConversationPersistenceTests: XCTestCase {
 
         let first = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b", persistConversation: true),
-            capture: StubCaptureProvider(sampleText: "hello"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "hello")]),
             inference: MockInferenceEngine(tokens: ["ans", "wer"])
         )
         first.conversationArchive = store
@@ -31,7 +31,7 @@ final class ConversationPersistenceTests: XCTestCase {
 
         let second = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b", persistConversation: true),
-            capture: StubCaptureProvider(sampleText: "x"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "x")]),
             inference: MockInferenceEngine(tokens: ["y"])
         )
         second.conversationArchive = store
@@ -52,7 +52,7 @@ final class ConversationPersistenceTests: XCTestCase {
 
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b", persistConversation: false),
-            capture: StubCaptureProvider(sampleText: "hello"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "hello")]),
             inference: MockInferenceEngine(tokens: ["ok"])
         )
         orchestrator.conversationArchive = store
@@ -74,7 +74,7 @@ final class ConversationPersistenceTests: XCTestCase {
         let store = ConversationArchiveTestSupport.makeStore(directory: blocked)
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b", persistConversation: true),
-            capture: StubCaptureProvider(sampleText: "hello"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "hello")]),
             inference: MockInferenceEngine(tokens: ["hi"])
         )
         orchestrator.conversationArchive = store
@@ -90,7 +90,7 @@ final class ConversationPersistenceTests: XCTestCase {
 
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b", persistConversation: true),
-            capture: StubCaptureProvider(sampleText: "hello"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "hello")]),
             inference: MockInferenceEngine(tokens: ["hi"])
         )
         orchestrator.conversationArchive = store
@@ -107,7 +107,7 @@ final class ConversationPersistenceTests: XCTestCase {
     func testConversationMarkdownRendersTurns() async {
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b"),
-            capture: StubCaptureProvider(sampleText: "screen text", appName: "Safari", windowTitle: "Docs"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "screen text", appName: "Safari", windowTitle: "Docs")]),
             inference: MockInferenceEngine(tokens: ["The ", "answer"])
         )
         orchestrator.beginCapture()

@@ -71,7 +71,7 @@ final class ConversationTests: XCTestCase {
     private func makeOrchestrator(_ engine: ScriptedEngine) -> SessionOrchestrator {
         SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "x"),
-            capture: StubCaptureProvider(sampleText: "screen"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "screen")]),
             inference: engine
         )
     }
@@ -275,7 +275,7 @@ final class ConversationTests: XCTestCase {
         engine.followUps = ["What does this mean?"]
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "x", quickMode: true),
-            capture: StubCaptureProvider(sampleText: "screen"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "screen")]),
             inference: engine
         )
 
@@ -344,7 +344,7 @@ final class ConversationTests: XCTestCase {
         engine.followUps = ["should not appear"]
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "x", suggestFollowUps: false),
-            capture: StubCaptureProvider(sampleText: "screen"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "screen")]),
             inference: engine
         )
 
@@ -397,7 +397,7 @@ final class ConversationTests: XCTestCase {
         let engine = ScriptedEngine(responsesPerCall: [["first"], ["second"], ["third"]])
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "x", inferenceImageReplay: .lastTwo),
-            capture: StubCaptureProvider(sampleText: "screen"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "screen")]),
             inference: engine
         )
 

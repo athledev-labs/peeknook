@@ -84,7 +84,8 @@ extension SessionOrchestrator {
 
         lifecycle.inferenceTask = Task {
             do {
-                let result = try await capture.capture(scope: settings.captureScope, quick: settings.quickMode)
+                let provider = try captureRegistry.resolve(settings.activeProfile.primaryGround)
+                let result = try await provider.capture(scope: settings.captureScope, quick: settings.quickMode)
                 guard lifecycle.isCurrentCapture(generation), !Task.isCancelled else { return }
                 lifecycle.pendingCapture = result
                 lifecycle.pendingPreview = CapturePreview(capture: result)

@@ -4,7 +4,7 @@ import Foundation
 
 /// Injectable service bag shared by production wiring, unit tests, and the UI test host.
 public struct PeeknookDependencies {
-    public var capture: any CaptureProviding
+    public var captureRegistry: GroundRegistry
     public var inference: any InferenceEngine
     public var webLookup: any WebLookupProviding
     public var speechRecognizer: any SpeechRecognizing
@@ -15,7 +15,7 @@ public struct PeeknookDependencies {
     public var storageFootprint: any StorageFootprinting
 
     public init(
-        capture: any CaptureProviding,
+        captureRegistry: GroundRegistry,
         inference: any InferenceEngine,
         webLookup: any WebLookupProviding,
         speechRecognizer: any SpeechRecognizing,
@@ -25,7 +25,7 @@ public struct PeeknookDependencies {
         conversationArchive: ConversationArchiveStore? = nil,
         storageFootprint: (any StorageFootprinting)? = nil
     ) {
-        self.capture = capture
+        self.captureRegistry = captureRegistry
         self.inference = inference
         self.webLookup = webLookup
         self.speechRecognizer = speechRecognizer
@@ -50,7 +50,7 @@ public struct PeeknookDependencies {
         let previewSpeechSynthesizer: any SpeechSynthesizing = StubSpeechSynthesizer()
         #endif
         return PeeknookDependencies(
-            capture: MacCaptureProvider(),
+            captureRegistry: GroundRegistry([.screen: MacCaptureProvider()]),
             inference: OllamaInferenceEngine(),
             webLookup: WebLookupRunner(),
             speechRecognizer: speechRecognizer,
@@ -60,7 +60,8 @@ public struct PeeknookDependencies {
         )
     }
 
-    /// Deterministic doubles for unit tests and the UI test host.
+    /// Deterministic doubles for unit tests and the UI test host. `capture` stays a single
+    /// provider (wrapped as the screen entry) so existing call sites don't churn on the registry.
     @MainActor
     public static func testing(
         capture: any CaptureProviding = StubCaptureProvider(sampleText: "screen"),
@@ -74,7 +75,7 @@ public struct PeeknookDependencies {
     ) -> PeeknookDependencies {
         let preview = previewSpeechSynthesizer ?? answerSpeechSynthesizer
         return PeeknookDependencies(
-            capture: capture,
+            captureRegistry: GroundRegistry([.screen: capture]),
             inference: inference,
             webLookup: webLookup,
             speechRecognizer: speechRecognizer,

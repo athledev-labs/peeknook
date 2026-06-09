@@ -8,7 +8,7 @@ final class SessionOrchestratorTests: XCTestCase {
     func testPreviewThenInferStreamsTokens() async {
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: true, textModel: "gemma4:e4b"),
-            capture: StubCaptureProvider(sampleText: "hello"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "hello")]),
             inference: MockInferenceEngine(tokens: ["a", "b"])
         )
 
@@ -30,7 +30,7 @@ final class SessionOrchestratorTests: XCTestCase {
     func testSkipPreviewRunsInference() async {
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b"),
-            capture: StubCaptureProvider(sampleText: "x"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "x")]),
             inference: MockInferenceEngine(tokens: ["ok"])
         )
 
@@ -45,12 +45,12 @@ final class SessionOrchestratorTests: XCTestCase {
     func testPreviewCarriesWindowIdentity() async {
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: true, textModel: "gemma4:e4b"),
-            capture: StubCaptureProvider(
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(
                 sampleText: "hello",
                 sourceLabel: "Vision + OCR text",
                 appName: "Safari",
                 windowTitle: "peeknook.com"
-            ),
+            )]),
             inference: MockInferenceEngine(tokens: ["a"])
         )
 
@@ -82,7 +82,7 @@ final class SessionOrchestratorTests: XCTestCase {
     func testCancelDuringCaptureDoesNotCommit() async throws {
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b"),
-            capture: StubCaptureProvider(sampleText: "late", captureDelayNanoseconds: 200_000_000),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "late", captureDelayNanoseconds: 200_000_000)]),
             inference: MockInferenceEngine(tokens: ["nope"])
         )
 
@@ -111,7 +111,7 @@ final class SessionOrchestratorTests: XCTestCase {
         let setup = SetupCoordinator(settings: .default, defaults: defaults)
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b"),
-            capture: StubCaptureProvider(sampleText: "hello"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "hello")]),
             inference: MockInferenceEngine(tokens: ["ok"])
         )
         orchestrator.setup = setup
@@ -127,7 +127,7 @@ final class SessionOrchestratorTests: XCTestCase {
     func testIncompleteInferenceStreamTransitionsToFailed() async {
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b"),
-            capture: StubCaptureProvider(sampleText: "screen"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "screen")]),
             inference: MockInferenceEngine(tokens: ["partial"], sendsCompletion: false)
         )
 
@@ -143,7 +143,7 @@ final class SessionOrchestratorTests: XCTestCase {
     func testBeginCaptureFromResultStartsFreshCapture() async {
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b"),
-            capture: StubCaptureProvider(sampleText: "again"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "again")]),
             inference: MockInferenceEngine(tokens: ["ok"])
         )
         orchestrator.beginCapture()

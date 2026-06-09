@@ -69,7 +69,7 @@ public final class SessionOrchestrator {
     var activeThreadID: UUID?
     var activeThreadCreatedAt: Date?
 
-    let capture: any CaptureProviding
+    let captureRegistry: GroundRegistry
     let inference: any InferenceEngine
     let speechRecognizer: any SpeechRecognizing
     let answerSpeechSynthesizer: any SpeechSynthesizing
@@ -145,7 +145,7 @@ public final class SessionOrchestrator {
 
     public init(
         settings: PeeknookSettings,
-        capture: any CaptureProviding,
+        captureRegistry: GroundRegistry,
         inference: any InferenceEngine,
         webLookup: any WebLookupProviding = WebLookupRunner(),
         speechRecognizer: any SpeechRecognizing = StubSpeechRecognizer(),
@@ -153,7 +153,7 @@ public final class SessionOrchestrator {
         previewSpeechSynthesizer: (any SpeechSynthesizing)? = nil
     ) {
         self.settings = settings
-        self.capture = capture
+        self.captureRegistry = captureRegistry
         self.inference = inference
         self.webLookup = webLookup
         self.speechRecognizer = speechRecognizer

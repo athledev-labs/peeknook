@@ -154,7 +154,7 @@ final class UsageStoreTests: XCTestCase {
         let usage = UsageStore(defaults: freshDefaults())
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "x"),
-            capture: StubCaptureProvider(sampleText: "x"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "x")]),
             inference: MockInferenceEngine(tokens: ["a", "b", "c", "d"], delayNanoseconds: 60_000_000)
         )
         orchestrator.usage = usage
@@ -175,7 +175,7 @@ final class UsageStoreTests: XCTestCase {
         let usage = UsageStore(defaults: freshDefaults())
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e2b"),
-            capture: StubCaptureProvider(sampleText: "x"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "x")]),
             inference: MockInferenceEngine(
                 tokens: ["a", "b"],
                 completionStats: InferenceStats(promptTokens: 50, responseTokens: 2, generationSeconds: 0.2)

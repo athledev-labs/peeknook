@@ -155,7 +155,7 @@ final class CaptureBlobStoreTests: XCTestCase {
 
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, persistConversation: true),
-            capture: StubCaptureProvider(sampleText: "screen", screenshotBase64: sampleBase64),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "screen", screenshotBase64: sampleBase64)]),
             inference: MockInferenceEngine(tokens: ["done"])
         )
         orchestrator.captureBlobStore = blobStore
@@ -178,7 +178,7 @@ final class CaptureBlobStoreTests: XCTestCase {
 
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, persistConversation: false),
-            capture: StubCaptureProvider(sampleText: "screen", screenshotBase64: sampleBase64),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "screen", screenshotBase64: sampleBase64)]),
             inference: MockInferenceEngine(tokens: ["done"])
         )
         orchestrator.captureBlobStore = blobStore
