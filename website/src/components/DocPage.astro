@@ -7,34 +7,19 @@ interface Props {
   title: string;
   description?: string;
   source: string;
-  current: "privacy" | "licenses" | "docs";
+  current: "privacy" | "licenses";
 }
 
 const { title, description, source, current } = Astro.props;
-const { html, headings } = renderRepoMarkdown(source);
-const toc = headings.filter((heading) => heading.level === 2);
-const showToc = toc.length >= 4;
+const { html } = renderRepoMarkdown(source, { stripLeadingH1: true });
 ---
 
 <BaseLayout title={title} description={description} current={current}>
-  <article class="prose doc-article" set:html={html} />
-
-  {
-    showToc && (
-      <div slot="rail" class="doc-toc">
-        <p class="doc-toc-label">On this page</p>
-        <nav aria-label="On this page">
-          <ul class="doc-toc-list">
-            {toc.map((heading) => (
-              <li>
-                <a class="doc-toc-link" href={`#${heading.id}`}>
-                  {heading.text}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </div>
-    )
-  }
+  <section class="home-hero">
+    <div class="home-hero-copy">
+      <h1>{title}</h1>
+      {description && <p class="home-hero-tagline">{description}</p>}
+    </div>
+    <article class="prose" set:html={html} />
+  </section>
 </BaseLayout>

@@ -1,0 +1,53 @@
+---
+// SPDX-License-Identifier: Apache-2.0
+
+export interface Feature {
+  title: string;
+  description: string;
+  optional?: boolean;
+}
+
+interface Props {
+  features: Feature[];
+}
+
+const { features } = Astro.props;
+const base = import.meta.env.BASE_URL;
+---
+
+<ul class="feature-list">
+  {
+    features.map((feature) => (
+      <li class="feature-list-item">
+        <details class="feature-item">
+          <summary class="feature-summary">
+            <span class="feature-summary-main">
+              <span class="feature-title">{feature.title}</span>
+              {feature.optional && (
+                <span class="feature-badge">Optional</span>
+              )}
+            </span>
+            <span class="feature-chevron" aria-hidden="true">
+              <svg viewBox="0 0 12 12" width="12" height="12" fill="none">
+                <path
+                  d="M3 4.5 6 7.5 9 4.5"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"></path>
+              </svg>
+            </span>
+          </summary>
+          <div class="feature-body">
+            <p set:html={feature.description} />
+          </div>
+        </details>
+      </li>
+    ))
+  }
+</ul>
+
+<p class="feature-footnote">
+  Optional features are off until you turn them on. See
+  <a href={`${base}privacy/`}>Privacy</a> for what can leave your Mac.
+</p>

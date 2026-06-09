@@ -65,24 +65,26 @@ export function extractHeadings(source: string): DocHeading[] {
   return headings;
 }
 
-function wrapH2Sections(html: string): string {
-  const sections = html.split(/(?=<h2[\s>])/);
-  if (sections.length <= 1) return html;
-
-  const [lead, ...rest] = sections;
-  return (
-    lead +
-    rest
-      .map((section) => `<div class="prose-section">${section}</div>`)
-      .join("")
-  );
+function stripLeadingH1(html: string): string {
+  return html.replace(/^\s*<h1[^>]*>[\s\S]*?<\/h1>\s*/i, "");
 }
 
-export function renderRepoMarkdown(relativePath: string): RenderedMarkdown {
+export type RenderMarkdownOptions = {
+  stripLeadingH1?: boolean;
+};
+
+export function renderRepoMarkdown(
+  relativePath: string,
+  options: RenderMarkdownOptions = {},
+): RenderedMarkdown {
   const absolutePath = path.join(repoRoot, relativePath);
   const source = fs.readFileSync(absolutePath, "utf8");
   const headings = extractHeadings(source);
-  const html = wrapH2Sections(marked.parse(source) as string);
+  let html = marked.parse(source) as string;
+
+  if (options.stripLeadingH1) {
+    html = stripLeadingH1(html);
+  }
 
   return { html, headings };
 }

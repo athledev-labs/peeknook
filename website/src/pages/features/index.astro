@@ -1,10 +1,109 @@
 ---
 // SPDX-License-Identifier: Apache-2.0
-import BaseLayout from "../../layouts/BaseLayout.astro";
+import ArticlePage from "../../components/ArticlePage.astro";
+import FeatureList from "../../components/FeatureList.astro";
+import type { Feature } from "../../components/FeatureList.astro";
+import { getRelease } from "../../lib/release";
+
+const release = await getRelease();
+
+const features: Feature[] = [
+  {
+    title: "Built for the MacBook notch",
+    description:
+      "Peeknook lives in the notch as a compact panel you open when you need it. Ask about your screen and read the answer without breaking focus.",
+  },
+  {
+    title: "Understand anything on screen",
+    description:
+      "Press <kbd>⌘⇧P</kbd> to capture what you're looking at and get an answer back immediately. Peeknook only runs when you ask. Nothing watches in the background.",
+  },
+  {
+    title: "Brief it before you capture",
+    description:
+      "Press <kbd>⌘⇧B</kbd> to tell Peeknook what you want first: translate this, explain that error, summarize a chart, or answer a specific question.",
+  },
+  {
+    title: "Conversations that continue",
+    description:
+      "Follow up in the same thread, capture again, and come back later without starting over. Screenshots and answers stay together until you open a new chat.",
+  },
+  {
+    title: "Private AI on your Mac",
+    description:
+      "Inference runs on your Mac by default. Screenshots and chats stay on your machine unless you turn on something optional that sends data elsewhere.",
+  },
+  {
+    title: "Quick takes or deep dives",
+    description:
+      "Choose a short answer when you want speed, or a fuller explanation when you want more detail. Switch from the home screen or Settings anytime.",
+  },
+  {
+    title: "Frame what matters",
+    description:
+      "Capture the window under your cursor or the whole screen on the display you're using. Built for multi-monitor setups.",
+  },
+  {
+    title: "Curate your personal model library",
+    description:
+      "Peeknook ships with Gemma 4 as the starting point. Browse, download, and switch vision models from Settings, and build the catalog you want on your Mac.",
+  },
+  {
+    title: "Local usage insights",
+    description:
+      "See captures, answers, token use, and model breakdowns in Stats. Everything stays on your Mac. Nothing is sent to Peeknook.",
+  },
+  {
+    title: "Selected text as context",
+    description:
+      "Send highlighted text along with the screenshot when you want Peeknook to focus on a specific passage, label, or snippet.",
+    optional: true,
+  },
+  {
+    title: "Confirm before you share",
+    description:
+      "Preview which app and window will be captured before Peeknook sends anything for analysis.",
+    optional: true,
+  },
+  {
+    title: "Suggested follow-ups",
+    description:
+      "After each answer, Peeknook can propose a few next questions you can tap to keep going.",
+    optional: true,
+  },
+  {
+    title: "Voice in, voice out",
+    description:
+      "Dictate briefs and follow-ups with on-device speech recognition, and have answers read back to you. Pick a reading voice in Settings.",
+    optional: true,
+  },
+  {
+    title: "Web context on demand",
+    description:
+      "Let Peeknook search the web when an answer needs outside context. It skips password managers and anything that looks like a secret.",
+    optional: true,
+  },
+  {
+    title: "Your local chat archive",
+    description:
+      "Save past chats and screenshots on your Mac, up to 25 conversations. Reopen any thread from <strong>Past chats</strong>, or delete what you no longer need.",
+    optional: true,
+  },
+  {
+    title: "Run AI on another Mac",
+    description:
+      "Point Peeknook at another computer on your network when you want inference to run there instead of on this machine.",
+    optional: true,
+  },
+];
 ---
 
-<BaseLayout
+<ArticlePage
   title="Features"
-  description="Local AI command center in the MacBook notch. Screen, camera, and voice."
+  tagline="Private intelligence for everything on your screen."
+  description="Ask about what's on your screen with private AI on your Mac."
   current="features"
-/>
+  downloadURL={release.dmgURL}
+>
+  <FeatureList features={features} />
+</ArticlePage>

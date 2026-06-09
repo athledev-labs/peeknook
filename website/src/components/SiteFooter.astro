@@ -1,0 +1,41 @@
+---
+// SPDX-License-Identifier: Apache-2.0
+import ChromeLink from "./ChromeLink.astro";
+
+interface Props {
+  base: string;
+  version: string;
+  current?: "home" | "privacy" | "licenses" | "docs" | "features";
+}
+
+const { base, version, current } = Astro.props;
+---
+
+<footer class="footbar">
+  <div class="page-grid page-grid--chrome">
+    <span class="footbar-version">v{version}</span>
+    <div class="footbar-links">
+      <ChromeLink
+        href={`${base}privacy/`}
+        icon="privacy"
+        current={current === "privacy"}
+      >
+        Privacy
+      </ChromeLink>
+      <ChromeLink
+        href={`${base}licenses/`}
+        icon="licenses"
+        current={current === "licenses"}
+      >
+        Licenses
+      </ChromeLink>
+      <ChromeLink
+        href="https://github.com/glendonC/peeknook/issues"
+        icon="issues"
+        external
+      >
+        Issues
+      </ChromeLink>
+    </div>
+  </div>
+</footer>

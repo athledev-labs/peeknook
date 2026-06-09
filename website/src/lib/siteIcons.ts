@@ -3,7 +3,6 @@ import {
   CircleAlert,
   FileText,
   LayoutGrid,
-  Route,
   Scale,
   ShieldCheck,
   Tag,
@@ -12,7 +11,6 @@ import {
 export type SiteIconName =
   | "features"
   | "docs"
-  | "roadmap"
   | "releases"
   | "github"
   | "privacy"
@@ -34,7 +32,6 @@ const githubMark = `<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="tr
 export const siteIconSvg: Record<SiteIconName, string> = {
   features: normalizeLucideSvg(LayoutGrid),
   docs: normalizeLucideSvg(FileText),
-  roadmap: normalizeLucideSvg(Route),
   releases: normalizeLucideSvg(Tag),
   github: githubMark,
   privacy: normalizeLucideSvg(ShieldCheck),

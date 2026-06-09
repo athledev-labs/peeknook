@@ -1,7 +1,8 @@
 ---
 // SPDX-License-Identifier: Apache-2.0
 import "../styles/global.css";
-import ChromeLink from "../components/ChromeLink.astro";
+import FixedDownloadDock from "../components/FixedDownloadDock.astro";
+import SiteFooter from "../components/SiteFooter.astro";
 import SiteNav from "../components/SiteNav.astro";
 import { getRelease } from "../lib/release";
 
@@ -10,8 +11,9 @@ const release = await getRelease();
 interface Props {
   title: string;
   description?: string;
-  current?: "home" | "privacy" | "licenses" | "docs" | "features" | "roadmap";
+  current?: "home" | "privacy" | "licenses" | "docs" | "features";
   centerMain?: boolean;
+  fixedDownloadURL?: string;
 }
 
 const {
@@ -19,10 +21,10 @@ const {
   description = "Complete AI for Mac. Every surface. Private AI you customize.",
   current,
   centerMain = false,
+  fixedDownloadURL,
 } = Astro.props;
 
 const base = import.meta.env.BASE_URL;
-const hasRail = Astro.slots.has("rail");
 const isHome = current === "home";
 ---
 
@@ -47,7 +49,7 @@ const isHome = current === "home";
       type="image/svg+xml"
     />
   </head>
-  <body>
+  <body class:list={fixedDownloadURL && "has-download-dock"}>
     <div class="theme-backdrop" aria-hidden="true"></div>
     <div class="shell">
       <header class="topbar">
@@ -76,56 +78,17 @@ const isHome = current === "home";
           "page-main",
           centerMain && "page-main--center",
           isHome && "page-main--home",
+          !isHome && "page-main--doc",
+          fixedDownloadURL && "page-main--dock",
         ]}
       >
-        {
-          isHome ? (
-            <div class="page-grid page-grid--home">
-              <slot />
-            </div>
-          ) : (
-            <div class="page-grid">
-              <div class="page-content">
-                <slot />
-              </div>
-              {hasRail && (
-                <aside class="page-rail" aria-label="Page sections">
-                  <slot name="rail" />
-                </aside>
-              )}
-            </div>
-          )
-        }
+        <div class="page-grid page-grid--home">
+          <slot />
+        </div>
       </main>
 
-      <footer class="footbar">
-        <div class="page-grid page-grid--chrome">
-          <span class="footbar-version">v{release.version}</span>
-          <div class="footbar-links">
-            <ChromeLink
-              href={`${base}privacy/`}
-              icon="privacy"
-              current={current === "privacy"}
-            >
-              Privacy
-            </ChromeLink>
-            <ChromeLink
-              href={`${base}licenses/`}
-              icon="licenses"
-              current={current === "licenses"}
-            >
-              Licenses
-            </ChromeLink>
-            <ChromeLink
-              href="https://github.com/glendonC/peeknook/issues"
-              icon="issues"
-              external
-            >
-              Issues
-            </ChromeLink>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter base={base} version={release.version} current={current} />
     </div>
+    {fixedDownloadURL && <FixedDownloadDock href={fixedDownloadURL} />}
   </body>
 </html>

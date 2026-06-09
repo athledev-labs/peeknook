@@ -1,0 +1,14 @@
+---
+// SPDX-License-Identifier: Apache-2.0
+import DownloadCTA from "./DownloadCTA.astro";
+
+interface Props {
+  href: string;
+}
+
+const { href } = Astro.props;
+---
+
+<div class="download-dock" role="region" aria-label="Download Peeknook">
+  <DownloadCTA href={href} />
+</div>

@@ -4,7 +4,7 @@ import ChromeLink from "./ChromeLink.astro";
 
 interface Props {
   base: string;
-  current?: "home" | "privacy" | "licenses" | "docs" | "features" | "roadmap";
+  current?: "home" | "privacy" | "licenses" | "docs" | "features";
   releasesURL: string;
 }
 
@@ -13,7 +13,6 @@ const { base, current, releasesURL } = Astro.props;
 const links = [
   { href: `${base}features/`, icon: "features" as const, label: "Features", page: "features" },
   { href: `${base}docs/`, icon: "docs" as const, label: "Docs", page: "docs" },
-  { href: `${base}roadmap/`, icon: "roadmap" as const, label: "Roadmap", page: "roadmap" },
   { href: releasesURL, icon: "releases" as const, label: "Releases", external: true },
   { href: "https://github.com/glendonC/peeknook", icon: "github" as const, label: "GitHub", external: true },
 ] as const;
