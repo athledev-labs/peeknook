@@ -11,8 +11,22 @@ public struct CapturePermissionStatus: Sendable, Equatable {
     public var accessibilityTrusted: Bool
     public var screenRecordingGranted: Bool
 
+    /// Real capture requires Screen Recording (``MacCaptureProvider`` preflights it). Accessibility
+    /// is only a supplement (selected text) and is never sufficient on its own — so this is Screen
+    /// Recording alone, not an OR with Accessibility.
     public var canCapture: Bool {
-        accessibilityTrusted || screenRecordingGranted
+        screenRecordingGranted
+    }
+
+    /// Whether a specific permission is granted, for the per-profile readiness matrix. Camera /
+    /// Microphone / Speech Recognition are not tracked here yet (they land with their grounds in the
+    /// camera PR) and report `false` for now — no shipped profile requires them.
+    public func grants(_ permission: CapturePermission) -> Bool {
+        switch permission {
+        case .screenRecording:  return screenRecordingGranted
+        case .accessibility:    return accessibilityTrusted
+        case .camera, .microphone, .speechRecognition: return false
+        }
     }
 
     public static func current() -> CapturePermissionStatus {

@@ -1,6 +1,6 @@
 # Peeknook
 
-**Local-first practice copilot in the MacBook notch.** Built on [OpenNook](https://github.com/glendonC/opennook).
+**Complete AI for Mac — in the MacBook notch.** Local-first, private, and built on [OpenNook](https://github.com/glendonC/opennook).
 
 Peeknook is a **multi-module OpenNook host**: the Peek practice module is the default, and you can register sibling nook apps in `HostModuleRegistry.swift` so they share one surface and module switcher.
 

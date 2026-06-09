@@ -28,12 +28,19 @@ public final class SetupCoordinator {
     public var skipsLiveProbes = false
     private let defaults: UserDefaults
     private let ollama = OllamaSetupClient()
+    /// Live TCC status, injectable so readiness is testable without the real Privacy database.
+    private let permissionStatusProvider: @MainActor () -> CapturePermissionStatus
     private var pullTask: Task<Void, Never>?
     private var refreshTask: Task<Void, Never>?
 
-    public init(settings: PeeknookSettings, defaults: UserDefaults) {
+    public init(
+        settings: PeeknookSettings,
+        defaults: UserDefaults,
+        permissionStatus: @escaping @MainActor () -> CapturePermissionStatus = { CapturePermissionStatus.current() }
+    ) {
         self.settings = settings
         self.defaults = defaults
+        self.permissionStatusProvider = permissionStatus
         if defaults.bool(forKey: Self.smokeTestKey) {
             smokeTestStep = .complete
         }
@@ -47,10 +54,35 @@ public final class SetupCoordinator {
         defaults.bool(forKey: Self.onboardingCompleteKey)
     }
 
-    public var isReady: Bool {
-        let stepsReady = ollamaStep == .complete && modelStep == .complete && captureStep == .complete
-        if skipsLiveProbes { return stepsReady }
-        return stepsReady && CapturePermissionStatus.current().screenRecordingGranted
+    public var isReady: Bool { readiness(for: settings.activeProfile) }
+
+    /// Per-profile readiness: setup steps complete, then (unless probes are bypassed) every
+    /// permission the profile's active grounds require is granted. `screen.default` requires only
+    /// Screen Recording, so this is behavior-identical to the old monolithic gate today; a
+    /// `camera.*` profile will require Camera (and NOT Screen Recording) when it ships.
+    public func readiness(for profile: GroundProfile) -> Bool {
+        guard ollamaStep == .complete, modelStep == .complete else { return false }
+        if skipsLiveProbes { return true }
+        return Self.permissionsSatisfied(for: profile, status: permissionStatusProvider())
+    }
+
+    /// Pure permission half of the readiness decision, testable without driving private setup state.
+    static func permissionsSatisfied(for profile: GroundProfile, status: CapturePermissionStatus) -> Bool {
+        profile.requiredPermissions.allSatisfy { status.grants($0) }
+    }
+
+    /// The active profile's required permissions and their live granted state, for the
+    /// profile-conditional setup checklist. `screen.default` yields a single Screen Recording row, so
+    /// the checklist is unchanged today; a `camera.*` profile would yield a Camera row instead.
+    public var permissionChecklist: [PermissionRequirement] {
+        permissionChecklist(for: settings.activeProfile)
+    }
+
+    public func permissionChecklist(for profile: GroundProfile) -> [PermissionRequirement] {
+        let status = permissionStatusProvider()
+        return profile.requiredPermissions
+            .sorted { $0.rawValue < $1.rawValue }
+            .map { PermissionRequirement(permission: $0, isGranted: status.grants($0)) }
     }
 
     /// Cheap sync refresh for Screen Recording only, used before capture and on a fast poll.
@@ -201,8 +233,7 @@ public final class SetupCoordinator {
 
     private func evaluateCaptureStep() -> SetupStepState {
         if skipsLiveProbes { return .complete }
-        let permissions = CapturePermissionStatus.current()
-        if permissions.screenRecordingGranted {
+        if permissionStatusProvider().screenRecordingGranted {
             return .complete
         }
         return .failed("Screen Recording is required so the model can see your screen.")

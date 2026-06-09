@@ -42,12 +42,18 @@ struct PeekSettingsSetupSection: View {
                     tone: PeekSettingsSetupChipSupport.tone(for: setup.modelStep),
                     action: onOpenSetup
                 )
-                PeekSettingsSetupChip(
-                    title: "Recording",
-                    status: PeekSettingsSetupChipSupport.statusLabel(for: setup.captureStep),
-                    tone: PeekSettingsSetupChipSupport.tone(for: setup.captureStep),
-                    action: onOpenSetup
-                )
+                // Permission chips render from the active profile's required permissions, so a
+                // camera-only profile shows Camera instead of Screen Recording. For screen.default
+                // this is a single Recording chip driven by captureStep — visually unchanged.
+                ForEach(setup.permissionChecklist) { requirement in
+                    let state = chipState(for: requirement)
+                    PeekSettingsSetupChip(
+                        title: requirement.permission.setupChipTitle,
+                        status: PeekSettingsSetupChipSupport.statusLabel(for: state),
+                        tone: PeekSettingsSetupChipSupport.tone(for: state),
+                        action: onOpenSetup
+                    )
+                }
             }
 
             PeekSettingsCommandRow(
@@ -57,6 +63,15 @@ struct PeekSettingsSetupSection: View {
                 action: onOpenSetup
             )
         }
+    }
+
+    /// Screen Recording keeps its richer step state (pending / in-progress) for parity with today;
+    /// other permissions are simply granted-or-not.
+    private func chipState(for requirement: PermissionRequirement) -> SetupStepState {
+        if requirement.permission == .screenRecording { return setup.captureStep }
+        return requirement.isGranted
+            ? .complete
+            : .failed("\(requirement.permission.displayName) is required for this profile.")
     }
 
     private var summaryDetail: String {

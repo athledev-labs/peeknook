@@ -2,7 +2,7 @@
 
 Last updated: 2026-06-08
 
-Peeknook is a local-first practice copilot for the MacBook notch. This policy describes what the app processes, what stays on your Mac, and what can leave your Mac when you opt in.
+Peeknook is local-first AI for Mac in the MacBook notch. This policy describes what the app processes, what stays on your Mac, and what can leave your Mac when you opt in.
 
 ## Summary
 

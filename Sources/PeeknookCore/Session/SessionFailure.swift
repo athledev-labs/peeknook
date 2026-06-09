@@ -14,6 +14,19 @@ public enum RecoveryAction: Equatable, Sendable {
     case openAccessibilitySettings
 }
 
+public extension CapturePermission {
+    /// The recovery a missing permission offers. Screen Recording and Accessibility open their
+    /// Privacy panes directly; Camera / Microphone / Speech Recognition fall back to the setup
+    /// drill-in until the camera PR adds their dedicated panes (no shipped profile requires them yet).
+    var recoveryAction: RecoveryAction {
+        switch self {
+        case .screenRecording: return .openScreenRecordingSettings
+        case .accessibility:   return .openAccessibilitySettings
+        case .camera, .microphone, .speechRecognition: return .openSetup
+        }
+    }
+}
+
 /// Structured replacement for the old `.failed(String)` payload. Distinct cases carry human
 /// title + explanation and a primary (and optional secondary) ``RecoveryAction`` so views render
 /// intentional recovery UI instead of matching on raw error strings.
@@ -99,6 +112,19 @@ public extension SessionFailure {
             title: "Something went wrong",
             message: message,
             primaryRecovery: .tryAgain
+        )
+    }
+
+    /// A required capture permission for the active profile isn't granted. Typed groundwork for the
+    /// per-profile readiness matrix — the camera PR routes a failed `readiness(for:)` through this so
+    /// each missing permission gets its own recovery, instead of the opaque `.setupIncomplete`.
+    static func permissionRequired(_ permission: CapturePermission) -> SessionFailure {
+        SessionFailure(
+            kind: .permissionRequired(name: permission.displayName),
+            title: "\(permission.displayName) is off",
+            message: "Allow \(permission.displayName) in System Settings → Privacy & Security, then try again.",
+            primaryRecovery: permission.recoveryAction,
+            secondaryRecovery: .tryAgain
         )
     }
 
