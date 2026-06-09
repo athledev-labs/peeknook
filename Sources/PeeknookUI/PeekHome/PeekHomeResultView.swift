@@ -143,87 +143,64 @@ struct PeekHomeResultView: View {
     }
 
     private var resultCommandBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 4) {
-                if orchestrator.hasConversationHistory {
-                    NookToolbarButton(
-                        title: "History",
-                        symbol: "clock.arrow.circlepath",
-                        help: showsFullConversation
-                            ? "Show only the latest answer"
-                            : "View the full conversation thread",
-                        prominent: showsFullConversation
-                    ) {
-                        onToggleHistory()
-                    }
-                }
-                if showsFullConversation {
-                    NookToolbarButton(
-                        title: "Export",
-                        symbol: "square.and.arrow.up",
-                        help: "Copy the whole thread as Markdown"
-                    ) {
-                        orchestrator.copyConversationMarkdown()
-                    }
-                }
-                NookToolbarButton(
-                    title: "Brief",
-                    symbol: orchestrator.sessionBrief.isEmpty ? "text.alignleft" : "text.alignleft.fill",
-                    hotkey: orchestrator.settings.briefHotkey,
-                    help: PeekSessionBriefStrip.buttonHelp(for: orchestrator),
-                    testIdentifier: PeekTestID.brief,
-                    prominent: isBriefComposerVisible || !orchestrator.sessionBrief.isEmpty
-                ) {
-                    PeekSessionBriefStrip.toggleComposer(
-                        orchestrator: orchestrator,
-                        isComposerVisible: $isBriefComposerVisible,
-                        draft: $briefDraft,
-                        focusField: focusBriefField
-                    )
-                }
-                NookToolbarButton(
-                    title: "Follow up",
-                    symbol: "bubble.left.and.bubble.right",
-                    help: "Ask a follow-up about this answer",
-                    prominent: isFollowUpComposerVisible
-                ) {
-                    toggleFollowUpComposer()
-                }
-                if orchestrator.settings.speakAnswersEnabled {
-                    NookToolbarButton(
-                        title: orchestrator.isSpeakingLastAnswer ? "Stop" : "Speak",
-                        symbol: orchestrator.isSpeakingLastAnswer ? "stop.fill" : "speaker.wave.2",
-                        help: orchestrator.isSpeakingLastAnswer
-                            ? "Stop reading the answer aloud"
-                            : "Read the answer aloud"
-                    ) {
-                        if orchestrator.isSpeakingLastAnswer {
-                            orchestrator.stopSpeaking()
-                        } else {
-                            orchestrator.speakLastAnswer()
-                        }
-                    }
-                }
-                NookToolbarButton(
-                    title: "Done",
-                    symbol: "house",
-                    help: "End this chat and return to the home screen",
-                    testIdentifier: PeekTestID.done,
-                    prominent: true
-                ) {
-                    onFinishChat()
-                }
-                NookToolbarButton(
-                    title: "New chat",
-                    symbol: "arrow.counterclockwise",
-                    help: "Discard this thread and start fresh",
-                    testIdentifier: PeekTestID.newChat
-                ) {
-                    onRequestNewChat()
-                }
-            }
-        }
+        PeekCommandBar(
+            placement: .result,
+            context: commandContext,
+            spacing: 4,
+            resolveHotkey: hotkey(for:),
+            dynamicHelp: { $0 == .brief ? PeekSessionBriefStrip.buttonHelp(for: orchestrator) : nil },
+            dispatch: dispatch(_:)
+        )
         .padding(.top, 4)
+    }
+
+    /// The reactive inputs the result bar gates on, snapshotted for the pure resolver.
+    private var commandContext: CommandBarContext {
+        let profile = orchestrator.settings.activeProfile
+        return CommandBarContext(
+            isReady: setup.isReady,
+            hasConversationHistory: orchestrator.hasConversationHistory,
+            showingFullConversation: showsFullConversation,
+            isSpeaking: orchestrator.isSpeakingLastAnswer,
+            briefHasContent: !orchestrator.sessionBrief.isEmpty,
+            briefComposerVisible: isBriefComposerVisible,
+            followUpComposerVisible: isFollowUpComposerVisible,
+            enabledModules: Set(ModuleID.allCases.filter {
+                Module.isEnabled($0, in: orchestrator.settings, profile: profile)
+            })
+        )
+    }
+
+    private func hotkey(for slot: HotkeySlot) -> CaptureHotkey? {
+        switch slot {
+        case .capture: return orchestrator.settings.captureHotkey
+        case .brief:   return orchestrator.settings.briefHotkey
+        case .camera:  return nil
+        }
+    }
+
+    private func dispatch(_ action: CommandAction) {
+        switch action {
+        case .history:  onToggleHistory()
+        case .export:   orchestrator.copyConversationMarkdown()
+        case .brief:
+            PeekSessionBriefStrip.toggleComposer(
+                orchestrator: orchestrator,
+                isComposerVisible: $isBriefComposerVisible,
+                draft: $briefDraft,
+                focusField: focusBriefField
+            )
+        case .followUp: toggleFollowUpComposer()
+        case .speak:
+            if orchestrator.isSpeakingLastAnswer {
+                orchestrator.stopSpeaking()
+            } else {
+                orchestrator.speakLastAnswer()
+            }
+        case .done:     onFinishChat()
+        case .newChat:  onRequestNewChat()
+        default:        break
+        }
     }
 
     private var suggestionRefreshSeed: Int {
