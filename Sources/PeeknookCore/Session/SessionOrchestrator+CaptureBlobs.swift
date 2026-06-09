@@ -34,7 +34,8 @@ extension SessionOrchestrator {
             sourceLabel: capture.sourceLabel,
             appName: capture.appName,
             windowTitle: capture.windowTitle,
-            screenshotBlobID: id
+            screenshotBlobID: id,
+            ground: capture.ground
         )
     }
 

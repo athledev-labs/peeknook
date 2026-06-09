@@ -21,19 +21,23 @@ public struct CapturePreview: Equatable, Sendable {
     public var windowTitle: String?
     /// JPEG base64 for preview thumbnail in the notch.
     public var screenshotBase64: String?
+    /// Which ground produced the pending capture — the confirm card's trust line derives from it.
+    public var ground: Ground
 
     public init(
         excerpt: String,
         sourceLabel: String,
         appName: String? = nil,
         windowTitle: String? = nil,
-        screenshotBase64: String? = nil
+        screenshotBase64: String? = nil,
+        ground: Ground = .screen
     ) {
         self.excerpt = excerpt
         self.sourceLabel = sourceLabel
         self.appName = appName
         self.windowTitle = windowTitle
         self.screenshotBase64 = screenshotBase64
+        self.ground = ground
     }
 
     /// Mirror of `CaptureResult` for a capture the user is about to confirm.
@@ -43,12 +47,17 @@ public struct CapturePreview: Equatable, Sendable {
             sourceLabel: capture.sourceLabel,
             appName: capture.appName,
             windowTitle: capture.windowTitle,
-            screenshotBase64: capture.screenshotBase64
+            screenshotBase64: capture.screenshotBase64,
+            ground: capture.ground
         )
     }
 
-    /// *Which* window the model will see, "Safari, peeknook.com" or a fallback.
+    /// *Which* window the model will see, "Safari, peeknook.com" or a fallback. Camera frames
+    /// label by ground, mirroring ``CaptureResult/targetLabel`` so the trust line never drifts.
     public var targetLabel: String {
-        captureTargetLabel(appName: appName, windowTitle: windowTitle, fallback: sourceLabel)
+        switch ground {
+        case .camera: "Camera"
+        default: captureTargetLabel(appName: appName, windowTitle: windowTitle, fallback: sourceLabel)
+        }
     }
 }

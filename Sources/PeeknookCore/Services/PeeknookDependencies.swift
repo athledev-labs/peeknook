@@ -50,7 +50,12 @@ public struct PeeknookDependencies {
         let previewSpeechSynthesizer: any SpeechSynthesizing = StubSpeechSynthesizer()
         #endif
         return PeeknookDependencies(
-            captureRegistry: GroundRegistry([.screen: MacCaptureProvider()]),
+            captureRegistry: GroundRegistry([
+                .screen: MacCaptureProvider(),
+                // Registered but dormant: no built-in profile resolves to .camera and no hotkey
+                // opens the live preview until the camera slices that wire them.
+                .camera: CameraCaptureProvider(),
+            ]),
             inference: OllamaInferenceEngine(),
             webLookup: WebLookupRunner(),
             speechRecognizer: speechRecognizer,

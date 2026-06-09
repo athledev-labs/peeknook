@@ -45,6 +45,26 @@ final class SettingsAndPromptTests: XCTestCase {
         XCTAssertTrue(quick.contains("**Quick**"))
     }
 
+    func testCameraGroundLabelsThePrompt() {
+        let capture = CaptureResult(
+            text: nil,
+            sourceLabel: "Camera (live)",
+            screenshotBase64: "x",
+            ground: .camera
+        )
+        let message = PromptBuilder.captureUserMessage(capture: capture, assembly: PromptAssembly(answerDepth: .deep))
+        XCTAssertTrue(message.contains("Ground: camera"))
+        XCTAssertTrue(message.contains("A camera photo is attached"))
+        XCTAssertFalse(message.contains("A screenshot is attached"))
+    }
+
+    func testScreenGroundPromptKeepsScreenshotWording() {
+        let capture = CaptureResult(text: nil, sourceLabel: "Front window (vision)", screenshotBase64: "x")
+        let message = PromptBuilder.captureUserMessage(capture: capture, assembly: PromptAssembly(answerDepth: .deep))
+        XCTAssertTrue(message.contains("A screenshot is attached to this message (vision)."))
+        XCTAssertFalse(message.contains("Ground: camera"))
+    }
+
     func testWebLookupPromptAddsSearchContext() {
         let capture = CaptureResult(text: "Swift actors", sourceLabel: "Front window (vision)", screenshotBase64: "x")
         let snapshot = WebLookupSnapshot(

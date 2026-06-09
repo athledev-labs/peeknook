@@ -2072,6 +2072,18 @@
           }
         }
       }
+    },
+    "Camera": {
+      "comment": "Trust label for a camera-ground capture turn",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "카메라"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

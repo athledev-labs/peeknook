@@ -28,4 +28,10 @@ public struct GroundRegistry: Sendable {
         }
         return provider
     }
+
+    /// The live-preview controller for a ground, when its provider also drives a live session
+    /// (camera). Screen's provider returns nil here.
+    public func sessionController(for ground: Ground) -> (any CameraSessionControlling)? {
+        providers[ground] as? any CameraSessionControlling
+    }
 }

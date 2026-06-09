@@ -91,7 +91,10 @@ struct PeekHomeConversationView: View {
         case .image(let capture):
             if showAllTurnTypes {
                 VStack(alignment: .leading, spacing: 4) {
-                    Label(capture.targetLabel, systemImage: "viewfinder")
+                    Label(
+                        capture.ground == .camera ? PeekLocalized("Camera") : capture.targetLabel,
+                        systemImage: capture.ground == .camera ? "camera" : "viewfinder"
+                    )
                         .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(theme.tertiaryLabel)
                         .lineLimit(1)

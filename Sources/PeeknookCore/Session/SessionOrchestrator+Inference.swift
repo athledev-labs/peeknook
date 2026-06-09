@@ -45,7 +45,9 @@ extension SessionOrchestrator {
             }
         }
 
-        if settings.webLookupEnabled, let capture {
+        // Web lookup is gated on the ground explicitly, never on incidental nils: a camera frame
+        // must not become a search query even once composite turns carry screen text alongside it.
+        if settings.webLookupEnabled, let capture, capture.ground == .screen {
             isFetchingWebLookup = true
             let snapshot = await webLookup.lookup(capture: capture)
             isFetchingWebLookup = false

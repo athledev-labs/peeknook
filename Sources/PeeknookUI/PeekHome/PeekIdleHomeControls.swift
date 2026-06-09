@@ -397,8 +397,11 @@ enum IdleResumePreview {
               case .assistant(let text) = answer.kind else { return nil }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
-        let source = orchestrator.latestAnswerCapture?.targetLabel
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let source = orchestrator.latestAnswerCapture.map { capture in
+            capture.ground == .camera
+                ? PeekLocalized("Camera")
+                : capture.targetLabel.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
         return Content(
             source: source.flatMap { $0.isEmpty ? nil : $0 } ?? "Last chat",
             answer: trimmed

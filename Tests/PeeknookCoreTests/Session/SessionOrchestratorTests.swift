@@ -3,8 +3,66 @@
 import XCTest
 @testable import PeeknookCore
 
+/// Records every capture handed to web lookup so tests can assert the ground gate.
+private actor RecordingWebLookup: WebLookupProviding {
+    private(set) var captures: [CaptureResult] = []
+
+    func lookup(capture: CaptureResult) async -> WebLookupSnapshot? {
+        captures.append(capture)
+        return nil
+    }
+}
+
+/// Screen-slot provider that returns a camera-ground frame, exercising the runTurn ground gate
+/// without needing a camera profile.
+private struct CameraGroundStubProvider: CaptureProviding {
+    func capture(scope: CaptureScope, quick: Bool) async throws -> CaptureResult {
+        CaptureResult(
+            text: "x",
+            sourceLabel: "Camera (live)",
+            screenshotBase64: StubCaptureProvider.defaultScreenshotBase64,
+            ground: .camera
+        )
+    }
+}
+
 @MainActor
 final class SessionOrchestratorTests: XCTestCase {
+    /// Web lookup is gated on the ground explicitly: a camera frame must never become a search
+    /// query, even though today's camera frames also happen to carry no text/app/window.
+    func testWebLookupSkippedForCameraGround() async {
+        let webLookup = RecordingWebLookup()
+        let orchestrator = SessionOrchestrator(
+            settings: PeeknookSettings(textModel: "x", webLookupEnabled: true),
+            captureRegistry: GroundRegistry([.screen: CameraGroundStubProvider()]),
+            inference: MockInferenceEngine(tokens: ["a"]),
+            webLookup: webLookup
+        )
+
+        orchestrator.beginCapture()
+        _ = await orchestrator.waitForResult("a")
+
+        let captures = await webLookup.captures
+        XCTAssertTrue(captures.isEmpty, "A camera frame must never become a web search query")
+    }
+
+    func testWebLookupStillRunsForScreenGround() async {
+        let webLookup = RecordingWebLookup()
+        let orchestrator = SessionOrchestrator(
+            settings: PeeknookSettings(textModel: "x", webLookupEnabled: true),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "x")]),
+            inference: MockInferenceEngine(tokens: ["a"]),
+            webLookup: webLookup
+        )
+
+        orchestrator.beginCapture()
+        _ = await orchestrator.waitForResult("a")
+
+        let captures = await webLookup.captures
+        XCTAssertEqual(captures.count, 1)
+        XCTAssertEqual(captures.first?.ground, .screen)
+    }
+
     func testPreviewThenInferStreamsTokens() async {
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: true, textModel: "gemma4:e4b"),

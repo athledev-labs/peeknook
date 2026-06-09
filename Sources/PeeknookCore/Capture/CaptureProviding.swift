@@ -15,6 +15,9 @@ public struct CaptureResult: Sendable, Equatable, Codable {
     public var screenshotBase64: String?
     /// On-disk blob reference under the conversation archive's `blobs/` folder.
     public var screenshotBlobID: UUID?
+    /// Which ground produced this capture. The displayed trust label derives from this typed field,
+    /// never from the free-text ``sourceLabel`` (a camera frame has no app/window identity).
+    public var ground: Ground
 
     public var hasVision: Bool { screenshotBase64 != nil || screenshotBlobID != nil }
 
@@ -24,7 +27,8 @@ public struct CaptureResult: Sendable, Equatable, Codable {
         appName: String? = nil,
         windowTitle: String? = nil,
         screenshotBase64: String? = nil,
-        screenshotBlobID: UUID? = nil
+        screenshotBlobID: UUID? = nil,
+        ground: Ground = .screen
     ) {
         self.text = text?.trimmingCharacters(in: .whitespacesAndNewlines)
         self.sourceLabel = sourceLabel
@@ -32,10 +36,11 @@ public struct CaptureResult: Sendable, Equatable, Codable {
         self.windowTitle = windowTitle.normalizedNonEmpty
         self.screenshotBase64 = screenshotBase64
         self.screenshotBlobID = screenshotBlobID
+        self.ground = ground
     }
 
     private enum CodingKeys: String, CodingKey {
-        case text, sourceLabel, appName, windowTitle, screenshotBase64, screenshotBlobID
+        case text, sourceLabel, appName, windowTitle, screenshotBase64, screenshotBlobID, ground
     }
 
     public init(from decoder: Decoder) throws {
@@ -47,6 +52,11 @@ public struct CaptureResult: Sendable, Equatable, Codable {
         self.windowTitle = try container.decodeIfPresent(String.self, forKey: .windowTitle).normalizedNonEmpty
         self.screenshotBase64 = try container.decodeIfPresent(String.self, forKey: .screenshotBase64)
         self.screenshotBlobID = try container.decodeIfPresent(UUID.self, forKey: .screenshotBlobID)
+        // Tolerant by design: archives outlive app versions. A legacy turn without the key and a
+        // future unknown ground both degrade to `.screen` — decoding raw `Ground.self` would throw
+        // and, because archive threads decode as a whole, strand the entire thread.
+        let groundRaw = try container.decodeIfPresent(String.self, forKey: .ground)
+        self.ground = groundRaw.flatMap(Ground.init(rawValue:)) ?? .screen
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -56,15 +66,20 @@ public struct CaptureResult: Sendable, Equatable, Codable {
         try container.encodeIfPresent(appName, forKey: .appName)
         try container.encodeIfPresent(windowTitle, forKey: .windowTitle)
         try container.encodeIfPresent(screenshotBlobID, forKey: .screenshotBlobID)
+        try container.encode(ground.rawValue, forKey: .ground)
         if screenshotBlobID == nil {
             try container.encodeIfPresent(screenshotBase64, forKey: .screenshotBase64)
         }
     }
 
     /// *Which* window the model will see, the line the user must be able to trust.
-    /// "Safari, peeknook.com", "Safari", or the modality label as a last resort.
+    /// "Safari, peeknook.com", "Safari", or the modality label as a last resort. A camera frame
+    /// has no app/window identity, so its label derives from the typed ground (UI localizes it).
     public var targetLabel: String {
-        captureTargetLabel(appName: appName, windowTitle: windowTitle, fallback: sourceLabel)
+        switch ground {
+        case .camera: "Camera"
+        default: captureTargetLabel(appName: appName, windowTitle: windowTitle, fallback: sourceLabel)
+        }
     }
 
     /// Real captured text (selection) for the preview, or "", the UI hides it when empty
