@@ -10,6 +10,13 @@ enum ModelLibraryVisionState: Equatable {
     case supports
     case textOnly
     case unknown
+
+    /// Whether a row in this state may be selected/added. Text-only is blocked (the model would
+    /// ignore the screenshot); `checking` is transient. Shared by curated and discovered rows so the
+    /// gate is identical across the library.
+    var allowsSelection: Bool {
+        self != .textOnly && self != .checking
+    }
 }
 
 /// One row in the model library, friendly name, tag/size detail, and install/select state.

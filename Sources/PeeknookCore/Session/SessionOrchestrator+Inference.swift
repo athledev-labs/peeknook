@@ -11,6 +11,13 @@ extension SessionOrchestrator {
         return Date().timeIntervalSince(last) < 540
     }
 
+    /// Capture-time vision gate. Only the live `/api/show` capability check can return `.textOnly`,
+    /// so the pre-install heuristic is irrelevant to the block decision — a no-op heuristic keeps
+    /// it purely authoritative (an uninstalled model stays `.unknown` and never blocks).
+    private var visionGate: VisionGate {
+        VisionGate(inference: inference, likelyVision: { _ in false })
+    }
+
     /// Runs one turn against the conversation so far. `capturedNow` is non-nil when this turn
     /// introduced a new screenshot (first capture or Add image), that drives usage accounting.
     func runTurn(capturedNow capture: CaptureResult?) async {
@@ -21,6 +28,22 @@ extension SessionOrchestrator {
         webLookupSnapshot = nil
 
         let sessionGen = lifecycle.snapshotSession()
+
+        // Don't send a screenshot to a model that can't see it: a text-only model would silently
+        // drop the image and answer from text alone. Only the authoritative `/api/show` check
+        // blocks (`.textOnly`); an uninstalled or older runtime stays `.unknown` and proceeds
+        // (it surfaces its own failure downstream). Gated to capture turns that carry an image.
+        if let capture, capture.hasVision {
+            let visionReadiness = await visionGate.readiness(
+                of: settings.textModel,
+                endpoint: .from(settings: settings)
+            )
+            guard lifecycle.isCurrentSession(sessionGen), !Task.isCancelled else { return }
+            if visionReadiness == .textOnly {
+                _ = applyPhaseEvent(.inferenceFailed(.modelLacksVision(tag: settings.textModel)))
+                return
+            }
+        }
 
         if settings.webLookupEnabled, let capture {
             isFetchingWebLookup = true

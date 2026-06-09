@@ -22,6 +22,7 @@ public struct SessionFailure: Equatable, Sendable {
         case setupIncomplete
         case ollamaUnreachable
         case modelMissing(tag: String)
+        case modelLacksVision(tag: String)
         case captureFailed
         case permissionRequired(name: String)
         case emptyAnswer
@@ -80,6 +81,17 @@ public extension SessionFailure {
         primaryRecovery: .tryAgain,
         secondaryRecovery: .switchModel
     )
+
+    /// The selected model can't read images, so the captured screenshot would be silently ignored.
+    /// Blocked before any request is sent — the screenshot never reaches a model that can't use it.
+    static func modelLacksVision(tag: String) -> SessionFailure {
+        SessionFailure(
+            kind: .modelLacksVision(tag: tag),
+            title: "This model can't see images",
+            message: "“\(tag)” is a text-only model, so it would ignore the screenshot. Switch to a vision model to analyze captures.",
+            primaryRecovery: .switchModel
+        )
+    }
 
     static func generic(message: String) -> SessionFailure {
         SessionFailure(

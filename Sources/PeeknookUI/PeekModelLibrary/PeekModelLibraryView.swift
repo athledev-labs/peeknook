@@ -40,6 +40,7 @@ struct PeekModelLibraryView: View {
 
     @Environment(\.nookResolvedTheme) private var theme
     @State private var selectedTab: ModelLibraryTab = .recommended
+    @State private var capabilityFilters: Set<ModelLibraryCapabilityFilter> = []
     @State private var visionByTag: [String: Bool] = [:]
     @State private var checkingTags: Set<String> = []
     @State private var ollamaUnreachable = false
@@ -136,7 +137,50 @@ struct PeekModelLibraryView: View {
     private var recommendedContent: some View {
         VStack(alignment: .leading, spacing: 8) {
             sectionHeader("Vision models")
-            modelList(curatedModels)
+            capabilityFilterRow
+            if filteredCuratedModels.isEmpty {
+                emptyState(
+                    title: "No installed models",
+                    detail: "None of the recommended models are on this Mac yet. Clear the filter to see all of them."
+                )
+            } else {
+                modelList(filteredCuratedModels)
+            }
+        }
+    }
+
+    private var filteredCuratedModels: [InferenceModelOption] {
+        ModelLibraryFilters.apply(
+            capabilityFilters,
+            to: curatedModels,
+            installedNames: setup.installedModelNames
+        )
+    }
+
+    private var capabilityFilterRow: some View {
+        PeekSurfaceCommandPills {
+            ForEach(ModelLibraryCapabilityFilter.allCases, id: \.self) { filter in
+                PeekSurfaceFilterPill(
+                    title: filterTitle(filter),
+                    isSelected: capabilityFilters.contains(filter)
+                ) {
+                    withAnimation(.easeOut(duration: 0.15)) { toggleFilter(filter) }
+                }
+            }
+        }
+    }
+
+    private func filterTitle(_ filter: ModelLibraryCapabilityFilter) -> String {
+        switch filter {
+        case .installed: "Installed"
+        }
+    }
+
+    private func toggleFilter(_ filter: ModelLibraryCapabilityFilter) {
+        if capabilityFilters.contains(filter) {
+            capabilityFilters.remove(filter)
+        } else {
+            capabilityFilters.insert(filter)
         }
     }
 
@@ -365,6 +409,11 @@ struct PeekModelLibraryView: View {
     private func modelList(_ models: [InferenceModelOption]) -> some View {
         VStack(spacing: 6) {
             ForEach(models) { option in
+                // Gate curated rows on the option's declared vision support the same way discovered
+                // rows gate the live `/api/show` result. Curated models are all vision today, so
+                // `.none` keeps their appearance unchanged; a future text-only curated entry would
+                // be blocked instead of silently selectable (drift fix).
+                let visionState: ModelLibraryVisionState = option.supportsVision ? .none : .textOnly
                 PeekModelLibraryRow(
                     option: option,
                     isSelected: isSelected(option),
@@ -373,8 +422,10 @@ struct PeekModelLibraryView: View {
                         installedNames: [option.tag],
                         wanted: profile.suggestedTextModel
                     ),
+                    visionState: visionState,
                     isDownloading: isPulling(option),
                     downloadStatus: isPulling(option) ? setup.pullStatusLine : nil,
+                    isActionEnabled: visionState.allowsSelection,
                     onTap: { select(option) }
                 )
             }
@@ -392,7 +443,7 @@ struct PeekModelLibraryView: View {
             }
             return .unknown
         }()
-        let canAdd = visionState != .textOnly && visionState != .checking
+        let canAdd = visionState.allowsSelection
 
         return PeekModelLibraryRow(
             option: option,

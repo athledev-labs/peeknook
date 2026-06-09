@@ -85,6 +85,7 @@ struct PeekFailureView: View {
         case .setupIncomplete: "wrench.and.screwdriver"
         case .ollamaUnreachable: "bolt.horizontal.circle"
         case .modelMissing: "arrow.down.circle"
+        case .modelLacksVision: "eye.slash"
         case .captureFailed: "camera.badge.ellipsis"
         case .permissionRequired: "lock.shield"
         case .emptyAnswer: "text.badge.xmark"
@@ -96,7 +97,7 @@ struct PeekFailureView: View {
         switch failure.kind {
         case .ollamaUnreachable, .generic, .captureFailed:
             return .orange
-        case .modelMissing, .setupIncomplete, .permissionRequired:
+        case .modelMissing, .modelLacksVision, .setupIncomplete, .permissionRequired:
             return theme.accent
         case .emptyAnswer:
             return .yellow

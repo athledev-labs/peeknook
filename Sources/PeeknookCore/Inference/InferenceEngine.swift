@@ -129,17 +129,22 @@ public struct MockInferenceEngine: InferenceEngine, Sendable {
     public var completionStats: InferenceStats?
     /// When `false`, simulates a truncated Ollama stream that never yields `.completed`.
     public var sendsCompletion: Bool
+    /// Capabilities returned by `capabilities(...)` / `supportsVision(...)`. `nil` (default)
+    /// simulates an uninstalled model or an older runtime that omits the list — vision "unknown".
+    public var declaredCapabilities: [String]?
 
     public init(
         tokens: [String] = ["안녕", " ", "informal ", "greeting."],
         delayNanoseconds: UInt64 = 0,
         completionStats: InferenceStats? = nil,
-        sendsCompletion: Bool = true
+        sendsCompletion: Bool = true,
+        declaredCapabilities: [String]? = nil
     ) {
         self.tokens = tokens
         self.delayNanoseconds = delayNanoseconds
         self.completionStats = completionStats
         self.sendsCompletion = sendsCompletion
+        self.declaredCapabilities = declaredCapabilities
     }
 
     public func health(baseURL: String, model: String, acceptInsecureRemote: Bool) async -> InferenceHealth { .ready }
@@ -148,7 +153,7 @@ public struct MockInferenceEngine: InferenceEngine, Sendable {
 
     public func contextLength(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> Int? { nil }
 
-    public func capabilities(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> [String]? { nil }
+    public func capabilities(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> [String]? { declaredCapabilities }
 
     public func stream(request: InferenceRequest) -> AsyncThrowingStream<InferenceEvent, Error> {
         _ = request
