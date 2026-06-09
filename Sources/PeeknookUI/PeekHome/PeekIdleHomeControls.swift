@@ -188,52 +188,76 @@ struct PeekIdleCommandBar: View {
                     focusField: focusBriefField
                 )
             }
-            HStack(alignment: .center, spacing: 8) {
-                PeekScrollView(.horizontal) {
-                    HStack(alignment: .center, spacing: 8) {
-                        if let preview = IdleResumePreview.from(orchestrator) {
-                            PeekResumeButton(preview: preview, onResume: onResume)
-                        }
-                        NookToolbarButton(
-                            title: "Brief",
-                            symbol: orchestrator.sessionBrief.isEmpty ? "text.alignleft" : "text.alignleft.fill",
-                            hotkey: orchestrator.settings.briefHotkey,
-                            help: PeekSessionBriefStrip.buttonHelp(for: orchestrator),
-                            testIdentifier: PeekTestID.brief,
-                            prominent: isBriefComposerVisible || !orchestrator.sessionBrief.isEmpty
-                        ) {
-                            PeekSessionBriefStrip.toggleComposer(
-                                orchestrator: orchestrator,
-                                isComposerVisible: $isBriefComposerVisible,
-                                draft: $briefDraft,
-                                focusField: focusBriefField
-                            )
-                        }
-                        .fixedSize()
-                        HStack(spacing: 6) {
-                            modelMenu
-                            depthMenu
-                            scopeMenu
-                        }
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                NookToolbarButton(
-                    title: "Capture",
-                    symbol: "camera.viewfinder",
-                    hotkey: orchestrator.settings.captureHotkey,
-                    help: "Instant capture from anywhere on your Mac",
-                    testIdentifier: PeekTestID.capture,
-                    prominent: true,
-                    action: onCapture
-                )
-                .disabled(!setup.isReady)
-                .fixedSize()
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            PeekCommandBar(
+                placement: .idle,
+                context: commandContext,
+                spacing: 8,
+                resolveHotkey: hotkey(for:),
+                dynamicHelp: { $0 == .brief ? PeekSessionBriefStrip.buttonHelp(for: orchestrator) : nil },
+                dispatch: dispatch(_:),
+                special: special(for:)
+            )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .animation(.spring(response: 0.34, dampingFraction: 0.86), value: isBriefComposerVisible)
+    }
+
+    /// The reactive inputs the idle bar gates on, snapshotted for the pure resolver.
+    private var commandContext: CommandBarContext {
+        let profile = orchestrator.settings.activeProfile
+        return CommandBarContext(
+            isReady: setup.isReady,
+            hasResumePreview: IdleResumePreview.from(orchestrator) != nil,
+            hasConversationHistory: orchestrator.hasConversationHistory,
+            isSpeaking: orchestrator.isSpeakingLastAnswer,
+            briefHasContent: !orchestrator.sessionBrief.isEmpty,
+            briefComposerVisible: isBriefComposerVisible,
+            enabledModules: Set(ModuleID.allCases.filter {
+                Module.isEnabled($0, in: orchestrator.settings, profile: profile)
+            })
+        )
+    }
+
+    private func hotkey(for slot: HotkeySlot) -> CaptureHotkey? {
+        switch slot {
+        case .capture: return orchestrator.settings.captureHotkey
+        case .brief:   return orchestrator.settings.briefHotkey
+        case .camera:  return nil
+        }
+    }
+
+    private func dispatch(_ action: CommandAction) {
+        switch action {
+        case .capture: onCapture()
+        case .resume:  onResume()
+        case .brief:
+            PeekSessionBriefStrip.toggleComposer(
+                orchestrator: orchestrator,
+                isComposerVisible: $isBriefComposerVisible,
+                draft: $briefDraft,
+                focusField: focusBriefField
+            )
+        default: break
+        }
+    }
+
+    /// Bespoke cells the generic renderer delegates back to the host: the preflight dropdowns bound to
+    /// settings, and the Resume preview button. Plain buttons return nil and render generically.
+    private func special(for command: CommandDescriptor) -> AnyView? {
+        switch command.kind {
+        case .valueDropdown(let dimension):
+            switch dimension {
+            case .model:       return AnyView(modelMenu)
+            case .depth:       return AnyView(depthMenu)
+            case .scope:       return AnyView(scopeMenu)
+            case .imageReplay: return nil
+            }
+        case .button:
+            if command.action == .resume, let preview = IdleResumePreview.from(orchestrator) {
+                return AnyView(PeekResumeButton(preview: preview, onResume: onResume))
+            }
+            return nil
+        }
     }
 
     private var modelMenu: some View {

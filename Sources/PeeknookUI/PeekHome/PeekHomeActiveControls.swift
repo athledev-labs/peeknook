@@ -11,21 +11,29 @@ struct PeekHomeActiveControls: View {
     var onCancel: () -> Void
 
     var body: some View {
-        HStack(spacing: 4) {
-            switch orchestrator.phase {
-            case .idle:
-                EmptyView()
-            case .previewing:
-                NookToolbarButton(title: "Use this", symbol: "checkmark.circle", prominent: true, action: onConfirmPreview)
-                NookToolbarButton(title: "Cancel", symbol: "xmark", action: onCancel)
-            case .failed:
-                // Recovery actions live in the PeekFailureView card.
-                EmptyView()
-            default:
-                NookToolbarButton(title: "Cancel", symbol: "xmark", action: onCancel)
-            }
-            Spacer(minLength: 0)
+        // Recovery actions live in the PeekFailureView card, so the active bar shows nothing on failure.
+        if case .failed = orchestrator.phase {
+            EmptyView()
+        } else {
+            PeekCommandBar(
+                placement: .active,
+                context: CommandBarContext(isPreviewing: isPreviewing, isReady: setup.isReady),
+                spacing: 4,
+                dispatch: dispatch(_:)
+            )
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var isPreviewing: Bool {
+        if case .previewing = orchestrator.phase { return true }
+        return false
+    }
+
+    private func dispatch(_ action: CommandAction) {
+        switch action {
+        case .confirmPreview: onConfirmPreview()
+        case .cancel:         onCancel()
+        default:              break
+        }
     }
 }
