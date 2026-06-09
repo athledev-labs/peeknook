@@ -1,0 +1,180 @@
+---
+// SPDX-License-Identifier: Apache-2.0
+import type { SiteIconName } from "../lib/siteIcons";
+
+interface Props {
+  name: SiteIconName;
+}
+
+const { name } = Astro.props;
+---
+
+{
+  name === "features" && (
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <rect
+        x="2"
+        y="2"
+        width="5"
+        height="5"
+        rx="1"
+        stroke="currentColor"
+        stroke-width="1.25"
+      />
+      <rect
+        x="9"
+        y="2"
+        width="5"
+        height="5"
+        rx="1"
+        stroke="currentColor"
+        stroke-width="1.25"
+      />
+      <rect
+        x="2"
+        y="9"
+        width="5"
+        height="5"
+        rx="1"
+        stroke="currentColor"
+        stroke-width="1.25"
+      />
+      <rect
+        x="9"
+        y="9"
+        width="5"
+        height="5"
+        rx="1"
+        stroke="currentColor"
+        stroke-width="1.25"
+      />
+    </svg>
+  )
+}
+{
+  name === "docs" && (
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M4.5 2.5h4.2L12.5 6.3v7.2a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5Z"
+        stroke="currentColor"
+        stroke-width="1.25"
+        stroke-linejoin="round"
+      />
+      <path
+        d="M8.5 2.5v3.5H12"
+        stroke="currentColor"
+        stroke-width="1.25"
+        stroke-linejoin="round"
+      />
+      <path
+        d="M5.5 8.5h5M5.5 10.5h5"
+        stroke="currentColor"
+        stroke-width="1.25"
+        stroke-linecap="round"
+      />
+    </svg>
+  )
+}
+{
+  name === "roadmap" && (
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M2.5 12.5 6 5.5l3 2.5 4.5-6"
+        stroke="currentColor"
+        stroke-width="1.25"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+      <circle cx="6" cy="5.5" r="1.1" fill="currentColor" />
+      <circle cx="9" cy="8" r="1.1" fill="currentColor" />
+      <circle cx="13.5" cy="2" r="1.1" fill="currentColor" />
+    </svg>
+  )
+}
+{
+  name === "releases" && (
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M3.5 4.5h9l-1.2 7.5H4.7L3.5 4.5Z"
+        stroke="currentColor"
+        stroke-width="1.25"
+        stroke-linejoin="round"
+      />
+      <path
+        d="M6 4.5V3.8a2 2 0 0 1 4 0V4.5"
+        stroke="currentColor"
+        stroke-width="1.25"
+        stroke-linecap="round"
+      />
+    </svg>
+  )
+}
+{
+  name === "github" && (
+    <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path
+        fill-rule="evenodd"
+        clip-rule="evenodd"
+        d="M8 1.25a6.75 6.75 0 0 0-2.135 13.16c.338.063.462-.147.462-.326 0-.161-.006-.583-.01-1.145A4.72 4.72 0 0 1 4.86 13.2c-.418.226-.9-.113-.9-.113-.308-.208-.64-.287-.64-.287-.523-.358.04-.351.04-.351.578.041.883.594.883.594.515.883 1.35.628 1.68.48.052-.373.201-.628.365-.772-1.28-.145-2.627-.64-2.627-2.85 0-.63.225-1.144.594-1.548-.06-.145-.26-.735.056-1.533 0 0 .484-.155 1.585.592a5.48 5.48 0 0 1 1.44-.194c.49-.007.984.066 1.44.194 1.1-.747 1.583-.592 1.583-.592.318.798.118 1.388.058 1.533.37.404.593.918.593 1.548 0 2.217-1.35 2.702-2.635 2.843.207.178.39.528.39 1.066 0 .77-.007 1.39-.007 1.578 0 .18.122.392.467.326A6.75 6.75 0 0 0 8 1.25Z"
+      />
+    </svg>
+  )
+}
+{
+  name === "privacy" && (
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M8 2.25 3.5 4.25v3.9c0 2.74 1.9 5.3 4.5 5.85 2.6-.55 4.5-3.11 4.5-5.85v-3.9L8 2.25Z"
+        stroke="currentColor"
+        stroke-width="1.25"
+        stroke-linejoin="round"
+      />
+      <path
+        d="M6.25 8.1 7.45 9.3 10 6.75"
+        stroke="currentColor"
+        stroke-width="1.25"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+    </svg>
+  )
+}
+{
+  name === "licenses" && (
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M4 2.75h6.5L13 5.25v7.5a.5.5 0 0 1-.5.5H4a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5Z"
+        stroke="currentColor"
+        stroke-width="1.25"
+        stroke-linejoin="round"
+      />
+      <path
+        d="M8 2.75v2.5H13"
+        stroke="currentColor"
+        stroke-width="1.25"
+        stroke-linejoin="round"
+      />
+      <circle cx="8" cy="9.25" r="1.75" stroke="currentColor" stroke-width="1.25" />
+      <path
+        d="M8 8.1v.45M8 10.45v.45"
+        stroke="currentColor"
+        stroke-width="1.1"
+        stroke-linecap="round"
+      />
+    </svg>
+  )
+}
+{
+  name === "issues" && (
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="8" cy="8" r="5.25" stroke="currentColor" stroke-width="1.25" />
+      <circle cx="8" cy="5.75" r="0.85" fill="currentColor" />
+      <path
+        d="M8 7.5v3"
+        stroke="currentColor"
+        stroke-width="1.25"
+        stroke-linecap="round"
+      />
+    </svg>
+  )
+}

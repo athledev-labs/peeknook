@@ -1,0 +1,29 @@
+---
+// SPDX-License-Identifier: Apache-2.0
+import type { SiteIconName } from "../lib/siteIcons";
+import SiteIcon from "./SiteIcon.astro";
+
+interface Props {
+  href: string;
+  icon: SiteIconName;
+  current?: boolean;
+  external?: boolean;
+  menu?: boolean;
+}
+
+const { href, icon, current = false, external = false, menu = false } = Astro.props;
+---
+
+<a
+  class:list={["chrome-link", menu && "chrome-link--menu"]}
+  href={href}
+  aria-current={current ? "page" : undefined}
+  {...external ? { rel: "noopener noreferrer", target: "_blank" } : {}}
+>
+  <span class="chrome-link-icon">
+    <SiteIcon name={icon} />
+  </span>
+  <span class="chrome-link-label">
+    <slot />
+  </span>
+</a>
