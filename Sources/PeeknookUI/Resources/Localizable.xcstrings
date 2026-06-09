@@ -73,6 +73,18 @@
         }
       }
     },
+    "Answer depth for the next capture": {
+      "comment": "Command-bar help: depth dropdown.",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음 캡처의 답변 깊이"
+          }
+        }
+      }
+    },
     "Archive past chats and screenshots on this Mac (up to 25 chats / ~250 MB). Done keeps a chat; New chat deletes it. Turning this off deletes the whole archive.": {
       "comment": "Tier B localization",
       "extractionState": "manual",
@@ -81,6 +93,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "이 Mac에 지난 채팅과 스크린샷을 보관합니다(최대 25개 / ~250MB). 완료는 채팅을 유지하고, 새 채팅은 삭제합니다. 끄면 전체 보관함이 삭제됩니다."
+          }
+        }
+      }
+    },
+    "Ask a follow-up about this answer": {
+      "comment": "Command-bar help: Follow up button.",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 답변에 대해 후속 질문하기"
           }
         }
       }
@@ -105,6 +129,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "답변에 굵게, 코드 등 서식 적용"
+          }
+        }
+      }
+    },
+    "Brief": {
+      "comment": "Command-bar action: open the session-brief composer.",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "브리프"
           }
         }
       }
@@ -201,6 +237,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "캡처 단축키"
+          }
+        }
+      }
+    },
+    "Capture target for the next capture": {
+      "comment": "Command-bar help: scope dropdown.",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음 캡처의 대상"
           }
         }
       }
@@ -317,6 +365,18 @@
         }
       }
     },
+    "Copy the whole thread as Markdown": {
+      "comment": "Command-bar help: Export button.",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전체 스레드를 마크다운으로 복사"
+          }
+        }
+      }
+    },
     "Couldn't read the screen": {
       "comment": "Tier B localization",
       "extractionState": "manual",
@@ -413,6 +473,18 @@
         }
       }
     },
+    "Discard this thread and start fresh": {
+      "comment": "Command-bar help: New chat button.",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 스레드를 버리고 새로 시작"
+          }
+        }
+      }
+    },
     "Dismiss": {
       "comment": "Tier B localization",
       "extractionState": "manual"
@@ -453,6 +525,18 @@
         }
       }
     },
+    "End this chat and return to the home screen": {
+      "comment": "Command-bar help: Done button.",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 채팅을 끝내고 홈 화면으로 돌아가기"
+          }
+        }
+      }
+    },
     "Expand section": {
       "comment": "Tier B localization",
       "extractionState": "manual",
@@ -461,6 +545,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "섹션 펼치기"
+          }
+        }
+      }
+    },
+    "Export": {
+      "comment": "Command-bar action: copy the whole conversation as Markdown.",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내보내기"
           }
         }
       }
@@ -497,6 +593,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "읽는 동안 답변 단어를 실시간으로 강조"
+          }
+        }
+      }
+    },
+    "Follow up": {
+      "comment": "Command-bar action: ask a follow-up about the answer.",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "후속 질문"
           }
         }
       }
@@ -572,6 +680,18 @@
     "Installed on this Mac": {
       "comment": "Tier B localization",
       "extractionState": "manual"
+    },
+    "Instant capture from anywhere on your Mac": {
+      "comment": "Command-bar help: Capture button.",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac 어디서나 즉시 캡처"
+          }
+        }
+      }
     },
     "Licenses": {
       "comment": "Tier B localization",
@@ -1013,6 +1133,18 @@
         }
       }
     },
+    "Read the answer aloud": {
+      "comment": "Command-bar help: Speak button.",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "답변 읽어 주기"
+          }
+        }
+      }
+    },
     "Reading voice": {
       "comment": "Tier B localization",
       "extractionState": "manual",
@@ -1117,6 +1249,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "사용 통계를 초기화할까요?"
+          }
+        }
+      }
+    },
+    "Resume": {
+      "comment": "Command-bar action: resume the last chat.",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이어하기"
           }
         }
       }
@@ -1229,6 +1373,18 @@
         }
       }
     },
+    "Show only the latest answer": {
+      "comment": "Command-bar help: History button (expanded).",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "최신 답변만 표시"
+          }
+        }
+      }
+    },
     "Some label": {
       "comment": "Tier B localization",
       "extractionState": "manual"
@@ -1241,6 +1397,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "문제가 발생했습니다"
+          }
+        }
+      }
+    },
+    "Speak": {
+      "comment": "Command-bar action: read the answer aloud.",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "읽기"
           }
         }
       }
@@ -1260,6 +1428,30 @@
     "Start a fresh chat to reset the context window": {
       "comment": "Tier B localization",
       "extractionState": "manual"
+    },
+    "Stop": {
+      "comment": "Command-bar action: stop reading the answer aloud.",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "중지"
+          }
+        }
+      }
+    },
+    "Stop reading the answer aloud": {
+      "comment": "Command-bar help: Stop button.",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "답변 읽기 중지"
+          }
+        }
+      }
     },
     "Suggest follow-ups": {
       "comment": "Tier B localization",
@@ -1437,6 +1629,18 @@
         }
       }
     },
+    "Use this": {
+      "comment": "Command-bar action: accept the previewed capture.",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사용하기"
+          }
+        }
+      }
+    },
     "Used in the idle greeting on this Mac. Leave blank to use your account name.": {
       "comment": "Tier B localization",
       "extractionState": "manual",
@@ -1445,6 +1649,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "이 Mac의 대기 인사말에 사용됩니다. 비우면 계정 이름을 사용합니다."
+          }
+        }
+      }
+    },
+    "View the full conversation thread": {
+      "comment": "Command-bar help: History button (collapsed).",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전체 대화 스레드 보기"
           }
         }
       }
@@ -1469,6 +1685,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "비전 모델"
+          }
+        }
+      }
+    },
+    "Vision model for the next capture": {
+      "comment": "Command-bar help: model dropdown.",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음 캡처에 사용할 비전 모델"
           }
         }
       }
@@ -1551,7 +1779,15 @@
     },
     "Capture": {
       "comment": "Command-bar action: take a screenshot and answer.",
-      "extractionState": "manual"
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "캡처"
+          }
+        }
+      }
     },
     "Close": {
       "comment": "Dismiss the current overlay or list.",
@@ -1559,7 +1795,15 @@
     },
     "History": {
       "comment": "Open the list of past chats.",
-      "extractionState": "manual"
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기록"
+          }
+        }
+      }
     },
     "Clear all": {
       "comment": "Delete every saved chat in the archive.",
