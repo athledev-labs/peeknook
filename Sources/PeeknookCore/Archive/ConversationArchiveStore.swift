@@ -78,6 +78,17 @@ public actor ConversationArchiveStore {
         readIndex().summaries.sorted { $0.updatedAt > $1.updatedAt }
     }
 
+    /// On-disk archive usage for Settings footprint (thread JSON + blobs + index).
+    public func footprint() -> ConversationArchiveFootprint {
+        let index = readIndex()
+        return ConversationArchiveFootprint(
+            threadCount: index.summaries.count,
+            usedBytes: directoryBytes(excludingThreadJSON: false),
+            maxBytes: maxBytes,
+            maxThreads: maxThreads
+        )
+    }
+
     public func load(id: UUID) -> ConversationThread? {
         guard let raw = try? Data(contentsOf: threadURL(id)) else { return nil }
         guard var thread = decodeThread(from: raw) else { return nil }
@@ -425,7 +436,33 @@ public actor ConversationArchiveStore {
     }
 
     private func fileSize(for id: UUID) -> Int {
-        let path = threadURL(id).path
-        return (try? FileManager.default.attributesOfItem(atPath: path)[.size] as? Int) ?? 0
+        fileSize(at: threadURL(id))
+    }
+
+    private func fileSize(at url: URL) -> Int {
+        (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int) ?? 0
+    }
+
+    /// Walks the archive directory so blob and index bytes are included even when summaries omit them.
+    private func directoryBytes(excludingThreadJSON: Bool) -> Int {
+        guard let files = try? FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: [.fileSizeKey, .isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        ) else { return 0 }
+
+        var total = 0
+        for file in files {
+            let values = try? file.resourceValues(forKeys: [.fileSizeKey, .isDirectoryKey])
+            if values?.isDirectory == true {
+                if file.lastPathComponent == "blobs" {
+                    total += blobStore.bytesOnDisk()
+                }
+                continue
+            }
+            if excludingThreadJSON, file.lastPathComponent.hasSuffix(".json") { continue }
+            total += values?.fileSize ?? fileSize(at: file)
+        }
+        return total
     }
 }

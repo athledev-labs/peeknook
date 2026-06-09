@@ -34,6 +34,7 @@ public final class PeeknookModule: NookModule {
     private let usage: UsageStore
     private let settings: PeekSettingsController
     private let modelCatalog: ModelCatalogService
+    private let storageFootprint: any StorageFootprinting
     private weak var appCoordinator: AppCoordinator?
     private var previewPhaseTask: Task<Void, Never>?
     private var previewPinHandle: NookPresentationPinHandle?
@@ -65,6 +66,7 @@ public final class PeeknookModule: NookModule {
         self.usage = stack.usage
         self.settings = stack.settings
         self.modelCatalog = stack.modelCatalog
+        self.storageFootprint = stack.storageFootprint
     }
 
     public func makeConfiguration() -> NookConfiguration {
@@ -95,6 +97,7 @@ public final class PeeknookModule: NookModule {
                 settings: self.settings,
                 modelCatalog: self.modelCatalog,
                 usage: self.usage,
+                storageFootprint: self.storageFootprint,
                 onCaptureHotkeyChange: { [weak self] _ in
                     guard let self, let coordinator = self.appCoordinator else { return }
                     self.registerHotkeys(on: coordinator)

@@ -10,8 +10,6 @@ struct PeekSettingsDisclosureSection<Content: View>: View {
 
     @Environment(\.nookResolvedTheme) private var theme
 
-    private let iconGutter: CGFloat = 24
-
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Button {
@@ -19,12 +17,12 @@ struct PeekSettingsDisclosureSection<Content: View>: View {
                     isExpanded.toggle()
                 }
             } label: {
-                HStack(spacing: 6) {
+                HStack(spacing: PeekSectionChromeMetrics.headerSpacing) {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 8, weight: .bold))
                         .foregroundStyle(theme.quaternaryLabel)
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                        .frame(width: iconGutter)
+                        .frame(width: PeekSectionChromeMetrics.chevronWidth)
                     Text(peek: title)
                         .font(.system(size: 9, weight: .semibold))
                         .foregroundStyle(theme.quaternaryLabel)
@@ -37,16 +35,10 @@ struct PeekSettingsDisclosureSection<Content: View>: View {
             .buttonStyle(.plain)
 
             if isExpanded {
-                HStack(alignment: .top, spacing: 12) {
-                    RoundedRectangle(cornerRadius: 0.5, style: .continuous)
-                        .fill(theme.subtleStroke.opacity(0.5))
-                        .frame(width: 1)
-
-                    content()
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .padding(.leading, (iconGutter - 1) / 2)
-                .transition(.opacity)
+                content()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.leading, PeekSectionChromeMetrics.contentLeading)
+                    .transition(.opacity)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

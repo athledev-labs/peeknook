@@ -11,6 +11,21 @@ enum PeekSettingsRowMetrics {
     static let trailingColumnWidth: CGFloat = 84
 }
 
+/// Shared chevron gutter for Settings disclosure sections and Stats collapsible sections.
+/// Section title text and expanded body content share ``contentLeading`` so labels line up.
+enum PeekSectionChromeMetrics {
+    static let chevronWidth: CGFloat = 24
+    static let headerSpacing: CGFloat = 6
+
+    /// Where section title text begins when the header is chevron + title only.
+    static var contentLeading: CGFloat { chevronWidth + headerSpacing }
+
+    /// Where section title text begins when the header includes a symbol before the title.
+    static var contentLeadingWithHeaderIcon: CGFloat {
+        chevronWidth + headerSpacing + PeekSettingsRowMetrics.iconWidth + headerSpacing
+    }
+}
+
 enum PeekSettingsCommandStyle {
     case standard
     case destructive

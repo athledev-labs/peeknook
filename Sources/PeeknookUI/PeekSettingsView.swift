@@ -11,6 +11,7 @@ public struct PeekSettingsView: View {
     public var settings: PeekSettingsController
     public var modelCatalog: ModelCatalogService
     public var usage: UsageStore
+    public var storageFootprint: any StorageFootprinting
     public var onCaptureHotkeyChange: ((CaptureHotkey) -> Void)?
     public var onBriefHotkeyChange: ((CaptureHotkey) -> Void)?
 
@@ -31,6 +32,7 @@ public struct PeekSettingsView: View {
         settings: PeekSettingsController,
         modelCatalog: ModelCatalogService,
         usage: UsageStore,
+        storageFootprint: any StorageFootprinting,
         onCaptureHotkeyChange: ((CaptureHotkey) -> Void)? = nil,
         onBriefHotkeyChange: ((CaptureHotkey) -> Void)? = nil
     ) {
@@ -39,6 +41,7 @@ public struct PeekSettingsView: View {
         self.settings = settings
         self.modelCatalog = modelCatalog
         self.usage = usage
+        self.storageFootprint = storageFootprint
         self.onCaptureHotkeyChange = onCaptureHotkeyChange
         self.onBriefHotkeyChange = onBriefHotkeyChange
     }
@@ -88,7 +91,13 @@ public struct PeekSettingsView: View {
                     }
 
                     section(PeekSettingsSectionTitle.data) {
-                        PeekSettingsDataSection(onReset: { usage.reset() })
+                        PeekSettingsDataSection(
+                            orchestrator: orchestrator,
+                            storageFootprint: storageFootprint,
+                            onReset: { usage.reset() },
+                            onOpenModelLibrary: openModelLibrary,
+                            onOpenPastChats: openPastChats
+                        )
                     }
 
                     section(PeekSettingsSectionTitle.about) {
@@ -206,6 +215,11 @@ public struct PeekSettingsView: View {
 
     private func openModelLibrary() {
         PeekModelLibraryNavigation.open(appState: appState)
+    }
+
+    private func openPastChats() {
+        appState.showHome()
+        appState.moduleBreadcrumb = PeekHomeBreadcrumb.pastChats
     }
 
     private func selectModel(_ option: InferenceModelOption) {

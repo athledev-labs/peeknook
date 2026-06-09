@@ -10,6 +10,7 @@ public enum PeeknookServices {
         public let usage: UsageStore
         public let settings: PeekSettingsController
         public let modelCatalog: ModelCatalogService
+        public let storageFootprint: any StorageFootprinting
     }
 
     @MainActor
@@ -59,12 +60,14 @@ public enum PeeknookServices {
             defaults: defaults,
             inference: dependencies.inference
         )
+        let storageFootprint = StorageFootprintService(archive: orchestrator.conversationArchive)
         return Stack(
             orchestrator: orchestrator,
             setup: setup,
             usage: usage,
             settings: settingsController,
-            modelCatalog: dependencies.modelCatalog
+            modelCatalog: dependencies.modelCatalog,
+            storageFootprint: storageFootprint
         )
     }
 

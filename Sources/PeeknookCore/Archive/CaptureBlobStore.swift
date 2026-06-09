@@ -101,6 +101,21 @@ public final class CaptureBlobStore: CaptureBlobStoring, @unchecked Sendable {
         try? FileManager.default.removeItem(at: directory)
     }
 
+    /// Total bytes of screenshot blob files on disk (encrypted or legacy plaintext).
+    public func bytesOnDisk() -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let files = try? FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: [.fileSizeKey],
+            options: [.skipsHiddenFiles]
+        ) else { return 0 }
+        return files.reduce(0) { running, url in
+            let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+            return running + size
+        }
+    }
+
     func blobURL(_ id: UUID) -> URL {
         directory.appendingPathComponent("\(id.uuidString).jpg")
     }

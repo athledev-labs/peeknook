@@ -12,6 +12,7 @@ public struct PeeknookDependencies {
     public var previewSpeechSynthesizer: any SpeechSynthesizing
     public var modelCatalog: ModelCatalogService
     public var conversationArchive: ConversationArchiveStore?
+    public var storageFootprint: any StorageFootprinting
 
     public init(
         capture: any CaptureProviding,
@@ -21,7 +22,8 @@ public struct PeeknookDependencies {
         answerSpeechSynthesizer: any SpeechSynthesizing,
         previewSpeechSynthesizer: any SpeechSynthesizing,
         modelCatalog: ModelCatalogService,
-        conversationArchive: ConversationArchiveStore? = nil
+        conversationArchive: ConversationArchiveStore? = nil,
+        storageFootprint: (any StorageFootprinting)? = nil
     ) {
         self.capture = capture
         self.inference = inference
@@ -31,6 +33,8 @@ public struct PeeknookDependencies {
         self.previewSpeechSynthesizer = previewSpeechSynthesizer
         self.modelCatalog = modelCatalog
         self.conversationArchive = conversationArchive
+        self.storageFootprint = storageFootprint
+            ?? StorageFootprintService(archive: conversationArchive)
     }
 
     /// Production defaults: live capture, Ollama inference, on-device speech when available.

@@ -26,18 +26,32 @@ public struct OllamaSetupClient: Sendable {
     }
 
     public func installedModelNames(baseURL: String, acceptInsecureRemote: Bool = false) async -> [String] {
-        do {
-            let base = try resolveBaseURL(baseURL, acceptInsecureRemote: acceptInsecureRemote)
-            let url = base.appendingPathComponent("api/tags")
-            var req = URLRequest(url: url)
-            req.httpMethod = "GET"
-            req.timeoutInterval = 8
-            let (data, response) = try await session.data(for: req)
-            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return [] }
-            let tags = try JSONDecoder().decode(OllamaTagsResponse.self, from: data)
-            return tags.models.map(\.name)
-        } catch {
-            return []
+        (try? await installedModelFootprints(baseURL: baseURL, acceptInsecureRemote: acceptInsecureRemote).map(\.name)) ?? []
+    }
+
+    /// Installed model tags and on-disk sizes from `/api/tags` (local footprint).
+    public func installedModelFootprints(
+        baseURL: String,
+        acceptInsecureRemote: Bool = false
+    ) async throws -> [OllamaModelFootprint] {
+        let base = try resolveBaseURL(baseURL, acceptInsecureRemote: acceptInsecureRemote)
+        let data = try await getJSON(baseURL: base, path: "api/tags", timeout: 8)
+        let tags = try JSONDecoder().decode(OllamaTagsResponse.self, from: data)
+        return tags.models.map { model in
+            OllamaModelFootprint(name: model.name, sizeBytes: model.size ?? 0)
+        }
+    }
+
+    /// Models currently loaded in memory from `/api/ps` (warm `keep_alive` residents).
+    public func runningModelFootprints(
+        baseURL: String,
+        acceptInsecureRemote: Bool = false
+    ) async throws -> [OllamaLoadedModelFootprint] {
+        let base = try resolveBaseURL(baseURL, acceptInsecureRemote: acceptInsecureRemote)
+        let data = try await getJSON(baseURL: base, path: "api/ps", timeout: 4)
+        let ps = try JSONDecoder().decode(OllamaPsResponse.self, from: data)
+        return ps.models.map { model in
+            OllamaLoadedModelFootprint(name: model.name, sizeBytes: model.size ?? 0)
         }
     }
 
@@ -100,16 +114,21 @@ public struct OllamaSetupClient: Sendable {
     }
 
     private func isModelInstalled(baseURL: URL, model: String) async throws -> Bool {
-        let url = baseURL.appendingPathComponent("api/tags")
-        var req = URLRequest(url: url)
-        req.httpMethod = "GET"
-        req.timeoutInterval = 8
-        let (data, response) = try await session.data(for: req)
-        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-            throw InferenceError.ollamaUnreachable("Could not list models.")
-        }
+        let data = try await getJSON(baseURL: baseURL, path: "api/tags", timeout: 8)
         let tags = try JSONDecoder().decode(OllamaTagsResponse.self, from: data)
         return Self.matchesModel(installedNames: tags.models.map(\.name), wanted: model)
+    }
+
+    private func getJSON(baseURL: URL, path: String, timeout: TimeInterval) async throws -> Data {
+        let url = baseURL.appendingPathComponent(path)
+        var req = URLRequest(url: url)
+        req.httpMethod = "GET"
+        req.timeoutInterval = timeout
+        let (data, response) = try await session.data(for: req)
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            throw InferenceError.ollamaUnreachable("Could not reach Ollama at \(baseURL.absoluteString).")
+        }
+        return data
     }
 
     /// Tag-aware match. Ollama implies `:latest` when a tag is omitted, so bare "gemma4"
@@ -165,10 +184,49 @@ public struct OllamaSetupClient: Sendable {
     }
 }
 
+public struct OllamaModelFootprint: Sendable, Equatable {
+    public var name: String
+    public var sizeBytes: Int64
+
+    public init(name: String, sizeBytes: Int64) {
+        self.name = name
+        self.sizeBytes = sizeBytes
+    }
+}
+
 struct OllamaTagsResponse: Decodable, Sendable {
     // Shared with OllamaInferenceEngine in this module.
     struct Model: Decodable, Sendable {
         let name: String
+        let size: Int64?
+
+        private enum CodingKeys: String, CodingKey {
+            case name, size
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.name = try container.decode(String.self, forKey: .name)
+            self.size = try container.decodeIfPresent(Int64.self, forKey: .size)
+        }
+    }
+    let models: [Model]
+}
+
+struct OllamaPsResponse: Decodable, Sendable {
+    struct Model: Decodable, Sendable {
+        let name: String
+        let size: Int64?
+
+        private enum CodingKeys: String, CodingKey {
+            case name, size
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.name = try container.decode(String.self, forKey: .name)
+            self.size = try container.decodeIfPresent(Int64.self, forKey: .size)
+        }
     }
     let models: [Model]
 }
