@@ -35,6 +35,18 @@ final class PeeknookUITests: XCTestCase {
         XCTAssertTrue(app.buttons[PeekTestID.newChat].exists)
     }
 
+    /// Render-fidelity guard for the descriptor-driven command registry: reaching a result must swap
+    /// the idle bar (`.idle` placement) for the result bar (`.result` placement). A regression here —
+    /// the wrong bar per phase — is invisible to `swift test`, so it is asserted at the UI layer.
+    func testResultBarReplacesIdleBarAfterCapture() throws {
+        let capture = app.buttons[PeekTestID.capture]
+        XCTAssertTrue(capture.waitForExistence(timeout: 10))
+        capture.tap()
+        XCTAssertTrue(app.buttons[PeekTestID.done].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons[PeekTestID.brief].exists, "result bar must render the Brief command")
+        XCTAssertFalse(app.buttons[PeekTestID.capture].exists, "idle Capture must not render on the result bar")
+    }
+
     func testSettingsRoundTripInTestMode() throws {
         app.terminate()
         app.launchArguments = ["-PeeknookTestMode", "-PeeknookTestOpenSettings"]
@@ -60,6 +72,7 @@ final class PeeknookUITests: XCTestCase {
 /// Mirrors ``PeekTestID`` in PeeknookUI so the UI test bundle stays decoupled from app targets.
 private enum PeekTestID {
     static let capture = "peeknook.capture"
+    static let brief = "peeknook.brief"
     static let done = "peeknook.done"
     static let newChat = "peeknook.newChat"
     static let stats = "peeknook.stats"
