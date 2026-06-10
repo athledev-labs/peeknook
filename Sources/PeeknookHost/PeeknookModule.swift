@@ -48,7 +48,8 @@ public final class PeeknookModule: NookModule {
             dependencies = PeeknookDependencies.testing(
                 capture: StubCaptureProvider(sampleText: "uitest screen"),
                 inference: MockInferenceEngine(tokens: ["test", " answer"]),
-                conversationArchive: ConversationArchiveStore.makeForTesting()
+                conversationArchive: ConversationArchiveStore.makeForTesting(),
+                cameraSession: StubCameraSession()
             )
         } else {
             dependencies = .production()

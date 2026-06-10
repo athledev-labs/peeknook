@@ -67,6 +67,27 @@ final class PeeknookUITests: XCTestCase {
         stats.tap()
         XCTAssertTrue(app.staticTexts["Stats"].waitForExistence(timeout: 5))
     }
+
+    /// Camera-flow guard: ⌘⇧C opens the `.cameraLive` surface (descriptor-driven Shutter/Cancel
+    /// bar + preview area) and the shutter feeds the same result pipeline as a screen capture —
+    /// all via the stub camera session, never a real device. Entry is the global hotkey by design
+    /// (the camera has no idle-bar button in v1).
+    func testCameraFlowReachesResultInTestMode() throws {
+        let capture = app.buttons[PeekTestID.capture]
+        XCTAssertTrue(capture.waitForExistence(timeout: 10))   // home is up and idle
+
+        app.typeKey("c", modifierFlags: [.command, .shift])
+
+        let preview = app.descendants(matching: .any)[PeekTestID.cameraPreview]
+        XCTAssertTrue(preview.waitForExistence(timeout: 10), "⌘⇧C must open the live camera surface")
+        let shutter = app.buttons[PeekTestID.shutter]
+        XCTAssertTrue(shutter.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons[PeekTestID.cancel].exists, "Cancel must always render with a live camera")
+
+        shutter.tap()
+        XCTAssertTrue(app.staticTexts["test answer"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons[PeekTestID.done].waitForExistence(timeout: 5))
+    }
 }
 
 /// Mirrors ``PeekTestID`` in PeeknookUI so the UI test bundle stays decoupled from app targets.
@@ -77,4 +98,7 @@ private enum PeekTestID {
     static let newChat = "peeknook.newChat"
     static let stats = "peeknook.stats"
     static let showGreeting = "peeknook.settings.showGreeting"
+    static let cameraPreview = "peeknook.cameraPreview"
+    static let shutter = "peeknook.shutter"
+    static let cancel = "peeknook.cancel"
 }

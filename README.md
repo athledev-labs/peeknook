@@ -36,7 +36,7 @@ open Peeknook.xcodeproj
 
 `swift run Peeknook` is the fastest way to hack on the project. It is **not** the same macOS identity as the notarized **Peeknook.app** (`com.peeknook.app`) you distribute to users.
 
-macOS ties **Screen Recording** and **Accessibility** to the app bundle ID. If you build from source, System Settings may list a separate entry (often **Terminal**, **Swift**, or the debug binary path) from the **Peeknook** app in `/Applications`. Granting permission to one does **not** grant it to the other.
+macOS ties **Screen Recording**, **Accessibility**, and **Camera** to the app bundle ID. If you build from source, System Settings may list a separate entry (often **Terminal**, **Swift**, or the debug binary path) from the **Peeknook** app in `/Applications`. Granting permission to one does **not** grant it to the other.
 
 | Goal | Use |
 |------|-----|

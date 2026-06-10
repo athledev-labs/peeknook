@@ -8,7 +8,7 @@ Peeknook is local-first AI for Mac in the MacBook notch. This policy describes w
 
 - Peeknook does **not** operate its own cloud inference service. By default, capture and answers go to **Ollama on this Mac** (`http://127.0.0.1:11434`).
 - You can point inference at a **remote Ollama server** you control, or choose Ollama **`:cloud` model tags**; in those cases screenshots and chat can leave this Mac to that endpoint (and, for `:cloud` tags, to Ollama's cloud runtime as configured by Ollama).
-- Capture happens **only when you press the capture hotkey** (default ⌘⇧P).
+- Capture happens **only when you press the capture hotkey** (default ⌘⇧P) — or, for the camera, when you open the live camera preview (default ⌘⇧C) and **press the shutter**. There is no ambient or background recording of any kind.
 - Conversation archive and web lookup are **off by default**.
 - Peeknook does **not** include analytics or crash telemetry in the current release.
 
@@ -25,6 +25,12 @@ Screenshots are **pixel captures of what is on screen**. They can include passwo
 If you grant Accessibility permission, Peeknook may read **selected text** from the focused field to supplement the screenshot. It does **not** read focused field values, and it skips secure/password fields (`AXSecureTextField` and similar). That restriction applies to extracted text only — **not** to the screenshot, which still shows whatever is visible on screen.
 
 When **Web lookup** is enabled, Peeknook skips searches when capture context looks like a secret (API keys, tokens) or a password-manager window.
+
+### Camera photos (camera flow, shutter-only)
+
+Pressing the camera hotkey (default ⌘⇧C) opens a **live camera preview inside the notch**. While the preview is open, frames stream from the camera to the on-screen preview only — **nothing is captured, stored, or sent**. A photo is taken only when you press **Shutter**; it then follows exactly the same path as a screenshot: sent to your configured Ollama instance for the answer, kept in memory for the active chat, and written to the conversation archive only if **Save conversations** is on.
+
+The camera session is torn down — camera light off — whenever the preview closes: on Shutter, on Cancel, when the notch collapses or hides, and when you switch away from Peeknook. Camera access requires the macOS Camera permission, which is requested the first time you open the preview. The camera-only flow never requires Screen Recording.
 
 ### Prompts and answers
 

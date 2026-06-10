@@ -66,7 +66,8 @@ public struct PeeknookDependencies {
     }
 
     /// Deterministic doubles for unit tests and the UI test host. `capture` stays a single
-    /// provider (wrapped as the screen entry) so existing call sites don't churn on the registry.
+    /// provider (wrapped as the screen entry) so existing call sites don't churn on the registry;
+    /// `cameraSession` (typically a `StubCameraSession`) registers under `.camera` when supplied.
     @MainActor
     public static func testing(
         capture: any CaptureProviding = StubCaptureProvider(sampleText: "screen"),
@@ -76,11 +77,14 @@ public struct PeeknookDependencies {
         answerSpeechSynthesizer: any SpeechSynthesizing = StubSpeechSynthesizer(),
         previewSpeechSynthesizer: (any SpeechSynthesizing)? = nil,
         modelCatalog: ModelCatalogService = ModelCatalogService.makeDefault(),
-        conversationArchive: ConversationArchiveStore? = nil
+        conversationArchive: ConversationArchiveStore? = nil,
+        cameraSession: (any CaptureProviding)? = nil
     ) -> PeeknookDependencies {
         let preview = previewSpeechSynthesizer ?? answerSpeechSynthesizer
+        var providers: [Ground: any CaptureProviding] = [.screen: capture]
+        if let cameraSession { providers[.camera] = cameraSession }
         return PeeknookDependencies(
-            captureRegistry: GroundRegistry([.screen: capture]),
+            captureRegistry: GroundRegistry(providers),
             inference: inference,
             webLookup: webLookup,
             speechRecognizer: speechRecognizer,

@@ -3,19 +3,52 @@
 import PeeknookCore
 import PeeknookDesign
 import SwiftUI
+#if canImport(AVFoundation)
+import AVFoundation
+#endif
 
 /// The `.cameraLive` preview surface. Sized by the PURE, width-keyed
 /// `PeekPanelLayout.cameraPreviewSize(forWidth:aspect:)` — never `visibleFrame.height` (a live
 /// preview layer has no intrinsic SwiftUI size; deriving height from the screen would grow the
-/// panel past the notch and evict the host top bar). Until the real `AVCaptureSession` lands this
-/// renders the placeholder face; the layer swap stays contained to this view.
+/// panel past the notch and evict the host top bar). Renders the live `AVCaptureSession` when the
+/// active controller exposes one (`CameraPreviewLayerProviding`), else the placeholder face (the
+/// stub session in test builds, or the brief moment before the session is configured).
 struct PeekCameraLiveView: View {
     var orchestrator: SessionOrchestrator
 
     @Environment(\.nookResolvedTheme) private var theme
 
     var body: some View {
-        let size = PeekPanelLayout.cameraPreviewSize(forWidth: PeekPanelLayout.cameraPreviewUsableWidth)
+        let size = PeekPanelLayout.cameraPreviewSize(
+            forWidth: PeekPanelLayout.cameraPreviewUsableWidth,
+            aspect: previewAspect
+        )
+        ZStack {
+            #if canImport(AVFoundation)
+            if let session = previewSession {
+                CameraPreviewLayer(session: session)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+            } else {
+                placeholder
+            }
+            #else
+            placeholder
+            #endif
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .strokeBorder(theme.tertiaryLabel.opacity(0.35), lineWidth: 1)
+        )
+        .frame(maxWidth: .infinity)
+        .frame(height: size.height)
+        .peekAction(
+            label: PeekLocalized("Camera preview"),
+            hint: PeekLocalized("Capture a photo from the camera")
+        )
+        .peekTestIdentifier(PeekTestID.cameraPreview)
+    }
+
+    private var placeholder: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 10)
                 .fill(theme.tertiaryLabel.opacity(0.08))
@@ -31,15 +64,44 @@ struct PeekCameraLiveView: View {
                     .foregroundStyle(theme.secondaryLabel)
             }
         }
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(theme.tertiaryLabel.opacity(0.35), lineWidth: 1)
-        )
-        .frame(maxWidth: .infinity)
-        .frame(height: size.height)
-        .peekTestIdentifier(PeekTestID.cameraPreview)
+    }
+
+    #if canImport(AVFoundation)
+    private var previewSession: AVCaptureSession? {
+        (orchestrator.activeCameraSession as? CameraPreviewLayerProviding)?.previewCaptureSession
+    }
+    #endif
+
+    private var previewAspect: CGFloat {
+        #if canImport(AVFoundation)
+        (orchestrator.activeCameraSession as? CameraPreviewLayerProviding)?.previewAspect ?? 16.0 / 9.0
+        #else
+        16.0 / 9.0
+        #endif
     }
 }
+
+#if canImport(AVFoundation)
+/// Hosts an `AVCaptureVideoPreviewLayer` as the view's backing layer so it tracks the SwiftUI
+/// frame for free — the EXPLICIT `.frame(height:)` above is the only thing sizing it.
+private struct CameraPreviewLayer: NSViewRepresentable {
+    let session: AVCaptureSession
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        let layer = AVCaptureVideoPreviewLayer(session: session)
+        layer.videoGravity = .resizeAspectFill
+        view.layer = layer
+        view.wantsLayer = true
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        guard let layer = nsView.layer as? AVCaptureVideoPreviewLayer else { return }
+        if layer.session !== session { layer.session = session }
+    }
+}
+#endif
 
 /// The `.cameraLive` command bar: Shutter / Cancel rendered purely from `.cameraLive` descriptors
 /// via the shared ``PeekCommandBar`` — no bespoke bar code. Has its OWN dispatch: `.cancel` here
