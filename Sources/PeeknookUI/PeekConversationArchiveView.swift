@@ -36,7 +36,9 @@ struct PeekConversationArchiveView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .onAppear(perform: reload)
+        .task(id: orchestrator.archiveRevision) {
+            reload()
+        }
         .overlay {
             if pendingClearAll {
                 PeekConfirmationOverlay(

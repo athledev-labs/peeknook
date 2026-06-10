@@ -104,6 +104,24 @@ final class ConversationPersistenceTests: XCTestCase {
         XCTAssertTrue(afterDiscard.isEmpty, "Discarding the active chat should remove it from the archive")
     }
 
+    func testArchiveRevisionIncrementsAfterSave() async throws {
+        let (store, dir) = tempArchive()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let orchestrator = SessionOrchestrator(
+            settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b", persistConversation: true),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "hello")]),
+            inference: MockInferenceEngine(tokens: ["saved"])
+        )
+        orchestrator.conversationArchive = store
+        XCTAssertEqual(orchestrator.archiveRevision, 0)
+
+        orchestrator.beginCapture()
+        _ = await orchestrator.waitForResult("saved")
+        _ = await orchestrator.waitUntil { orchestrator.archiveRevision > 0 }
+        XCTAssertGreaterThan(orchestrator.archiveRevision, 0)
+    }
+
     func testPurgeAllClearsInMemoryAndReturnsIdle() async throws {
         let (store, dir) = tempArchive()
         defer { try? FileManager.default.removeItem(at: dir) }

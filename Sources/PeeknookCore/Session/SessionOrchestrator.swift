@@ -53,6 +53,8 @@ public final class SessionOrchestrator {
     public var briefComposerFocusToken = 0
     /// Set when the opt-in archive fails to save; cleared on the next successful save or dismiss.
     public var archivePersistenceIssue: ConversationArchiveError?
+    /// Bumped after each completed archive IO operation so list/chrome views can reload summaries.
+    public private(set) var archiveRevision = 0
 
     public var settings: PeeknookSettings
     public weak var setup: SetupCoordinator?
@@ -224,6 +226,10 @@ public final class SessionOrchestrator {
 
     var captureGeneration: Int { lifecycle.captureGeneration }
     var sessionGeneration: Int { lifecycle.sessionGeneration }
+
+    func bumpArchiveRevision() {
+        archiveRevision += 1
+    }
 
     @discardableResult
     func applyPhaseEvent(_ event: SessionEvent) -> SessionTransitionResult {

@@ -5,6 +5,7 @@ import SwiftUI
 
 struct PeekSettingsCaptureSection: View {
     var orchestrator: SessionOrchestrator
+    var setup: SetupCoordinator
     var settings: PeekSettingsController
     var onCaptureHotkeyChange: ((CaptureHotkey) -> Void)?
     var onBriefHotkeyChange: ((CaptureHotkey) -> Void)?
@@ -41,6 +42,10 @@ struct PeekSettingsCaptureSection: View {
             PeekShortcutRow.camera(hotkey: orchestrator.settings.cameraHotkey) { newHotkey in
                 settings.setCameraHotkey(newHotkey)
                 onCameraHotkeyChange?(newHotkey)
+            }
+
+            if !setup.skipsLiveProbes {
+                permissionRows
             }
 
             captureScopeRow
@@ -87,6 +92,88 @@ struct PeekSettingsCaptureSection: View {
                 detail: "Archive past chats and screenshots on this Mac (up to 25 chats / ~250 MB). Done keeps a chat; New chat deletes it. Turning this off deletes the whole archive.",
                 isOn: persistConversationBinding
             )
+        }
+        .task {
+            guard !setup.skipsLiveProbes else { return }
+            while !Task.isCancelled {
+                setup.refreshCapturePermission()
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var permissionRows: some View {
+        ForEach(capturePermissionRequirements) { requirement in
+            PeekSettingsCommandRow(
+                icon: permissionIcon(requirement.permission),
+                title: requirement.permission.displayName,
+                subtitle: permissionSubtitle(requirement),
+                trailing: requirement.isGranted ? .chevron : .button("Open settings"),
+                action: { repairPermission(requirement.permission) }
+            )
+            .peekAction(
+                label: requirement.permission.displayName,
+                hint: requirement.isGranted
+                    ? PeekLocalized("Allowed in System Settings")
+                    : PeekLocalized("Open System Settings to allow this permission")
+            )
+            .disabled(requirement.isGranted)
+        }
+    }
+
+    /// Active-profile permissions plus camera (⌘⇧C), deduplicated — camera is event-scoped, not
+    /// tied to which profile is active.
+    private var capturePermissionRequirements: [PermissionRequirement] {
+        var seen = Set<CapturePermission>()
+        var rows: [PermissionRequirement] = []
+        for requirement in setup.permissionChecklist {
+            if seen.insert(requirement.permission).inserted {
+                rows.append(requirement)
+            }
+        }
+        for requirement in setup.permissionChecklist(for: .cameraStudy) {
+            if seen.insert(requirement.permission).inserted {
+                rows.append(requirement)
+            }
+        }
+        return rows
+    }
+
+    private func permissionIcon(_ permission: CapturePermission) -> String {
+        switch permission {
+        case .screenRecording: return "rectangle.inset.filled.and.person.filled"
+        case .camera: return "camera.fill"
+        case .accessibility: return "accessibility"
+        case .microphone: return "mic.fill"
+        case .speechRecognition: return "waveform"
+        }
+    }
+
+    private func permissionSubtitle(_ requirement: PermissionRequirement) -> String {
+        if requirement.isGranted {
+            return PeekLocalized("Allowed in System Settings")
+        }
+        switch requirement.permission {
+        case .screenRecording:
+            return PeekLocalized("Required for screen capture")
+        case .camera:
+            return PeekLocalized("Required for camera capture")
+        default:
+            return PeekLocalized("Required for capture")
+        }
+    }
+
+    private func repairPermission(_ permission: CapturePermission) {
+        switch permission.recoveryAction {
+        case .openScreenRecordingSettings:
+            CapturePermissionStatus.requestScreenRecording()
+        case .openAccessibilitySettings:
+            CapturePermissionStatus.requestAccessibility()
+        case .openCameraSettings:
+            CapturePermissionStatus.requestCamera()
+        default:
+            break
         }
     }
 

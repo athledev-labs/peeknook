@@ -513,6 +513,26 @@
       "comment": "Tier B localization",
       "extractionState": "manual"
     },
+    "Allowed in System Settings": {
+      "comment": "Permission row subtitle when TCC is granted.",
+      "extractionState": "manual"
+    },
+    "Open System Settings to allow this permission": {
+      "comment": "Accessibility hint for a denied capture permission row.",
+      "extractionState": "manual"
+    },
+    "Required for screen capture": {
+      "comment": "Permission row subtitle when Screen Recording is denied.",
+      "extractionState": "manual"
+    },
+    "Required for camera capture": {
+      "comment": "Permission row subtitle when Camera is denied.",
+      "extractionState": "manual"
+    },
+    "Required for capture": {
+      "comment": "Permission row subtitle when a capture permission is denied.",
+      "extractionState": "manual"
+    },
     "Open Ollama": {
       "comment": "Tier B localization",
       "extractionState": "manual"

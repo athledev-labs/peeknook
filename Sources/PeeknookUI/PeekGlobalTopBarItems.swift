@@ -60,7 +60,7 @@ public struct PeekGlobalTopBarItems: View {
             default: return "active"
             }
         }()
-        return "\(phaseKey)-\(orchestrator.settings.persistConversation)"
+        return "\(phaseKey)-\(orchestrator.settings.persistConversation)-\(orchestrator.archiveRevision)"
     }
 
     private var statsButton: some View {

@@ -143,6 +143,7 @@ extension SessionOrchestrator {
             _ = await prior?.value
             guard !Task.isCancelled else { return }
             await operation(archive)
+            await MainActor.run { bumpArchiveRevision() }
         }
     }
 }

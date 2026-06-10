@@ -65,6 +65,7 @@ public struct PeekSettingsView: View {
                     section(PeekSettingsSectionTitle.capture) {
                         PeekSettingsCaptureSection(
                             orchestrator: orchestrator,
+                            setup: setup,
                             settings: settings,
                             onCaptureHotkeyChange: onCaptureHotkeyChange,
                             onBriefHotkeyChange: onBriefHotkeyChange,
