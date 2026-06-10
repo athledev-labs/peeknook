@@ -141,10 +141,11 @@ extension SessionOrchestrator {
         if let setup, !setup.isReady { return }
         isPrewarming = true
         Task {
+            // Endpoint-typed so a backend switch warms the server the next turn actually hits,
+            // never a stale Ollama URL.
             let loaded = await inference.warmUp(
-                model: settings.textModel,
-                baseURL: settings.ollamaBaseURL,
-                acceptInsecureRemote: settings.acceptInsecureRemoteOllama
+                model: settings.answerModel.tag,
+                endpoint: settings.activeEndpoint
             )
             if loaded { lastInferenceAt = Date() }
             isPrewarming = false

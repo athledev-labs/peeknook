@@ -31,10 +31,28 @@ public extension InferenceEndpoint {
         }
     }
 
+    /// Alias of ``PeeknookSettings/activeEndpoint`` retained for call-site stability.
     static func from(settings: PeeknookSettings) -> InferenceEndpoint {
-        .ollama(
-            baseURL: settings.ollamaBaseURL,
-            acceptInsecureRemote: settings.acceptInsecureRemoteOllama
-        )
+        settings.activeEndpoint
+    }
+}
+
+public extension PeeknookSettings {
+    /// The endpoint the active backend answers from — rebuilt from settings per call, never
+    /// persisted (so the credential ref can't reach UserDefaults).
+    var activeEndpoint: InferenceEndpoint {
+        switch answerBackend {
+        case .ollama:
+            .ollama(
+                baseURL: ollamaBaseURL,
+                acceptInsecureRemote: acceptInsecureRemoteOllama
+            )
+        case .openAICompatible:
+            .openAICompatible(
+                baseURL: openAICompatibleBaseURL,
+                apiKeyRef: .openAICompatiblePrimary,
+                acceptInsecureRemote: acceptInsecureRemoteOpenAICompatible
+            )
+        }
     }
 }

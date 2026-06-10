@@ -59,11 +59,16 @@ public struct ModelReference: Sendable, Equatable {
 }
 
 public extension PeeknookSettings {
-    /// The active answer model as a backend-qualified reference, projected from the persisted
-    /// `textModel`. The single shipped backend is Ollama; `capabilities` is empty here and filled
-    /// live by ``VisionGate`` at read time. When a non-Ollama backend becomes selectable this gains a
-    /// stored, tolerant-decoded `answerModel` key — `textModel` is never renamed.
+    /// The active answer model as a backend-qualified reference — computed, never stored. The
+    /// Ollama arm reads through the persisted `textModel` (which is always written, so old builds
+    /// keep resolving a real local model); the OpenAI-compatible arm reads its own overlay tag.
+    /// `capabilities` is empty here and filled live by ``VisionGate`` at read time.
     var answerModel: ModelReference {
-        ModelReference(backend: .ollama, tag: textModel)
+        switch answerBackend {
+        case .ollama:
+            ModelReference(backend: .ollama, tag: textModel)
+        case .openAICompatible:
+            ModelReference(backend: .openAICompatible, tag: openAICompatibleModelTag)
+        }
     }
 }

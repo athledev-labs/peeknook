@@ -52,6 +52,16 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     /// unknown/stale id falls back to `screen.default`. Only the id persists — the profile catalog is
     /// code-defined in phase 1.
     public var activeProfileID: String
+    /// Which inference backend answers captures. `textModel` stays the Ollama tag (and is always
+    /// written, so old builds keep resolving a real local model); the OpenAI-compatible backend
+    /// keeps its own overlay fields below. See ``answerModel``.
+    public var answerBackend: InferenceBackend
+    /// Base URL of the user's OpenAI-compatible server (LM Studio, vLLM). Empty until configured.
+    public var openAICompatibleBaseURL: String
+    /// The chosen `/v1/models` id on the OpenAI-compatible server. Empty until chosen.
+    public var openAICompatibleModelTag: String
+    /// Opt-in: allow plain HTTP to a non-loopback OpenAI-compatible host (screenshots in cleartext).
+    public var acceptInsecureRemoteOpenAICompatible: Bool
 
     public init(
         mode: PracticeMode = .general,
@@ -76,7 +86,11 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         inferenceImageReplay: InferenceImageReplay = .latestOnly,
         acceptInsecureRemoteOllama: Bool = false,
         activeProfileID: String = GroundProfile.screenDefault.id,
-        cameraHotkey: CaptureHotkey = .defaultCamera
+        cameraHotkey: CaptureHotkey = .defaultCamera,
+        answerBackend: InferenceBackend = .ollama,
+        openAICompatibleBaseURL: String = "",
+        openAICompatibleModelTag: String = "",
+        acceptInsecureRemoteOpenAICompatible: Bool = false
     ) {
         self.mode = mode
         self.previewBeforeInfer = previewBeforeInfer
@@ -101,6 +115,10 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.inferenceImageReplay = inferenceImageReplay
         self.acceptInsecureRemoteOllama = acceptInsecureRemoteOllama
         self.activeProfileID = activeProfileID
+        self.answerBackend = answerBackend
+        self.openAICompatibleBaseURL = openAICompatibleBaseURL
+        self.openAICompatibleModelTag = openAICompatibleModelTag
+        self.acceptInsecureRemoteOpenAICompatible = acceptInsecureRemoteOpenAICompatible
     }
 
     /// True when inference is configured to a host other than the default local Ollama loopback.
@@ -116,8 +134,21 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         return scheme == "http" && !acceptInsecureRemoteOllama
     }
 
+    /// True when the OpenAI-compatible server targets a host other than local loopback.
+    public var openAICompatibleUsesRemoteHost: Bool {
+        EndpointURLPolicy.usesRemoteHost(openAICompatibleBaseURL)
+    }
+
+    /// True when a remote OpenAI-compatible URL uses plain HTTP without the insecure opt-in.
+    public var openAICompatibleUsesInsecureHTTP: Bool {
+        guard openAICompatibleUsesRemoteHost else { return false }
+        guard let url = URL(string: openAICompatibleBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)),
+              let scheme = url.scheme?.lowercased() else { return false }
+        return scheme == "http" && !acceptInsecureRemoteOpenAICompatible
+    }
+
     private enum CodingKeys: String, CodingKey {
-        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, customModels, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, highlightSpeechWhileReading, speechVoiceIdentifier, briefHotkey, inferenceImageReplay, acceptInsecureRemoteOllama, activeProfileID, cameraHotkey
+        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, customModels, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, highlightSpeechWhileReading, speechVoiceIdentifier, briefHotkey, inferenceImageReplay, acceptInsecureRemoteOllama, activeProfileID, cameraHotkey, answerBackend, openAICompatibleBaseURL, openAICompatibleModelTag, acceptInsecureRemoteOpenAICompatible
     }
 
     // Tolerant decode, a saved blob missing a newer key keeps the rest of the user's
@@ -148,6 +179,13 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.inferenceImageReplay = try c.decodeIfPresent(InferenceImageReplay.self, forKey: .inferenceImageReplay) ?? .latestOnly
         self.acceptInsecureRemoteOllama = try c.decodeIfPresent(Bool.self, forKey: .acceptInsecureRemoteOllama) ?? false
         self.activeProfileID = try c.decodeIfPresent(String.self, forKey: .activeProfileID) ?? GroundProfile.screenDefault.id
+        // Decoded as a raw String so an unknown future backend (e.g. "sidecar" written by a newer
+        // build) degrades to Ollama instead of throwing and resetting every setting.
+        let backendRaw = try c.decodeIfPresent(String.self, forKey: .answerBackend)
+        self.answerBackend = backendRaw.flatMap(InferenceBackend.init(rawValue:)) ?? .ollama
+        self.openAICompatibleBaseURL = try c.decodeIfPresent(String.self, forKey: .openAICompatibleBaseURL) ?? ""
+        self.openAICompatibleModelTag = try c.decodeIfPresent(String.self, forKey: .openAICompatibleModelTag) ?? ""
+        self.acceptInsecureRemoteOpenAICompatible = try c.decodeIfPresent(Bool.self, forKey: .acceptInsecureRemoteOpenAICompatible) ?? false
     }
 
     public static let `default` = PeeknookSettings(

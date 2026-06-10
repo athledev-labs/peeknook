@@ -124,6 +124,58 @@ public final class PeekSettingsController {
         }
     }
 
+    // MARK: - Answer backend
+
+    /// Switch which backend answers captures. Refreshes setup readiness (the Ollama steps
+    /// short-circuit off-Ollama) and prewarms the newly active endpoint.
+    public func setAnswerBackend(_ backend: InferenceBackend) {
+        guard settings.answerBackend != backend else { return }
+        update { $0.answerBackend = backend }
+        Task {
+            await setup.refresh()
+            orchestrator.prewarm()
+        }
+    }
+
+    public func setAcceptInsecureRemoteOpenAICompatible(_ enabled: Bool) {
+        guard settings.acceptInsecureRemoteOpenAICompatible != enabled else { return }
+        update { $0.acceptInsecureRemoteOpenAICompatible = enabled }
+    }
+
+    /// Validates and persists the OpenAI-compatible server URL through the same HTTPS gate as
+    /// Ollama. Returns false when the URL is rejected.
+    @discardableResult
+    public func setOpenAICompatibleBaseURL(_ url: String) -> Bool {
+        let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard settings.openAICompatibleBaseURL != trimmed else { return true }
+        switch EndpointURLPolicy.validate(
+            trimmed, acceptInsecureRemote: settings.acceptInsecureRemoteOpenAICompatible
+        ) {
+        case .valid:
+            update { $0.openAICompatibleBaseURL = trimmed }
+            return true
+        case .invalidURL, .unsupportedScheme, .insecureRemoteHTTP:
+            return false
+        }
+    }
+
+    /// Stores the server API key in the Keychain (never UserDefaults); empty clears it. Returns
+    /// false when the Keychain write fails so the field can surface the miss.
+    @discardableResult
+    public func setOpenAICompatibleAPIKey(_ key: String) -> Bool {
+        do {
+            try credentialStore.setAPIKey(key, for: .openAICompatiblePrimary)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    /// Existence-only ("key is set") — the stored key is never echoed back into the UI.
+    public var openAICompatibleKeyIsSet: Bool {
+        credentialStore.hasKey(for: .openAICompatiblePrimary)
+    }
+
     public func setDisplayName(_ name: String) {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard settings.displayName != trimmed else { return }
@@ -184,8 +236,15 @@ public final class PeekSettingsController {
         case needsDownload(InferenceModelOption)
     }
 
-    /// Installed models apply immediately; missing models return `.needsDownload` for UI confirmation.
+    /// Installed models apply immediately; missing models return `.needsDownload` for UI
+    /// confirmation. On the OpenAI-compatible backend there is no download path — the server
+    /// loads its own models — so a pick always selects (into the overlay tag, never `textModel`).
     public func pickModel(_ option: InferenceModelOption) -> ModelPickResult {
+        if settings.answerBackend == .openAICompatible {
+            update { $0.openAICompatibleModelTag = option.tag }
+            orchestrator.prewarm()
+            return .selected
+        }
         if setup.isModelInstalled(option.tag) {
             selectInstalledModel(option.tag)
             return .selected
@@ -239,15 +298,16 @@ public final class PeekSettingsController {
     }
 
     /// Whether the current model can read the captured screenshot. `nil` while unknown (model not
-    /// installed yet, or an older Ollama that omits capabilities) so the UI stays quiet.
+    /// installed yet, an older Ollama that omits capabilities, or an OpenAI-compatible server,
+    /// which reports none) so the UI stays quiet.
     public func currentModelSupportsVision() async -> Bool? {
-        await supportsVision(for: settings.textModel)
+        await supportsVision(for: settings.answerModel.tag)
     }
 
     /// Vision support for any tag, used by the model library when scanning installed models or
     /// validating a custom tag before add.
     public func supportsVision(for tag: String) async -> Bool? {
-        await inference.supportsVision(model: tag, endpoint: .from(settings: settings))
+        await inference.supportsVision(model: tag, endpoint: settings.activeEndpoint)
     }
 
     /// Installed Ollama tags that aren't already in the picker (curated + custom), sorted for display.
@@ -291,7 +351,7 @@ public final class PeekSettingsController {
     }
 
     public func inferenceHealth() async -> InferenceHealth {
-        await inference.health(endpoint: .from(settings: settings), model: settings.answerModel.tag)
+        await inference.health(endpoint: settings.activeEndpoint, model: settings.answerModel.tag)
     }
 }
 

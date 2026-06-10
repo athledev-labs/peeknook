@@ -129,6 +129,18 @@ public final class SetupCoordinator {
         isRefreshing = true
         defer { isRefreshing = false }
 
+        // A non-Ollama backend runs its own server and loads its own models — the Ollama
+        // onboarding steps don't apply, and readiness must not demand a running Ollama. Server
+        // health surfaces in the Settings status banner (endpoint-typed health), not here.
+        guard settings.answerBackend == .ollama else {
+            ollamaStep = .complete
+            modelStep = .complete
+            pullStatusLine = nil
+            installedModelNames = []
+            captureStep = evaluateCaptureStep()
+            return
+        }
+
         let status = await ollama.status(
             baseURL: settings.ollamaBaseURL,
             model: settings.textModel,
@@ -211,6 +223,9 @@ public final class SetupCoordinator {
     }
 
     public func applyRecommendedModelIfNeeded() {
+        // Ollama-only: seeding a Gemma tag while the user is on an OpenAI-compatible server would
+        // overwrite nothing they see, but `textModel` must stay theirs to come back to.
+        guard settings.answerBackend == .ollama else { return }
         let suggested = SystemProfile.current().suggestedTextModel
         if settings.textModel.isEmpty {
             settings.textModel = suggested

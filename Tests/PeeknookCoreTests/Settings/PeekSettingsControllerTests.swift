@@ -56,6 +56,83 @@ final class PeekSettingsControllerTests: XCTestCase {
     }
 
     @MainActor
+    func testSetAnswerBackendSyncsAndPersists() {
+        let stack = PeeknookServices.makeStack(
+            settings: .default, defaults: defaults, dependencies: .testing()
+        )
+        let initialTextModel = stack.orchestrator.settings.textModel
+
+        stack.settings.setAnswerBackend(.openAICompatible)
+
+        XCTAssertEqual(stack.orchestrator.settings.answerBackend, .openAICompatible)
+        XCTAssertEqual(PeeknookSettings.load(from: defaults).answerBackend, .openAICompatible)
+        XCTAssertEqual(
+            stack.orchestrator.settings.textModel, initialTextModel,
+            "Switching backend must not touch the Ollama tag."
+        )
+    }
+
+    @MainActor
+    func testPickModelOnOpenAICompatibleSelectsWithoutDownload() {
+        let stack = PeeknookServices.makeStack(
+            settings: .default, defaults: defaults, dependencies: .testing()
+        )
+        let initialTextModel = stack.orchestrator.settings.textModel
+        stack.settings.setAnswerBackend(.openAICompatible)
+
+        let option = InferenceModelOption(custom: CustomModelEntry(tag: "qwen2-vl-7b-instruct"))
+        let result = stack.settings.pickModel(option)
+
+        XCTAssertEqual(result, .selected, "No download path exists on a server-managed backend.")
+        XCTAssertEqual(stack.orchestrator.settings.openAICompatibleModelTag, "qwen2-vl-7b-instruct")
+        XCTAssertEqual(
+            stack.orchestrator.settings.textModel, initialTextModel,
+            "An OpenAI-compatible pick writes the overlay tag, never textModel."
+        )
+    }
+
+    @MainActor
+    func testOpenAICompatibleBaseURLRoutesThroughEndpointPolicy() {
+        let stack = PeeknookServices.makeStack(
+            settings: .default, defaults: defaults, dependencies: .testing()
+        )
+
+        XCTAssertFalse(
+            stack.settings.setOpenAICompatibleBaseURL("http://192.168.1.10:1234"),
+            "Plain HTTP to a non-loopback host must be rejected without the insecure opt-in."
+        )
+        stack.settings.setAcceptInsecureRemoteOpenAICompatible(true)
+        XCTAssertTrue(stack.settings.setOpenAICompatibleBaseURL("http://192.168.1.10:1234"))
+        XCTAssertTrue(stack.settings.setOpenAICompatibleBaseURL("http://127.0.0.1:1234"))
+    }
+
+    /// Anchor: no key material in UserDefaults, ever — the settings blob must not contain the key
+    /// after a key write, and the key must round-trip through the credential store alone.
+    @MainActor
+    func testSetOpenAICompatibleAPIKeyNeverWritesToUserDefaults() throws {
+        let credentialStore = InMemoryCredentialStore()
+        let stack = PeeknookServices.makeStack(
+            settings: .default, defaults: defaults,
+            dependencies: .testing(credentialStore: credentialStore)
+        )
+
+        XCTAssertFalse(stack.settings.openAICompatibleKeyIsSet)
+        XCTAssertTrue(stack.settings.setOpenAICompatibleAPIKey("sk-super-secret-1234"))
+        XCTAssertTrue(stack.settings.openAICompatibleKeyIsSet)
+        stack.settings.persist()
+
+        let blob = try XCTUnwrap(defaults.data(forKey: PeeknookSettings.defaultsKey))
+        let raw = try XCTUnwrap(String(data: blob, encoding: .utf8))
+        XCTAssertFalse(raw.contains("sk-super-secret-1234"), "Key material reached peeknook.settings.v1.")
+        XCTAssertEqual(
+            credentialStore.apiKey(for: .openAICompatiblePrimary), "sk-super-secret-1234"
+        )
+
+        XCTAssertTrue(stack.settings.setOpenAICompatibleAPIKey(""))
+        XCTAssertFalse(stack.settings.openAICompatibleKeyIsSet, "An empty key clears the slot.")
+    }
+
+    @MainActor
     func testBeginModelDownloadSetsTextModelAndStartsPull() {
         let stack = PeeknookServices.makeStack(settings: .default, defaults: defaults)
         let option = TextModelCatalog.offered[1]
