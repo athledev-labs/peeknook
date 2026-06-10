@@ -380,6 +380,16 @@ struct PeekModelLibraryView: View {
                         }
                     }
                 }
+                if !showsBackButton {
+                    Spacer(minLength: 0)
+                    NookToolbarButton(
+                        title: "Close",
+                        symbol: "xmark",
+                        help: "Back to home"
+                    ) {
+                        onDismiss()
+                    }
+                }
             }
         }
     }

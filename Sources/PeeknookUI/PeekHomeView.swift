@@ -50,7 +50,7 @@ public struct PeekHomeView: View {
         Group {
             if showsStats {
                 PeekHomeLayout.contentColumn(
-                    PeekStatsView(orchestrator: orchestrator),
+                    PeekStatsView(orchestrator: orchestrator, onClose: closeStats),
                     insets: contentInsets
                 )
             } else if showsModelLibrary {
@@ -483,6 +483,12 @@ public struct PeekHomeView: View {
         keepOpenGraceTask = Task {
             try? await Task.sleep(nanoseconds: 1_000_000_000)
             if !Task.isCancelled { keepOpenGrace = false }
+        }
+    }
+
+    private func closeStats() {
+        withAnimation(.easeOut(duration: 0.2)) {
+            appState.moduleBreadcrumb = nil
         }
     }
 

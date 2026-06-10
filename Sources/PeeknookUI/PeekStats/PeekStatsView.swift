@@ -29,6 +29,7 @@ private enum StatsSection: String, CaseIterable, Hashable {
 /// All-time usage analytics with a date filter. Full-width charts, no clipped rings.
 struct PeekStatsView: View {
     var orchestrator: SessionOrchestrator
+    var onClose: () -> Void = {}
 
     @Environment(\.nookResolvedTheme) private var theme
     @State private var dateRange: UsageDateRange = .allTime
@@ -125,6 +126,13 @@ struct PeekStatsView: View {
                 ) {
                     showsResetConfirmation = true
                 }
+            }
+            NookToolbarButton(
+                title: "Close",
+                symbol: "xmark",
+                help: "Back to home"
+            ) {
+                onClose()
             }
         }
     }
