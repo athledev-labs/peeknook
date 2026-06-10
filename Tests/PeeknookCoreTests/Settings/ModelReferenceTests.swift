@@ -16,6 +16,12 @@ final class ModelReferenceTests: XCTestCase {
         XCTAssertTrue(withVision.matches(bare), "Identity is (backend, normalizedTag); capabilities are transient.")
     }
 
+    func testOpenAICompatibleTagDoesNotMatchOllamaTag() {
+        let ollama = ModelReference(backend: .ollama, tag: "gemma4:e2b")
+        let openAI = ModelReference(backend: .openAICompatible, tag: "gemma4:e2b")
+        XCTAssertFalse(ollama.matches(openAI), "Identity is backend-qualified: same tag on two backends is two models.")
+    }
+
     func testBareNameNormalizesToLatest() {
         let bareTag = ModelReference(backend: .ollama, tag: "gemma4")
         let latest = ModelReference(backend: .ollama, tag: "gemma4:latest")

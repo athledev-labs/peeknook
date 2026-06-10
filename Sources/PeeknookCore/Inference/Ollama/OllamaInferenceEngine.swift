@@ -51,6 +51,11 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
         switch endpoint {
         case .ollama(let baseURL, let acceptInsecureRemote):
             return try resolveBaseURL(baseURL, acceptInsecureRemote: acceptInsecureRemote)
+        case .openAICompatible:
+            // Defense-in-depth: the backend registry routes OpenAI-compatible endpoints to their
+            // own engine, so reaching this arm means a mis-route — fail loud, not "Invalid URL".
+            assertionFailure("OllamaInferenceEngine received an OpenAI-compatible endpoint")
+            throw InferenceError.invalidBaseURL
         }
     }
 

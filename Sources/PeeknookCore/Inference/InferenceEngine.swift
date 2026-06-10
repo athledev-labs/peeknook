@@ -121,6 +121,60 @@ public extension InferenceEngine {
     }
 }
 
+// MARK: - Endpoint-typed variants
+//
+// Typed siblings of the `baseURL: String` requirements above — pure adapters that decompose
+// `endpoint.connection`, so every conformer inherits them. They live ALONGSIDE the string
+// variants (which existing call sites keep using); neither replaces the other.
+
+public extension InferenceEngine {
+    func health(endpoint: InferenceEndpoint, model: String) async -> InferenceHealth {
+        let connection = endpoint.connection
+        return await health(
+            baseURL: connection.baseURL,
+            model: model,
+            acceptInsecureRemote: connection.acceptInsecureRemote
+        )
+    }
+
+    @discardableResult
+    func warmUp(model: String, endpoint: InferenceEndpoint) async -> Bool {
+        let connection = endpoint.connection
+        return await warmUp(
+            model: model,
+            baseURL: connection.baseURL,
+            acceptInsecureRemote: connection.acceptInsecureRemote
+        )
+    }
+
+    func contextLength(model: String, endpoint: InferenceEndpoint) async -> Int? {
+        let connection = endpoint.connection
+        return await contextLength(
+            model: model,
+            baseURL: connection.baseURL,
+            acceptInsecureRemote: connection.acceptInsecureRemote
+        )
+    }
+
+    func capabilities(model: String, endpoint: InferenceEndpoint) async -> [String]? {
+        let connection = endpoint.connection
+        return await capabilities(
+            model: model,
+            baseURL: connection.baseURL,
+            acceptInsecureRemote: connection.acceptInsecureRemote
+        )
+    }
+
+    func supportsVision(model: String, endpoint: InferenceEndpoint) async -> Bool? {
+        let connection = endpoint.connection
+        return await supportsVision(
+            model: model,
+            baseURL: connection.baseURL,
+            acceptInsecureRemote: connection.acceptInsecureRemote
+        )
+    }
+}
+
 // MARK: - Test-only mock (not used in the app target wiring)
 
 public struct MockInferenceEngine: InferenceEngine, Sendable {

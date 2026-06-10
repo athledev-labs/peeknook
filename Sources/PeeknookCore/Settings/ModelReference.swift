@@ -7,7 +7,7 @@ import Foundation
 /// schema change. Model identity is always `(backend, normalizedTag)` — see `ModelReference.matches`.
 public enum InferenceBackend: String, Codable, Sendable, CaseIterable {
     case ollama
-    // case openAICompatible   // ← added WITH backend #2 (LM Studio / vLLM); needs Keychain credentials
+    case openAICompatible
     // case sidecar            // ← Phase 5 agent transport, not a vision backend
 }
 

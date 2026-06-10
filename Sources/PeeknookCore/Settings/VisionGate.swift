@@ -41,29 +41,18 @@ public struct VisionGate: Sendable {
 
     /// Readiness for the given model tag against an inference endpoint. `tag` is a raw Ollama tag;
     /// `ModelReference` adapts trivially once it lands.
+    ///
+    /// Backends whose live probe can't answer (an OpenAI-compatible `/v1/models` reports no
+    /// capability metadata, so `capabilities` is nil) land in the same degrade path as an
+    /// uninstalled Ollama model: `.ready` if the heuristic recognizes the tag, else `.unknown` —
+    /// never `.textOnly`, so an unverifiable backend can't false-block capture.
     public func readiness(of tag: String, endpoint: InferenceEndpoint) async -> VisionReadiness {
         guard !ModelTag.normalized(tag).isEmpty else { return .unknown }
-        let connection = Self.connection(for: endpoint)
-        if let supportsVision = await inference.supportsVision(
-            model: tag,
-            baseURL: connection.baseURL,
-            acceptInsecureRemote: connection.acceptInsecureRemote
-        ) {
+        if let supportsVision = await inference.supportsVision(model: tag, endpoint: endpoint) {
             return supportsVision ? .ready : .textOnly
         }
         // Live probe couldn't answer (not installed / older runtime). The heuristic may say "ready",
         // but it must never say "textOnly" — an uninstalled model cannot block capture.
         return likelyVision(tag) ? .ready : .unknown
-    }
-
-    /// Exhaustive over `InferenceEndpoint`: a new backend case forces a compile error here, which is
-    /// the intended tripwire for honoring the HTTPS gate per endpoint.
-    private static func connection(
-        for endpoint: InferenceEndpoint
-    ) -> (baseURL: String, acceptInsecureRemote: Bool) {
-        switch endpoint {
-        case let .ollama(baseURL, acceptInsecureRemote):
-            return (baseURL, acceptInsecureRemote)
-        }
     }
 }

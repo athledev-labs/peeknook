@@ -57,6 +57,20 @@ final class VisionGateTests: XCTestCase {
             .readiness(of: "   ", endpoint: endpoint)
         XCTAssertEqual(result, .unknown)
     }
+
+    /// An OpenAI-compatible server reports no capability metadata (`capabilities` is nil) — the
+    /// gate must degrade to `.unknown` and never false-block capture on that backend, same as an
+    /// uninstalled Ollama model.
+    func testOpenAICompatibleEndpointWithNilCapabilitiesIsUnknownNeverTextOnly() async {
+        let openAI = InferenceEndpoint.openAICompatible(
+            baseURL: "http://127.0.0.1:1234",
+            apiKeyRef: .openAICompatiblePrimary,
+            acceptInsecureRemote: false
+        )
+        let result = await gate(capabilities: nil, likelyVision: { _ in false })
+            .readiness(of: "qwen2-vl-7b-instruct", endpoint: openAI)
+        XCTAssertEqual(result, .unknown, "Unverifiable backend must not block capture.")
+    }
 }
 
 /// Configurable `InferenceEngine` double — the shipped `MockInferenceEngine` always reports `nil`
