@@ -14,7 +14,12 @@ extension SessionOrchestrator {
     /// Resolved JPEG base64 for a capture turn (inline, cache, or blob file).
     public func screenshotBase64(for capture: CaptureResult) -> String? {
         if let inline = capture.screenshotBase64, !inline.isEmpty { return inline }
-        guard let id = capture.screenshotBlobID else { return nil }
+        return archiveThumbnailBase64(blobID: capture.screenshotBlobID)
+    }
+
+    /// Lazy blob load for History row thumbnails (cache-backed).
+    public func archiveThumbnailBase64(blobID: UUID?) -> String? {
+        guard let id = blobID else { return nil }
         if let cached = screenshotCache[id] { return cached }
         guard let store = captureBlobStore,
               let loaded = try? store.loadBase64(id: id) else { return nil }

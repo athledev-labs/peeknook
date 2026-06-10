@@ -3,6 +3,7 @@
 import PeeknookDesign
 import PeeknookCore
 import SwiftUI
+import AppKit
 
 /// Glass list/switcher for the opt-in conversation archive. Lists past chats (newest first),
 /// opens one on tap, and deletes individually or all at once. Lives in the home column when idle;
@@ -41,6 +42,7 @@ struct PeekConversationArchiveView: View {
                     VStack(spacing: 6) {
                         ForEach(filteredSummaries) { summary in
                             ArchiveRow(
+                                orchestrator: orchestrator,
                                 summary: summary,
                                 isEditing: editingSummaryID == summary.id,
                                 editingTitle: editingBinding(for: summary),
@@ -195,6 +197,7 @@ struct PeekConversationArchiveView: View {
 }
 
 private struct ArchiveRow: View {
+    var orchestrator: SessionOrchestrator
     let summary: ConversationSummary
     let isEditing: Bool
     @Binding var editingTitle: String
@@ -212,11 +215,7 @@ private struct ArchiveRow: View {
         HStack(alignment: .center, spacing: 8) {
             Button(action: onOpen) {
                 HStack(alignment: .center, spacing: 8) {
-                    Image(systemName: summary.hasImage ? "photo" : "text.bubble")
-                        .font(.system(size: 11))
-                        .foregroundStyle(theme.tertiaryLabel)
-                        .frame(width: 16)
-                        .peekDecorative()
+                    ArchiveRowThumbnail(orchestrator: orchestrator, summary: summary)
                     VStack(alignment: .leading, spacing: 1) {
                         if isEditing {
                             TextField("Rename chat", text: $editingTitle)
@@ -272,6 +271,46 @@ private struct ArchiveRow: View {
         f.unitsStyle = .abbreviated
         return f
     }()
+}
+
+private struct ArchiveRowThumbnail: View {
+    var orchestrator: SessionOrchestrator
+    let summary: ConversationSummary
+
+    @Environment(\.nookResolvedTheme) private var theme
+    @State private var thumbnail: NSImage?
+
+    var body: some View {
+        Group {
+            if let thumbnail {
+                Image(nsImage: thumbnail)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 28, height: 28)
+                    .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+            } else {
+                Image(systemName: summary.hasImage ? "photo" : "text.bubble")
+                    .font(.system(size: 11))
+                    .foregroundStyle(theme.tertiaryLabel)
+            }
+        }
+        .frame(width: 28, height: 28)
+        .peekDecorative()
+        .task(id: summary.thumbnailBlobID) {
+            await loadThumbnail()
+        }
+    }
+
+    @MainActor
+    private func loadThumbnail() async {
+        guard let blobID = summary.thumbnailBlobID,
+              let base64 = orchestrator.archiveThumbnailBase64(blobID: blobID),
+              let image = CapturePreviewImage.nsImage(from: base64) else {
+            thumbnail = nil
+            return
+        }
+        thumbnail = image
+    }
 }
 
 private struct ArchiveRenameButton: View {

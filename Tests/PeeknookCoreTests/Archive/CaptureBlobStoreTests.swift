@@ -97,6 +97,11 @@ final class CaptureBlobStoreTests: XCTestCase {
         XCTAssertNotNil(restored.screenshotBlobID)
         XCTAssertEqual(try blobStore.loadBase64(id: restored.screenshotBlobID!), sampleBase64)
         XCTAssertTrue(ArchiveEnvelope.isEncrypted(try Data(contentsOf: blobStore.blobURL(restored.screenshotBlobID!))))
+
+        let summaries = await store.summaries()
+        XCTAssertEqual(summaries.first?.thumbnailBlobID, restored.screenshotBlobID)
+        let indexRaw = try Data(contentsOf: dir.appendingPathComponent("index.v2.json"))
+        XCTAssertFalse(String(data: indexRaw, encoding: .utf8)?.contains("screenshotBase64") ?? false)
     }
 
     func testArchiveLoadMigratesLegacyInlineThread() async throws {

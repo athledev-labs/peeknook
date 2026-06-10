@@ -1,89 +1,76 @@
 ---
 // SPDX-License-Identifier: Apache-2.0
 import DocsPage from "../../components/DocsPage.astro";
+import { renderRepoMarkdown } from "../../lib/markdown";
 import { getRelease } from "../../lib/release";
 
 const release = await getRelease();
+const { html } = renderRepoMarkdown("INSTALL.md", { stripLeadingH1: true });
 ---
 
 <DocsPage
   title="Docs"
-  tagline="Install Peeknook and start capturing."
-  description="Install Peeknook on macOS, set up Ollama, grant permissions, and capture."
+  tagline="Install Peeknook and start capturing — no Terminal required."
+  description="Install Peeknook on macOS, set up Ollama.app, grant permissions, and capture."
   current="docs"
   downloadURL={release.dmgURL}
 >
-  <section class="doc-section" id="get-started">
-    <h2 class="doc-section-title">Get started</h2>
-    <ol class="doc-steps">
-      <li class="doc-step">
-        <div class="doc-step-body">
-          <p>
-            Download the signed <code>.dmg</code> from
-            <a href={release.latestReleasesURL}>Releases</a> and drag Peeknook into
-            Applications.
-          </p>
-        </div>
-      </li>
-      <li class="doc-step">
-        <div class="doc-step-body">
-          <p>
-            Install Ollama with the official app. The Homebrew
-            <code>ollama</code> formula can ship without required pieces; use
-            the cask instead.
-          </p>
-          <pre class="doc-code"><code>brew install --cask ollama-app</code></pre>
-        </div>
-      </li>
-      <li class="doc-step">
-        <div class="doc-step-body">
-          <p>
-            Download a vision model in Settings, or pull one in Terminal. See
-            <a href="#models">Choose your model</a> below for a suggested
-            starting point.
-          </p>
-        </div>
-      </li>
-      <li class="doc-step">
-        <div class="doc-step-body">
-          <p>
-            Open Peeknook and finish <strong>Get ready</strong>: Ollama running,
-            model downloaded, and Screen Recording turned on.
-          </p>
-        </div>
-      </li>
-    </ol>
-    <p class="doc-note">
-      Requires macOS 15+. Screen Recording is required. Accessibility is
-      optional and adds selected text alongside the screenshot. When setup is
-      done, press <kbd>⌘⇧P</kbd> to capture what you are looking at. Press
-      <kbd>⌘⇧B</kbd> first if you want to brief Peeknook before capture.
-    </p>
-  </section>
+  <article class="prose doc-guide" set:html={html} />
 
-  <section class="doc-section" id="models">
-    <h2 class="doc-section-title">Choose your model</h2>
-    <p class="doc-lead">
-      Peeknook uses local Ollama at <code>http://127.0.0.1:11434</code> by
-      default. Use any vision model from Settings. Suggested Gemma 4 tags by
-      RAM:
-    </p>
-    <dl class="doc-rows doc-rows--spec">
-      <div class="doc-row">
-        <dt>16 GB or less</dt>
-        <dd><code>gemma4:e2b</code></dd>
-      </div>
-      <div class="doc-row">
-        <dt>17–24 GB</dt>
-        <dd><code>gemma4:e4b</code></dd>
-      </div>
-      <div class="doc-row">
-        <dt>25 GB or more</dt>
-        <dd><code>gemma4:26b</code></dd>
-      </div>
-    </dl>
-    <p class="doc-note">
-      Gemma 4 is the default recommendation, not a requirement.
-    </p>
-  </section>
+  <details class="doc-advanced">
+    <summary>Advanced: Terminal commands</summary>
+    <div class="doc-advanced-body">
+      <p>
+        Prefer Homebrew? Use the official <strong>cask</strong>, not the formula:
+      </p>
+      <pre class="doc-code"><code>brew install --cask ollama-app</code></pre>
+      <p>
+        Pull a model manually (Peeknook can download from Get ready instead):
+      </p>
+      <pre class="doc-code"><code>ollama pull gemma4:e4b</code></pre>
+      <p>
+        Verify a downloaded DMG checksum:
+      </p>
+      <pre class="doc-code"><code>shasum -a 256 ~/Downloads/Peeknook*.dmg</code></pre>
+    </div>
+  </details>
 </DocsPage>
+
+<style>
+  .doc-advanced {
+    margin-top: 2rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .doc-advanced summary {
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    list-style: none;
+  }
+
+  .doc-advanced summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .doc-advanced-body {
+    margin-top: 0.75rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+  }
+
+  .doc-advanced-body p {
+    margin: 0.5rem 0;
+  }
+
+  .doc-code {
+    margin: 0.5rem 0 1rem;
+    padding: 0.65rem 0.85rem;
+    border-radius: 8px;
+    background: var(--surface-muted);
+    font-size: 0.8125rem;
+    overflow-x: auto;
+  }
+</style>

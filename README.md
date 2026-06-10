@@ -2,9 +2,19 @@
 
 **Complete AI for Mac — in the MacBook notch.** Local-first, private, and built on [OpenNook](https://github.com/glendonC/opennook).
 
+## Using Peeknook (download)
+
+Install the signed app from **[GitHub Releases](https://github.com/glendonC/peeknook/releases/latest)** — no Terminal required.
+
+**[INSTALL.md](INSTALL.md)** walks through: DMG install, Ollama.app setup, Get ready permissions, model download, and troubleshooting. The same guide is on the [website docs](https://glendonc.github.io/peeknook/docs/).
+
 Peeknook is a **multi-module OpenNook host**: the Peek practice module is the default, and you can register sibling nook apps in `HostModuleRegistry.swift` so they share one surface and module switcher.
 
-## Requirements
+---
+
+## Developing Peeknook
+
+### Requirements
 
 - macOS 15+
 - [OpenNook](https://github.com/glendonC/opennook) as a sibling checkout (`../opennook`) or edit `Package.swift` to use the Git URL
@@ -70,6 +80,8 @@ Use a unique reverse-DNS `id` per module (persistence and hotkeys key off it). S
 Product preferences use the `peeknook.*` `UserDefaults` keys on the module suite (`opennook.module.com.peeknook.app`). Do not write under `opennook.*`.
 
 ## First launch
+
+End-user setup (Ollama.app, Get ready, permissions) is in **[INSTALL.md](INSTALL.md)**. For contributors testing from source:
 
 Expanded home shows **Get ready** until:
 

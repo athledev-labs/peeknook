@@ -347,4 +347,27 @@ final class ConversationArchiveStoreTests: XCTestCase {
         XCTAssertNil(decoded.customTitle)
         XCTAssertEqual(decoded.title, "hello")
     }
+
+    func testLegacySummaryDecodesWithoutThumbnailBlobID() throws {
+        struct LegacySummary: Encodable {
+            let id: UUID
+            let title: String
+            let createdAt: Date
+            let updatedAt: Date
+            let turnCount: Int
+            let hasImage: Bool
+        }
+        let data = try JSONEncoder().encode(
+            LegacySummary(
+                id: UUID(),
+                title: "legacy",
+                createdAt: Date(),
+                updatedAt: Date(),
+                turnCount: 2,
+                hasImage: true
+            )
+        )
+        let decoded = try JSONDecoder().decode(ConversationSummary.self, from: data)
+        XCTAssertNil(decoded.thumbnailBlobID)
+    }
 }

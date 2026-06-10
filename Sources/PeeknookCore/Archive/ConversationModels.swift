@@ -76,8 +76,19 @@ public struct ConversationThread: Codable, Sendable, Identifiable, Equatable {
             updatedAt: updatedAt,
             turnCount: turns.count,
             hasImage: hasImage,
-            fileBytes: fileBytes
+            fileBytes: fileBytes,
+            thumbnailBlobID: firstScreenshotBlobID
         )
+    }
+
+    /// First externalized screenshot blob in the thread, for History row thumbnails.
+    public var firstScreenshotBlobID: UUID? {
+        for turn in turns {
+            if case .image(let capture) = turn.kind, let id = capture.screenshotBlobID {
+                return id
+            }
+        }
+        return nil
     }
 
     public static func derivedTitle(from turns: [ChatTurn]) -> String {
@@ -122,6 +133,8 @@ public struct ConversationSummary: Codable, Sendable, Identifiable, Equatable {
     public var hasImage: Bool
     /// Sealed on-disk byte size for the thread file; nil for legacy index rows until re-saved.
     public var fileBytes: Int?
+    /// First screenshot blob id for lazy History thumbnails; nil until re-saved on legacy rows.
+    public var thumbnailBlobID: UUID?
 
     public init(
         id: UUID,
@@ -130,7 +143,8 @@ public struct ConversationSummary: Codable, Sendable, Identifiable, Equatable {
         updatedAt: Date,
         turnCount: Int,
         hasImage: Bool,
-        fileBytes: Int? = nil
+        fileBytes: Int? = nil,
+        thumbnailBlobID: UUID? = nil
     ) {
         self.id = id
         self.title = title
@@ -139,10 +153,11 @@ public struct ConversationSummary: Codable, Sendable, Identifiable, Equatable {
         self.turnCount = turnCount
         self.hasImage = hasImage
         self.fileBytes = fileBytes
+        self.thumbnailBlobID = thumbnailBlobID
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, title, createdAt, updatedAt, turnCount, hasImage, fileBytes
+        case id, title, createdAt, updatedAt, turnCount, hasImage, fileBytes, thumbnailBlobID
     }
 
     public init(from decoder: Decoder) throws {
@@ -154,6 +169,7 @@ public struct ConversationSummary: Codable, Sendable, Identifiable, Equatable {
         self.turnCount = try c.decode(Int.self, forKey: .turnCount)
         self.hasImage = try c.decode(Bool.self, forKey: .hasImage)
         self.fileBytes = try c.decodeIfPresent(Int.self, forKey: .fileBytes)
+        self.thumbnailBlobID = try c.decodeIfPresent(UUID.self, forKey: .thumbnailBlobID)
     }
 }
 
