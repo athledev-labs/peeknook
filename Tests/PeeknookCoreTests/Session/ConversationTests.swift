@@ -378,6 +378,31 @@ final class ConversationTests: XCTestCase {
         }
     }
 
+    func testFinishChatPreservesCriticalPressureAndResumeStillWorks() async {
+        // PL-205: idle home warns on near-full resumable threads; Resume stays ungated.
+        let engine = ScriptedEngine(responsesPerCall: [["first answer"]])
+        engine.inferenceStats = InferenceStats(promptTokens: 950, responseTokens: 10, generationSeconds: 0.1)
+        engine.contextWindow = 1000
+        let orchestrator = makeOrchestrator(engine)
+
+        orchestrator.beginCapture()
+        _ = await orchestrator.waitForResult("first answer")
+        XCTAssertEqual(orchestrator.contextPressure, .critical)
+
+        orchestrator.finishChat()
+        guard case .idle = orchestrator.phase else {
+            return XCTFail("Expected idle after finishChat, got \(orchestrator.phase)")
+        }
+        XCTAssertTrue(orchestrator.hasConversation)
+        XCTAssertEqual(orchestrator.contextPressure, .critical)
+
+        orchestrator.resumeChat()
+        guard case .result("first answer") = orchestrator.phase else {
+            return XCTFail("Expected resumed result at critical pressure, got \(orchestrator.phase)")
+        }
+        XCTAssertEqual(orchestrator.contextPressure, .critical)
+    }
+
     func testInferenceReplaySendsOnlyLatestImagePayload() async {
         let engine = ScriptedEngine(responsesPerCall: [["first"], ["second"], ["third"]])
         let orchestrator = makeOrchestrator(engine)
@@ -527,7 +552,7 @@ final class ConversationTests: XCTestCase {
 
     func testCaptureFromFullResultStaysPutWithoutNotice() async {
         // From the result view the on-screen context banner already explains the block, so the
-        // capture hotkey stays a no-op there — we only changed the idle (no-banner) case.
+        // capture hotkey stays a no-op there — idle warns via banner but still redirects capture.
         let engine = ScriptedEngine(responsesPerCall: [["first answer"]])
         engine.inferenceStats = InferenceStats(promptTokens: 950, responseTokens: 10, generationSeconds: 0.1)
         engine.contextWindow = 1000

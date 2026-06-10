@@ -296,6 +296,7 @@ public struct PeekHomeView: View {
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .animation(.easeOut(duration: 0.2), value: orchestrator.lastNotice)
+        .animation(.easeOut(duration: 0.2), value: orchestrator.contextPressure)
     }
 
     @ViewBuilder
@@ -321,6 +322,17 @@ public struct PeekHomeView: View {
                     notice: notice,
                     conversationArchived: orchestrator.settings.persistConversation,
                     onDismiss: { withAnimation(.easeOut(duration: 0.2)) { orchestrator.clearNotice() } }
+                )
+                .padding(.top, 8)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+            if case .idle = orchestrator.phase,
+               orchestrator.hasConversation,
+               orchestrator.contextPressure != .normal {
+                PeekContextWarningBanner(
+                    pressure: orchestrator.contextPressure,
+                    fraction: orchestrator.contextFraction ?? 0,
+                    onStartNewChat: requestNewChat
                 )
                 .padding(.top, 8)
                 .transition(.opacity.combined(with: .move(edge: .top)))
