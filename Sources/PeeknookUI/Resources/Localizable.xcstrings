@@ -109,6 +109,10 @@
       "comment": "Tier B localization",
       "extractionState": "manual"
     },
+    "Cancel rename": {
+      "comment": "History archive: dismiss inline rename.",
+      "extractionState": "manual"
+    },
     "Capture area": {
       "comment": "Tier B localization",
       "extractionState": "manual"
@@ -453,6 +457,10 @@
       "comment": "Tier B localization",
       "extractionState": "manual"
     },
+    "No chats match your search.": {
+      "comment": "History archive: empty search filter.",
+      "extractionState": "manual"
+    },
     "No models found on the server. Start your OpenAI-compatible server and load a model.": {
       "comment": "Tier B localization",
       "extractionState": "manual"
@@ -681,8 +689,20 @@
       "comment": "Command-bar action: fresh capture replacing the thread.",
       "extractionState": "manual"
     },
+    "Rename chat": {
+      "comment": "History archive: inline rename field label.",
+      "extractionState": "manual"
+    },
+    "Rename this chat": {
+      "comment": "History archive: rename button help.",
+      "extractionState": "manual"
+    },
     "Resume": {
       "comment": "Command-bar action: resume the last chat.",
+      "extractionState": "manual"
+    },
+    "Save chat name": {
+      "comment": "History archive: commit inline rename.",
       "extractionState": "manual"
     },
     "Save conversations": {
@@ -699,6 +719,10 @@
     },
     "Search": {
       "comment": "Tier B localization",
+      "extractionState": "manual"
+    },
+    "Search past chats": {
+      "comment": "History archive: filter field placeholder.",
       "extractionState": "manual"
     },
     "Search the public Ollama library, results load from ollama.com.": {

@@ -13,6 +13,8 @@ public struct ConversationThread: Codable, Sendable, Identifiable, Equatable {
     public var contextWindow: Int?
     public var turnCounter: Int
     public var lastPromptTokens: Int?
+    /// User-edited label for the History switcher; nil means derive from turns.
+    public var customTitle: String?
 
     public init(
         id: UUID = UUID(),
@@ -21,7 +23,8 @@ public struct ConversationThread: Codable, Sendable, Identifiable, Equatable {
         turns: [ChatTurn],
         contextWindow: Int? = nil,
         turnCounter: Int = 0,
-        lastPromptTokens: Int? = nil
+        lastPromptTokens: Int? = nil,
+        customTitle: String? = nil
     ) {
         self.id = id
         self.createdAt = createdAt
@@ -30,10 +33,11 @@ public struct ConversationThread: Codable, Sendable, Identifiable, Equatable {
         self.contextWindow = contextWindow
         self.turnCounter = turnCounter
         self.lastPromptTokens = lastPromptTokens
+        self.customTitle = customTitle
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, createdAt, updatedAt, turns, contextWindow, turnCounter, lastPromptTokens
+        case id, createdAt, updatedAt, turns, contextWindow, turnCounter, lastPromptTokens, customTitle
     }
 
     // Tolerant decode so adding a field later never invalidates a saved thread.
@@ -46,11 +50,15 @@ public struct ConversationThread: Codable, Sendable, Identifiable, Equatable {
         self.contextWindow = try c.decodeIfPresent(Int.self, forKey: .contextWindow)
         self.turnCounter = try c.decodeIfPresent(Int.self, forKey: .turnCounter) ?? 0
         self.lastPromptTokens = try c.decodeIfPresent(Int.self, forKey: .lastPromptTokens)
+        self.customTitle = try c.decodeIfPresent(String.self, forKey: .customTitle)
     }
 
-    /// Human label for the switcher, first question, else first answer, else the capture target.
+    /// Human label for the switcher: user rename when set, else first question, answer, or capture target.
     public var title: String {
-        ConversationThread.derivedTitle(from: turns)
+        if let custom = customTitle?.trimmingCharacters(in: .whitespacesAndNewlines), !custom.isEmpty {
+            return custom
+        }
+        return ConversationThread.derivedTitle(from: turns)
     }
 
     public var hasImage: Bool {

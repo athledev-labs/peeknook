@@ -166,6 +166,15 @@ public actor ConversationArchiveStore {
         }
     }
 
+    /// Set or clear a user-edited title for one thread. Empty/whitespace clears the override.
+    public func rename(id: UUID, customTitle: String?) -> Result<Void, ConversationArchiveError> {
+        guard var thread = load(id: id) else { return .success(()) }
+        let trimmed = customTitle?.trimmingCharacters(in: .whitespacesAndNewlines)
+        thread.customTitle = trimmed?.isEmpty == false ? trimmed : nil
+        thread.updatedAt = Date()
+        return save(thread)
+    }
+
     /// Wipe the whole archive, called when the user turns persistence off or taps Clear all.
     public func deleteAll() {
         try? blobStore.deleteAll()

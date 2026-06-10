@@ -73,6 +73,7 @@ public final class SessionOrchestrator {
     /// across follow-ups, cleared when a fresh chat begins. Nil means "not yet archived".
     var activeThreadID: UUID?
     var activeThreadCreatedAt: Date?
+    var activeThreadCustomTitle: String?
 
     let captureRegistry: GroundRegistry
     /// The live camera session while `.cameraLive` is on screen, nil otherwise. Held here — not as

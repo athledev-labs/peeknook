@@ -43,6 +43,18 @@ extension SessionOrchestrator {
         _ = applyPhaseEvent(.openThreadRestored(answer: lastAssistantText ?? ""))
     }
 
+    /// Rename one archived chat. Empty title clears a custom name and reverts to the derived label.
+    public func renameThread(id: UUID, title: String) {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let customTitle: String? = trimmed.isEmpty ? nil : trimmed
+        enqueueArchiveIO { archive in
+            _ = await archive.rename(id: id, customTitle: customTitle)
+        }
+        if id == activeThreadID {
+            activeThreadCustomTitle = customTitle
+        }
+    }
+
     /// Delete one archived chat. If it's the one on screen, also clear it from memory and return idle.
     public func deleteThread(id: UUID) {
         enqueueArchiveIO { archive in
@@ -65,6 +77,7 @@ extension SessionOrchestrator {
         turnCounter = max(thread.turnCounter, thread.turns.map(\.id).max() ?? 0)
         activeThreadID = thread.id
         activeThreadCreatedAt = thread.createdAt
+        activeThreadCustomTitle = thread.customTitle
     }
 
     /// Write the current chat to the archive (off the main actor) when persistence is on; no-op
@@ -84,7 +97,8 @@ extension SessionOrchestrator {
             turns: conversation,
             contextWindow: contextWindow,
             turnCounter: turnCounter,
-            lastPromptTokens: lastPromptTokens
+            lastPromptTokens: lastPromptTokens,
+            customTitle: activeThreadCustomTitle
         )
         enqueueArchiveIO { [self] archive in
             let result = await archive.save(thread)
@@ -112,6 +126,7 @@ extension SessionOrchestrator {
     public func discardActiveThread() {
         guard let id = activeThreadID else {
             activeThreadCreatedAt = nil
+            activeThreadCustomTitle = nil
             return
         }
         enqueueArchiveIO { archive in
@@ -119,6 +134,7 @@ extension SessionOrchestrator {
         }
         activeThreadID = nil
         activeThreadCreatedAt = nil
+        activeThreadCustomTitle = nil
     }
 
     /// Wipe the whole archive, called when the user turns persistence off or taps Clear all.

@@ -254,4 +254,97 @@ final class ConversationArchiveStoreTests: XCTestCase {
         XCTAssertTrue(answerOnly.title.hasSuffix("…"))
         XCTAssertLessThanOrEqual(answerOnly.title.count, 50)
     }
+
+    func testCustomTitleOverridesDerivedTitle() {
+        let thread = ConversationThread(
+            turns: [ChatTurn(id: 1, kind: .user("What is Swift?"))],
+            customTitle: "Swift notes"
+        )
+        XCTAssertEqual(thread.title, "Swift notes")
+    }
+
+    func testRenamePersistsCustomTitleInIndex() async {
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = ConversationArchiveTestSupport.makeStore(directory: dir)
+
+        let original = thread("draft question")
+        let save = await store.save(original)
+        XCTAssertTrue(save.isSuccess)
+
+        let renamed = await store.rename(id: original.id, customTitle: "My project")
+        XCTAssertTrue(renamed.isSuccess)
+
+        let summaries = await store.summaries()
+        XCTAssertEqual(summaries.first?.title, "My project")
+        let loaded = await store.load(id: original.id)
+        XCTAssertEqual(loaded?.customTitle, "My project")
+        XCTAssertEqual(loaded?.title, "My project")
+    }
+
+    func testCustomTitlePreservedWhenTurnsAppend() async {
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = ConversationArchiveTestSupport.makeStore(directory: dir)
+
+        var t = ConversationThread(
+            turns: [ChatTurn(id: 1, kind: .user("first question"))],
+            customTitle: "Pinned name"
+        )
+        let firstSave = await store.save(t)
+        XCTAssertTrue(firstSave.isSuccess)
+
+        t.turns.append(ChatTurn(id: 2, kind: .assistant("answer")))
+        t.updatedAt = Date(timeIntervalSinceNow: 5)
+        let secondSave = await store.save(t)
+        XCTAssertTrue(secondSave.isSuccess)
+
+        let loaded = await store.load(id: t.id)
+        XCTAssertEqual(loaded?.customTitle, "Pinned name")
+        XCTAssertEqual(loaded?.title, "Pinned name")
+        let summaries = await store.summaries()
+        XCTAssertEqual(summaries.first?.title, "Pinned name")
+    }
+
+    func testClearCustomTitleRevertsToDerived() async {
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = ConversationArchiveTestSupport.makeStore(directory: dir)
+
+        let original = thread("derived label")
+        let save = await store.save(original)
+        XCTAssertTrue(save.isSuccess)
+        let tempRename = await store.rename(id: original.id, customTitle: "Temporary")
+        XCTAssertTrue(tempRename.isSuccess)
+        let clearRename = await store.rename(id: original.id, customTitle: "")
+        XCTAssertTrue(clearRename.isSuccess)
+
+        let loaded = await store.load(id: original.id)
+        XCTAssertNil(loaded?.customTitle)
+        XCTAssertEqual(loaded?.title, "derived label")
+        let summaries = await store.summaries()
+        XCTAssertEqual(summaries.first?.title, "derived label")
+    }
+
+    func testLegacyThreadDecodesWithoutCustomTitle() throws {
+        struct LegacyWire: Encodable {
+            let id: UUID
+            let createdAt: Date
+            let updatedAt: Date
+            let turns: [ChatTurn]
+            let turnCounter: Int
+        }
+        let data = try JSONEncoder().encode(
+            LegacyWire(
+                id: UUID(),
+                createdAt: Date(),
+                updatedAt: Date(),
+                turns: [ChatTurn(id: 1, kind: .assistant("hello"))],
+                turnCounter: 1
+            )
+        )
+        let decoded = try JSONDecoder().decode(ConversationThread.self, from: data)
+        XCTAssertNil(decoded.customTitle)
+        XCTAssertEqual(decoded.title, "hello")
+    }
 }

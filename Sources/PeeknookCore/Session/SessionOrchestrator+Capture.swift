@@ -248,6 +248,7 @@ extension SessionOrchestrator {
         lastPromptTokens = nil
         activeThreadID = nil
         activeThreadCreatedAt = nil
+        activeThreadCustomTitle = nil
         stopVoiceInput()
         stopSpeechOutput()
     }
