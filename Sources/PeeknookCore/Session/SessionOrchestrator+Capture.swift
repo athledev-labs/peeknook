@@ -172,10 +172,15 @@ extension SessionOrchestrator {
     /// Pre-load the model when the notch opens so the user's first capture is warm, not cold.
     /// Idempotent and cheap; no-op when already warm or in flight.
     public func prewarm() {
-        guard !modelLikelyWarm, !isPrewarming else { return }
+        guard !isPrewarming else { return }
         if let setup, !setup.isReady { return }
         isPrewarming = true
         Task {
+            await refreshActiveModelResidency()
+            guard !modelLikelyWarm else {
+                isPrewarming = false
+                return
+            }
             // Endpoint-typed so a backend switch warms the server the next turn actually hits,
             // never a stale Ollama URL.
             let loaded = await inference.warmUp(
@@ -183,6 +188,7 @@ extension SessionOrchestrator {
                 endpoint: activeInferenceEndpoint
             )
             if loaded { lastInferenceAt = Date() }
+            await refreshActiveModelResidency()
             isPrewarming = false
         }
     }

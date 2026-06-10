@@ -18,6 +18,7 @@ final class ScriptedEngine: InferenceEngine, @unchecked Sendable {
     var contextWindow: Int?
     /// Whether `warmUp` reports the model as loaded (drives prewarm warmth tests).
     var warmUpSucceeds = true
+    private(set) var warmUpCallCount = 0
 
     init(responsesPerCall: [[String]], tokenDelayNanoseconds: UInt64 = 0) {
         self.responsesPerCall = responsesPerCall
@@ -26,7 +27,10 @@ final class ScriptedEngine: InferenceEngine, @unchecked Sendable {
 
     func health(baseURL: String, model: String, acceptInsecureRemote: Bool) async -> InferenceHealth { .ready }
 
-    func warmUp(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> Bool { warmUpSucceeds }
+    func warmUp(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> Bool {
+        warmUpCallCount += 1
+        return warmUpSucceeds
+    }
 
     func contextLength(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> Int? { contextWindow }
 

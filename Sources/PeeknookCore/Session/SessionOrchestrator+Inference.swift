@@ -5,8 +5,10 @@ import Foundation
 @MainActor
 extension SessionOrchestrator {
     /// Within Ollama's `keep_alive` window (10m), the model is still resident, so the next
-    /// capture skips cold load. 9m margin to stay safely inside it.
+    /// capture skips cold load. Also true when `/api/ps` confirms the active model is loaded
+    /// (honest after relaunch while Ollama kept the weights warm). 9m margin on the timer.
     var modelLikelyWarm: Bool {
+        if activeModelResidentInMemory { return true }
         guard let last = lastInferenceAt else { return false }
         return Date().timeIntervalSince(last) < 540
     }
@@ -22,6 +24,7 @@ extension SessionOrchestrator {
     /// introduced a new screenshot (first capture or Add image), that drives usage accounting.
     func runTurn(capturedNow capture: CaptureResult?) async {
         guard !conversation.isEmpty else { return }
+        await refreshActiveModelResidency()
         inferenceModelWasWarm = modelLikelyWarm
         guard case .applied = applyPhaseEvent(.inferenceStarted) else { return }
         streamedAnswer = ""

@@ -34,6 +34,10 @@ public final class SessionOrchestrator {
     public var lastPromptTokens: Int?
     public var contextWindow: Int?
     var lastInferenceAt: Date?
+    /// True when Ollama `/api/ps` reports the active model resident (survives app relaunch).
+    var activeModelResidentInMemory = false
+    /// Injectable in tests so `/api/ps` can be stubbed without hitting the network.
+    var _ollamaResidencyClient: OllamaSetupClient?
     var turnCounter = 0
 
     /// Sticky intent for the active chat — cleared on New chat. In-memory only (not archived).
