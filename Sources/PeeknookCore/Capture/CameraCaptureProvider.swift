@@ -121,7 +121,12 @@ public final class CameraCaptureProvider: CameraSessionControlling, CaptureProvi
 #if canImport(AVFoundation)
 extension CameraCaptureProvider: CameraPreviewLayerProviding {
     public var previewCaptureSession: AVCaptureSession? {
-        isConfigured ? session : nil
+        // Unconditional by design: configuration happens inside the async `startPreview()`, and
+        // `isConfigured` is not observable state — gating on it left the SwiftUI view stuck on its
+        // placeholder (no re-render after configuration completes). A preview layer attached to a
+        // not-yet-running session simply renders dark until frames arrive, so the view mounts the
+        // layer immediately and the feed appears the moment the session starts.
+        session
     }
 
     public var previewAspect: CGFloat {
