@@ -11,7 +11,12 @@ public final class PeekSettingsController {
     private let orchestrator: SessionOrchestrator
     private let setup: SetupCoordinator
     private let defaults: UserDefaults
-    private let inference: any InferenceEngine
+    private let inferenceRegistry: InferenceBackendRegistry
+    private let credentialStore: any CredentialStoring
+    /// The engine for the active backend, resolved per call (matches the orchestrator's shim).
+    private var inference: any InferenceEngine {
+        inferenceRegistry.engine(for: settings.answerModel.backend)
+    }
 
     public var settings: PeeknookSettings { orchestrator.settings }
 
@@ -19,12 +24,29 @@ public final class PeekSettingsController {
         orchestrator: SessionOrchestrator,
         setup: SetupCoordinator,
         defaults: UserDefaults,
-        inference: any InferenceEngine
+        inferenceRegistry: InferenceBackendRegistry,
+        credentialStore: any CredentialStoring = InMemoryCredentialStore()
     ) {
         self.orchestrator = orchestrator
         self.setup = setup
         self.defaults = defaults
-        self.inference = inference
+        self.inferenceRegistry = inferenceRegistry
+        self.credentialStore = credentialStore
+    }
+
+    /// Single-engine convenience for tests and simple hosts (wraps a uniform registry).
+    public convenience init(
+        orchestrator: SessionOrchestrator,
+        setup: SetupCoordinator,
+        defaults: UserDefaults,
+        inference: any InferenceEngine
+    ) {
+        self.init(
+            orchestrator: orchestrator,
+            setup: setup,
+            defaults: defaults,
+            inferenceRegistry: .uniform(inference)
+        )
     }
 
     /// Mutate in-memory settings and persist once to `peeknook.settings.v1`.
@@ -225,11 +247,7 @@ public final class PeekSettingsController {
     /// Vision support for any tag, used by the model library when scanning installed models or
     /// validating a custom tag before add.
     public func supportsVision(for tag: String) async -> Bool? {
-        await inference.supportsVision(
-            model: tag,
-            baseURL: settings.ollamaBaseURL,
-            acceptInsecureRemote: settings.acceptInsecureRemoteOllama
-        )
+        await inference.supportsVision(model: tag, endpoint: .from(settings: settings))
     }
 
     /// Installed Ollama tags that aren't already in the picker (curated + custom), sorted for display.
@@ -273,11 +291,7 @@ public final class PeekSettingsController {
     }
 
     public func inferenceHealth() async -> InferenceHealth {
-        await inference.health(
-            baseURL: settings.ollamaBaseURL,
-            model: settings.textModel,
-            acceptInsecureRemote: settings.acceptInsecureRemoteOllama
-        )
+        await inference.health(endpoint: .from(settings: settings), model: settings.answerModel.tag)
     }
 }
 

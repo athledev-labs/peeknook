@@ -74,7 +74,12 @@ public final class SessionOrchestrator {
     /// a phase payload — so `SessionPhase` stays a value-type `Equatable`/`Sendable` enum. Set by
     /// `openCameraLive()`, cleared by `stopCameraPreview()` (the single teardown choke point).
     public internal(set) var activeCameraSession: (any CameraSessionControlling)?
-    let inference: any InferenceEngine
+    let inferenceRegistry: InferenceBackendRegistry
+    /// The engine for the user's active backend, resolved per call so a backend switch in
+    /// Settings takes effect on the next turn without rebuilding the orchestrator.
+    var inference: any InferenceEngine {
+        inferenceRegistry.engine(for: settings.answerModel.backend)
+    }
     let speechRecognizer: any SpeechRecognizing
     let answerSpeechSynthesizer: any SpeechSynthesizing
     let previewSpeechSynthesizer: any SpeechSynthesizing
@@ -150,7 +155,7 @@ public final class SessionOrchestrator {
     public init(
         settings: PeeknookSettings,
         captureRegistry: GroundRegistry,
-        inference: any InferenceEngine,
+        inferenceRegistry: InferenceBackendRegistry,
         webLookup: any WebLookupProviding = WebLookupRunner(),
         speechRecognizer: any SpeechRecognizing = StubSpeechRecognizer(),
         speechSynthesizer: any SpeechSynthesizing = StubSpeechSynthesizer(),
@@ -158,12 +163,34 @@ public final class SessionOrchestrator {
     ) {
         self.settings = settings
         self.captureRegistry = captureRegistry
-        self.inference = inference
+        self.inferenceRegistry = inferenceRegistry
         self.webLookup = webLookup
         self.speechRecognizer = speechRecognizer
         self.answerSpeechSynthesizer = speechSynthesizer
         self.previewSpeechSynthesizer = previewSpeechSynthesizer ?? speechSynthesizer
         wireSpeechCallbacks()
+    }
+
+    /// One engine for every backend — the single-engine convenience tests and simple hosts use
+    /// (mirrors `PeeknookDependencies.testing(inference:)` keeping its single-engine signature).
+    public convenience init(
+        settings: PeeknookSettings,
+        captureRegistry: GroundRegistry,
+        inference: any InferenceEngine,
+        webLookup: any WebLookupProviding = WebLookupRunner(),
+        speechRecognizer: any SpeechRecognizing = StubSpeechRecognizer(),
+        speechSynthesizer: any SpeechSynthesizing = StubSpeechSynthesizer(),
+        previewSpeechSynthesizer: (any SpeechSynthesizing)? = nil
+    ) {
+        self.init(
+            settings: settings,
+            captureRegistry: captureRegistry,
+            inferenceRegistry: .uniform(inference),
+            webLookup: webLookup,
+            speechRecognizer: speechRecognizer,
+            speechSynthesizer: speechSynthesizer,
+            previewSpeechSynthesizer: previewSpeechSynthesizer
+        )
     }
 
     public func reloadSettings(from defaults: UserDefaults) {

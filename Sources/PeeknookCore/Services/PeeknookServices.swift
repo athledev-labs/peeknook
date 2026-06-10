@@ -28,7 +28,7 @@ public enum PeeknookServices {
         let orchestrator = SessionOrchestrator(
             settings: settings,
             captureRegistry: dependencies.captureRegistry,
-            inference: dependencies.inference,
+            inferenceRegistry: dependencies.inferenceRegistry,
             webLookup: dependencies.webLookup,
             speechRecognizer: dependencies.speechRecognizer,
             speechSynthesizer: dependencies.answerSpeechSynthesizer,
@@ -58,7 +58,8 @@ public enum PeeknookServices {
             orchestrator: orchestrator,
             setup: setup,
             defaults: defaults,
-            inference: dependencies.inference
+            inferenceRegistry: dependencies.inferenceRegistry,
+            credentialStore: dependencies.credentialStore
         )
         let storageFootprint = StorageFootprintService(archive: orchestrator.conversationArchive)
         return Stack(

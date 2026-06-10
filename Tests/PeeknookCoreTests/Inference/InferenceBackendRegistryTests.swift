@@ -32,6 +32,21 @@ final class InferenceBackendRegistryTests: XCTestCase {
             XCTAssertEqual((registry.engine(for: backend) as? MarkerEngine)?.name, "shared")
         }
     }
+
+    /// The orchestrator resolves its engine through the registry per `answerModel.backend` —
+    /// default settings (Ollama) must route to the Ollama-registered engine.
+    @MainActor
+    func testOrchestratorResolvesOllamaEngineForDefaultSettings() {
+        let orchestrator = SessionOrchestrator(
+            settings: PeeknookSettings(),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "x")]),
+            inferenceRegistry: InferenceBackendRegistry([
+                .ollama: MarkerEngine(name: "ollama"),
+                .openAICompatible: MarkerEngine(name: "openai"),
+            ])
+        )
+        XCTAssertEqual((orchestrator.inference as? MarkerEngine)?.name, "ollama")
+    }
 }
 
 private struct MarkerEngine: InferenceEngine {

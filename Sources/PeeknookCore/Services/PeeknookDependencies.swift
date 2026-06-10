@@ -5,7 +5,7 @@ import Foundation
 /// Injectable service bag shared by production wiring, unit tests, and the UI test host.
 public struct PeeknookDependencies {
     public var captureRegistry: GroundRegistry
-    public var inference: any InferenceEngine
+    public var inferenceRegistry: InferenceBackendRegistry
     public var webLookup: any WebLookupProviding
     public var speechRecognizer: any SpeechRecognizing
     public var answerSpeechSynthesizer: any SpeechSynthesizing
@@ -17,7 +17,7 @@ public struct PeeknookDependencies {
 
     public init(
         captureRegistry: GroundRegistry,
-        inference: any InferenceEngine,
+        inferenceRegistry: InferenceBackendRegistry,
         webLookup: any WebLookupProviding,
         speechRecognizer: any SpeechRecognizing,
         answerSpeechSynthesizer: any SpeechSynthesizing,
@@ -28,7 +28,7 @@ public struct PeeknookDependencies {
         credentialStore: any CredentialStoring = InMemoryCredentialStore()
     ) {
         self.captureRegistry = captureRegistry
-        self.inference = inference
+        self.inferenceRegistry = inferenceRegistry
         self.webLookup = webLookup
         self.speechRecognizer = speechRecognizer
         self.answerSpeechSynthesizer = answerSpeechSynthesizer
@@ -52,6 +52,7 @@ public struct PeeknookDependencies {
         let answerSpeechSynthesizer: any SpeechSynthesizing = StubSpeechSynthesizer()
         let previewSpeechSynthesizer: any SpeechSynthesizing = StubSpeechSynthesizer()
         #endif
+        let credentialStore = KeychainCredentialStore()
         return PeeknookDependencies(
             captureRegistry: GroundRegistry([
                 .screen: MacCaptureProvider(),
@@ -59,18 +60,27 @@ public struct PeeknookDependencies {
                 // opens the live preview until the camera slices that wire them.
                 .camera: CameraCaptureProvider(),
             ]),
-            inference: OllamaInferenceEngine(),
+            inferenceRegistry: InferenceBackendRegistry([
+                .ollama: OllamaInferenceEngine(),
+                // The same store instance the deps expose — the engine reads the key per request,
+                // so the orchestrator never sees key material.
+                .openAICompatible: OpenAICompatibleInferenceEngine(
+                    resolveAPIKey: { credentialStore.apiKey(for: $0) }
+                ),
+            ]),
             webLookup: WebLookupRunner(),
             speechRecognizer: speechRecognizer,
             answerSpeechSynthesizer: answerSpeechSynthesizer,
             previewSpeechSynthesizer: previewSpeechSynthesizer,
             modelCatalog: ModelCatalogService.makeDefault(),
-            credentialStore: KeychainCredentialStore()
+            credentialStore: credentialStore
         )
     }
 
     /// Deterministic doubles for unit tests and the UI test host. `capture` stays a single
-    /// provider (wrapped as the screen entry) so existing call sites don't churn on the registry;
+    /// provider (wrapped as the screen entry) and `inference` a single engine (wrapped as a
+    /// uniform registry) so existing call sites don't churn; `openAICompatibleInference`
+    /// overrides just that backend's entry when a test needs the engines to differ;
     /// `cameraSession` (typically a `StubCameraSession`) registers under `.camera` when supplied.
     @MainActor
     public static func testing(
@@ -83,14 +93,19 @@ public struct PeeknookDependencies {
         modelCatalog: ModelCatalogService = ModelCatalogService.makeDefault(),
         conversationArchive: ConversationArchiveStore? = nil,
         cameraSession: (any CaptureProviding)? = nil,
-        credentialStore: any CredentialStoring = InMemoryCredentialStore()
+        credentialStore: any CredentialStoring = InMemoryCredentialStore(),
+        openAICompatibleInference: (any InferenceEngine)? = nil
     ) -> PeeknookDependencies {
         let preview = previewSpeechSynthesizer ?? answerSpeechSynthesizer
         var providers: [Ground: any CaptureProviding] = [.screen: capture]
         if let cameraSession { providers[.camera] = cameraSession }
+        var engines: [InferenceBackend: any InferenceEngine] = Dictionary(
+            uniqueKeysWithValues: InferenceBackend.allCases.map { ($0, inference) }
+        )
+        if let openAICompatibleInference { engines[.openAICompatible] = openAICompatibleInference }
         return PeeknookDependencies(
             captureRegistry: GroundRegistry(providers),
-            inference: inference,
+            inferenceRegistry: InferenceBackendRegistry(engines),
             webLookup: webLookup,
             speechRecognizer: speechRecognizer,
             answerSpeechSynthesizer: answerSpeechSynthesizer,
