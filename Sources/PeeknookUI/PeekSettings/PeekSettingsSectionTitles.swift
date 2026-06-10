@@ -5,7 +5,7 @@ enum PeekSettingsSectionTitle {
     static let appearance = "Appearance"
     static let capture = "Capture"
     static let interaction = "Interaction"
-    static let visionModel = "Vision model"
+    static let answerModel = "Answer model"
     static let data = "Data"
     static let about = "About"
 }

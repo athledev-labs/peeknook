@@ -222,8 +222,8 @@ public extension CommandLayout {
         ),
         CommandDescriptor(
             id: "idle.model", kind: .valueDropdown(.model), action: nil,
-            titleKey: "Vision model", symbol: "cpu",
-            helpKey: "Vision model for the next capture",
+            titleKey: "Answer model", symbol: "cpu",
+            helpKey: "Answer model for the next capture",
             placement: .idle, defaultOrder: 2
         ),
         CommandDescriptor(

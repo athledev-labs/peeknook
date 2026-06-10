@@ -79,7 +79,7 @@ public struct PeekSettingsView: View {
                         )
                     }
 
-                    section(PeekSettingsSectionTitle.visionModel) {
+                    section(PeekSettingsSectionTitle.answerModel) {
                         PeekSettingsVisionSection(
                             orchestrator: orchestrator,
                             setup: setup,
@@ -186,7 +186,7 @@ public struct PeekSettingsView: View {
             sections.insert(PeekSettingsSectionTitle.setup)
         }
         if shouldExpandVisionModelSection {
-            sections.insert(PeekSettingsSectionTitle.visionModel)
+            sections.insert(PeekSettingsSectionTitle.answerModel)
         }
         expandedSections = sections
     }
@@ -206,9 +206,9 @@ public struct PeekSettingsView: View {
         guard let focus = PeekSettingsNavigation.consumePendingFocus() else { return }
         switch focus {
         case .visionServer:
-            expandedSections.insert(PeekSettingsSectionTitle.visionModel)
+            expandedSections.insert(PeekSettingsSectionTitle.answerModel)
             visionModelAdvancedExpanded = true
-            scrollToSectionID = PeekSettingsSectionTitle.visionModel
+            scrollToSectionID = PeekSettingsSectionTitle.answerModel
         }
     }
 

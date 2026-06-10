@@ -43,7 +43,7 @@ struct PeekSettingsModelPickerRow: View {
                 .frame(width: PeekSettingsRowMetrics.iconWidth)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(peek: "Vision model")
+                Text(peek: "Answer model")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(theme.primaryLabel.opacity(0.95))
                 Text(peek: detail)
@@ -54,7 +54,7 @@ struct PeekSettingsModelPickerRow: View {
 
             Spacer(minLength: 8)
 
-            ValueDropdownPill(symbol: "cpu", title: displayName, help: "Vision model") { close in
+            ValueDropdownPill(symbol: "cpu", title: displayName, help: "Answer model") { close in
                 PeekPreflightMenuContent.visionModelHomeMenu(
                     models: models,
                     isInstalled: isInstalled,

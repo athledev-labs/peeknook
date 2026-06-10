@@ -29,6 +29,14 @@
       "comment": "Command-bar help: depth dropdown.",
       "extractionState": "manual"
     },
+    "Answer model": {
+      "comment": "Tier B localization",
+      "extractionState": "manual"
+    },
+    "Answer model for the next capture": {
+      "comment": "Command-bar help: model dropdown.",
+      "extractionState": "manual"
+    },
     "Archive past chats and screenshots on this Mac (up to 25 chats / ~250 MB). Done keeps a chat; New chat deletes it. Turning this off deletes the whole archive.": {
       "comment": "Tier B localization",
       "extractionState": "manual"
@@ -643,14 +651,6 @@
     },
     "Vision": {
       "comment": "Tier B localization",
-      "extractionState": "manual"
-    },
-    "Vision model": {
-      "comment": "Tier B localization",
-      "extractionState": "manual"
-    },
-    "Vision model for the next capture": {
-      "comment": "Command-bar help: model dropdown.",
       "extractionState": "manual"
     },
     "Vision unknown": {

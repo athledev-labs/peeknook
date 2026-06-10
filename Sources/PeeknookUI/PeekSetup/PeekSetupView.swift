@@ -109,7 +109,7 @@ public struct PeekSetupView: View {
 
             SetupStepRow(
                 title: "Screen Recording",
-                detail: "Required, Peeknook sends a screenshot to the vision model. Optional: Accessibility adds selected text.",
+                detail: "Required, Peeknook sends a screenshot to the answer model. Optional: Accessibility adds selected text.",
                 state: setup.captureStep,
                 theme: theme,
                 primaryEnabled: true,
@@ -133,7 +133,7 @@ public struct PeekSetupView: View {
 
     private var ollamaDetail: String {
         if setup.settings.usesRemoteOllama {
-            return "Peeknook sends screenshots to your configured Ollama server. Check the address in Settings → Vision model → Advanced."
+            return "Peeknook sends screenshots to your configured Ollama server. Check the address in Settings → Answer model → Advanced."
         }
         let profile = SystemProfile.current()
         let model = TextModelCatalog.displayName(for: profile.suggestedTextModel)
@@ -160,7 +160,7 @@ public struct PeekSetupView: View {
         ValueDropdownPill(
             symbol: "cpu",
             title: TextModelCatalog.displayName(for: setup.settings.textModel, custom: settings.customModels),
-            help: "Vision model"
+            help: "Answer model"
         ) { close in
             PeekPreflightMenuContent.visionModelHomeMenu(
                 models: settings.availableModels,

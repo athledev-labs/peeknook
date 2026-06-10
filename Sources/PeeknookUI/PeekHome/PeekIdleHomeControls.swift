@@ -264,7 +264,7 @@ struct PeekIdleCommandBar: View {
         ValueDropdownPill(
             symbol: "cpu",
             title: TextModelCatalog.displayName(for: orchestrator.settings.textModel, custom: settings.customModels),
-            help: "Vision model for the next capture"
+            help: "Answer model for the next capture"
         ) { close in
             PeekPreflightMenuContent.visionModelHomeMenu(
                 models: settings.availableModels,
