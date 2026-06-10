@@ -65,7 +65,10 @@ final class CommandLayoutCatalogTests: XCTestCase {
             keys.insert(command.titleKey)
             command.helpKey.map { keys.insert($0) }
         }
-        keys.formUnion(["Camera", "Camera preview"])   // trust label + preview surface copy
+        keys.formUnion([
+            "Camera", "Camera preview",                          // trust label + preview surface
+            "Camera shortcut", "Opens the live camera preview from anywhere.",   // settings row
+        ])
 
         for key in keys.sorted() {
             let entry = strings[key] as? [String: Any]

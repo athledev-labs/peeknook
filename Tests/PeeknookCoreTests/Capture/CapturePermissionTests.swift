@@ -18,8 +18,8 @@ final class CapturePermissionTests: XCTestCase {
     func testRecoveryActionMapping() {
         XCTAssertEqual(CapturePermission.screenRecording.recoveryAction, .openScreenRecordingSettings)
         XCTAssertEqual(CapturePermission.accessibility.recoveryAction, .openAccessibilitySettings)
-        // Not-yet-wired permissions fall back to the setup drill-in until the camera PR.
-        XCTAssertEqual(CapturePermission.camera.recoveryAction, .openSetup)
+        XCTAssertEqual(CapturePermission.camera.recoveryAction, .openCameraSettings)
+        // Not-yet-wired permissions fall back to the setup drill-in until the voice profiles.
         XCTAssertEqual(CapturePermission.microphone.recoveryAction, .openSetup)
         XCTAssertEqual(CapturePermission.speechRecognition.recoveryAction, .openSetup)
     }
@@ -32,6 +32,17 @@ final class CapturePermissionTests: XCTestCase {
 
         let camera = SessionFailure.permissionRequired(.camera)
         XCTAssertEqual(camera.kind, .permissionRequired(name: "Camera"))
-        XCTAssertEqual(camera.primaryRecovery, .openSetup)
+        XCTAssertEqual(camera.primaryRecovery, .openCameraSettings)
+    }
+
+    /// A provider-thrown permission error routes to the RIGHT Privacy pane — the old substring
+    /// heuristic sent a Camera failure to the Accessibility pane.
+    func testCaptureErrorPermissionMapsToTypedPane() {
+        let camera = SessionFailure.from(captureError: .permissionRequired("Camera"))
+        XCTAssertEqual(camera.primaryRecovery, .openCameraSettings)
+        let screen = SessionFailure.from(captureError: .permissionRequired("Screen Recording"))
+        XCTAssertEqual(screen.primaryRecovery, .openScreenRecordingSettings)
+        let unknown = SessionFailure.from(captureError: .permissionRequired("Mystery"))
+        XCTAssertEqual(unknown.primaryRecovery, .openSetup)
     }
 }

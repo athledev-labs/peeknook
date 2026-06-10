@@ -233,10 +233,17 @@ public final class SetupCoordinator {
 
     private func evaluateCaptureStep() -> SetupStepState {
         if skipsLiveProbes { return .complete }
-        if permissionStatusProvider().screenRecordingGranted {
-            return .complete
+        let status = permissionStatusProvider()
+        let missing = settings.activeProfile.requiredPermissions
+            .filter { !status.grants($0) }
+            .sorted { $0.rawValue < $1.rawValue }
+        if missing.isEmpty { return .complete }
+        // Preserve the legacy copy for the shipped screen profile.
+        if missing == [.screenRecording] {
+            return .failed("Screen Recording is required so the model can see your screen.")
         }
-        return .failed("Screen Recording is required so the model can see your screen.")
+        let names = missing.map(\.displayName).joined(separator: " and ")
+        return .failed("\(names) \(missing.count == 1 ? "is" : "are") required for the active profile.")
     }
 }
 

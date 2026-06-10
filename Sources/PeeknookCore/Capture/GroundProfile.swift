@@ -108,9 +108,8 @@ public extension GroundProfile {
         isBuiltIn: true
     )
 
-    /// Built-in profiles. `cameraStudy` joins this catalog with the reachability slice (⌘⇧C +
-    /// Camera TCC); until then `builtIn(id: "camera.study")` still falls back to `screenDefault`.
-    static var all: [GroundProfile] { [.screenDefault] }
+    /// Built-in profiles. v1 ships exactly these two — no profile editor (H3).
+    static var all: [GroundProfile] { [.screenDefault, .cameraStudy] }
 
     /// Resolve a profile id to its built-in, falling back to `screen.default` for an unknown id
     /// (so a stale persisted `activeProfileID` can never strand the user).

@@ -115,6 +115,7 @@ private extension RecoveryAction {
         case .switchModel: PeekLocalized("Switch model")
         case .openScreenRecordingSettings: PeekLocalized("Open settings")
         case .openAccessibilitySettings: PeekLocalized("Open settings")
+        case .openCameraSettings: PeekLocalized("Open settings")
         }
     }
 
@@ -126,7 +127,7 @@ private extension RecoveryAction {
             usesRemoteOllama ? "point.3.connected.trianglepath.dotted" : "bolt.horizontal"
         case .downloadModel: "arrow.down.circle"
         case .switchModel: "cpu"
-        case .openScreenRecordingSettings, .openAccessibilitySettings: "gearshape"
+        case .openScreenRecordingSettings, .openAccessibilitySettings, .openCameraSettings: "gearshape"
         }
     }
 }

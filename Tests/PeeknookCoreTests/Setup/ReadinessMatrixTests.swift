@@ -5,18 +5,19 @@ import XCTest
 
 @MainActor
 final class ReadinessMatrixTests: XCTestCase {
-    private func status(screen: Bool = false, ax: Bool = false) -> CapturePermissionStatus {
-        CapturePermissionStatus(accessibilityTrusted: ax, screenRecordingGranted: screen)
+    private func status(screen: Bool = false, ax: Bool = false, camera: Bool = false) -> CapturePermissionStatus {
+        CapturePermissionStatus(accessibilityTrusted: ax, screenRecordingGranted: screen, cameraGranted: camera)
     }
 
     // MARK: CapturePermissionStatus
 
     func testGrantsMapsEachPermission() {
-        let granted = status(screen: true, ax: true)
+        let granted = status(screen: true, ax: true, camera: true)
         XCTAssertTrue(granted.grants(.screenRecording))
         XCTAssertTrue(granted.grants(.accessibility))
-        // Not tracked yet — these land with the camera/voice grounds.
-        XCTAssertFalse(granted.grants(.camera))
+        XCTAssertTrue(granted.grants(.camera))
+        XCTAssertFalse(status(camera: false).grants(.camera))
+        // Not tracked yet — these land with the voice profiles.
         XCTAssertFalse(granted.grants(.microphone))
         XCTAssertFalse(granted.grants(.speechRecognition))
     }
@@ -42,6 +43,45 @@ final class ReadinessMatrixTests: XCTestCase {
         )
         // Screen Recording granted but Camera isn't → not satisfied. The matrix generalizes.
         XCTAssertFalse(SetupCoordinator.permissionsSatisfied(for: camera, status: status(screen: true)))
+    }
+
+    /// The shipped camera profile: Camera TCC alone satisfies it — Screen Recording is irrelevant
+    /// in BOTH directions (locked invariant: camera.study never demands Screen Recording).
+    func testCameraStudySatisfiedByCameraAloneAndIndependentOfScreenRecording() {
+        XCTAssertTrue(SetupCoordinator.permissionsSatisfied(for: .cameraStudy, status: status(screen: false, camera: true)))
+        XCTAssertFalse(SetupCoordinator.permissionsSatisfied(for: .cameraStudy, status: status(screen: true, camera: false)))
+    }
+
+    /// The setup capture step derives from the ACTIVE profile's permissions, not hardcoded Screen
+    /// Recording — a camera-profile user must see Camera copy, and screen.default keeps its exact
+    /// legacy string.
+    func testCaptureStepIsProfileAware() {
+        var cameraSettings = PeeknookSettings.default
+        cameraSettings.activeProfileID = GroundProfile.cameraStudy.id
+        let suite = "peeknook.tests.capture-step-camera"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.removePersistentDomain(forName: suite)
+        let cameraSetup = SetupCoordinator(
+            settings: cameraSettings,
+            defaults: defaults,
+            permissionStatus: { CapturePermissionStatus(accessibilityTrusted: false, screenRecordingGranted: true, cameraGranted: false) }
+        )
+        cameraSetup.refreshCapturePermission()
+        guard case .failed(let cameraMessage) = cameraSetup.captureStep else {
+            return XCTFail("Expected a failed capture step for the camera profile")
+        }
+        XCTAssertTrue(cameraMessage.contains("Camera"), "Camera profile must name Camera, got: \(cameraMessage)")
+        XCTAssertFalse(cameraMessage.contains("Screen Recording"))
+
+        let screenSetup = makeCoordinator(
+            suite: "peeknook.tests.capture-step-screen",
+            permissionStatus: { CapturePermissionStatus(accessibilityTrusted: false, screenRecordingGranted: false) }
+        )
+        screenSetup.refreshCapturePermission()
+        guard case .failed(let screenMessage) = screenSetup.captureStep else {
+            return XCTFail("Expected a failed capture step for screen.default")
+        }
+        XCTAssertEqual(screenMessage, "Screen Recording is required so the model can see your screen.")
     }
 
     // MARK: readiness(for:) integration
@@ -86,7 +126,7 @@ final class ReadinessMatrixTests: XCTestCase {
         )
         let list = setup.permissionChecklist(for: camera)
         XCTAssertEqual(list.map(\.permission), [.camera])
-        XCTAssertEqual(list.map(\.isGranted), [false], "Camera isn't tracked yet → not granted.")
+        XCTAssertEqual(list.map(\.isGranted), [false], "Injected status has no camera grant.")
     }
 
     private func makeCoordinator(

@@ -222,7 +222,7 @@ struct PeekIdleCommandBar: View {
         switch slot {
         case .capture: return orchestrator.settings.captureHotkey
         case .brief:   return orchestrator.settings.briefHotkey
-        case .camera:  return nil
+        case .camera:  return orchestrator.settings.cameraHotkey
         }
     }
 

@@ -42,6 +42,8 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     public var speechVoiceIdentifier: String
     /// Global shortcut to focus the session-brief composer (default ⌘⇧B).
     public var briefHotkey: CaptureHotkey
+    /// Global shortcut to open the live camera preview (default ⌘⇧C).
+    public var cameraHotkey: CaptureHotkey
     /// How many screenshots replay as vision payloads per inference request (suggestions stay at 0).
     public var inferenceImageReplay: InferenceImageReplay
     /// Opt-in: allow plain HTTP to a non-loopback Ollama host (screenshots in cleartext).
@@ -73,7 +75,8 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         briefHotkey: CaptureHotkey = .defaultBrief,
         inferenceImageReplay: InferenceImageReplay = .latestOnly,
         acceptInsecureRemoteOllama: Bool = false,
-        activeProfileID: String = GroundProfile.screenDefault.id
+        activeProfileID: String = GroundProfile.screenDefault.id,
+        cameraHotkey: CaptureHotkey = .defaultCamera
     ) {
         self.mode = mode
         self.previewBeforeInfer = previewBeforeInfer
@@ -94,6 +97,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.highlightSpeechWhileReading = highlightSpeechWhileReading
         self.speechVoiceIdentifier = speechVoiceIdentifier
         self.briefHotkey = briefHotkey
+        self.cameraHotkey = cameraHotkey
         self.inferenceImageReplay = inferenceImageReplay
         self.acceptInsecureRemoteOllama = acceptInsecureRemoteOllama
         self.activeProfileID = activeProfileID
@@ -113,7 +117,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, customModels, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, highlightSpeechWhileReading, speechVoiceIdentifier, briefHotkey, inferenceImageReplay, acceptInsecureRemoteOllama, activeProfileID
+        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, customModels, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, highlightSpeechWhileReading, speechVoiceIdentifier, briefHotkey, inferenceImageReplay, acceptInsecureRemoteOllama, activeProfileID, cameraHotkey
     }
 
     // Tolerant decode, a saved blob missing a newer key keeps the rest of the user's
@@ -140,6 +144,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.highlightSpeechWhileReading = try c.decodeIfPresent(Bool.self, forKey: .highlightSpeechWhileReading) ?? true
         self.speechVoiceIdentifier = try c.decodeIfPresent(String.self, forKey: .speechVoiceIdentifier) ?? ""
         self.briefHotkey = try c.decodeIfPresent(CaptureHotkey.self, forKey: .briefHotkey) ?? .defaultBrief
+        self.cameraHotkey = try c.decodeIfPresent(CaptureHotkey.self, forKey: .cameraHotkey) ?? .defaultCamera
         self.inferenceImageReplay = try c.decodeIfPresent(InferenceImageReplay.self, forKey: .inferenceImageReplay) ?? .latestOnly
         self.acceptInsecureRemoteOllama = try c.decodeIfPresent(Bool.self, forKey: .acceptInsecureRemoteOllama) ?? false
         self.activeProfileID = try c.decodeIfPresent(String.self, forKey: .activeProfileID) ?? GroundProfile.screenDefault.id

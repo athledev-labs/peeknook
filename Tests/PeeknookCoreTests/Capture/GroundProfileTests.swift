@@ -82,7 +82,14 @@ final class GroundProfileTests: XCTestCase {
 
     func testUnknownActiveProfileIDFallsBackToScreenDefault() {
         var settings = PeeknookSettings()
-        settings.activeProfileID = "camera.study"   // not a built-in yet
+        settings.activeProfileID = "does.not.exist"
         XCTAssertEqual(settings.activeProfile, .screenDefault)
+    }
+
+    func testCameraStudyResolvesFromTheCatalog() {
+        var settings = PeeknookSettings()
+        settings.activeProfileID = "camera.study"
+        XCTAssertEqual(settings.activeProfile, .cameraStudy)
+        XCTAssertEqual(GroundProfile.all.map(\.id), ["screen.default", "camera.study"])
     }
 }

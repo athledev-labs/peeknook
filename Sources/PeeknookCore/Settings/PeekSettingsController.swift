@@ -152,6 +152,11 @@ public final class PeekSettingsController {
         update { $0.captureHotkey = hotkey }
     }
 
+    public func setCameraHotkey(_ hotkey: CaptureHotkey) {
+        guard settings.cameraHotkey != hotkey else { return }
+        update { $0.cameraHotkey = hotkey }
+    }
+
     public enum ModelPickResult: Equatable {
         case selected
         case needsDownload(InferenceModelOption)

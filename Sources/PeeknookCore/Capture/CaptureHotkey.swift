@@ -29,6 +29,15 @@ public struct CaptureHotkey: Codable, Equatable, Sendable {
         keySymbol: "B"
     )
 
+    /// Default: ⌘⇧C — open the live camera preview. A conscious default: a global ⌘⇧C shadows
+    /// system "Show Colors" and Finder's "Go to Computer"; the Settings recorder is the rebind
+    /// escape hatch (maintainer decision, camera v1).
+    public static let defaultCamera = CaptureHotkey(
+        keyCode: 8,
+        carbonModifiers: 256 | 512,
+        keySymbol: "C"
+    )
+
     public var modifierSymbols: [String] {
         var symbols: [String] = []
         if carbonModifiers & 4096 != 0 { symbols.append("⌃") }

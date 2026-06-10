@@ -105,6 +105,10 @@ public final class PeeknookModule: NookModule {
                 onBriefHotkeyChange: { [weak self] _ in
                     guard let self, let coordinator = self.appCoordinator else { return }
                     self.registerHotkeys(on: coordinator)
+                },
+                onCameraHotkeyChange: { [weak self] _ in
+                    guard let self, let coordinator = self.appCoordinator else { return }
+                    self.registerHotkeys(on: coordinator)
                 }
             )
         }
@@ -169,6 +173,7 @@ public final class PeeknookModule: NookModule {
         appCoordinator = coordinator
         registerCaptureHotkey(on: coordinator)
         registerBriefHotkey(on: coordinator)
+        registerCameraHotkey(on: coordinator)
     }
 
     private func registerCaptureHotkey(on coordinator: AppCoordinator) {
@@ -202,6 +207,23 @@ public final class PeeknookModule: NookModule {
                 coordinator.showHome()
                 coordinator.showNook()
                 self.orchestrator.focusBriefComposer()
+            }
+        }
+    }
+
+    private func registerCameraHotkey(on coordinator: AppCoordinator) {
+        let cameraID = "peeknook.camera"
+        let stored = orchestrator.settings.cameraHotkey
+        _ = coordinator.hotkeyController.register(
+            cameraID,
+            keyCode: stored.keyCode,
+            modifiers: stored.carbonModifiers
+        ) { [weak self] in
+            Task { @MainActor in
+                guard let self else { return }
+                coordinator.showHome()
+                coordinator.showNook()
+                self.orchestrator.openCameraLive()
             }
         }
     }

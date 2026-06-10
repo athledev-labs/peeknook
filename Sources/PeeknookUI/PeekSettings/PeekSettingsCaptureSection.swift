@@ -8,6 +8,7 @@ struct PeekSettingsCaptureSection: View {
     var settings: PeekSettingsController
     var onCaptureHotkeyChange: ((CaptureHotkey) -> Void)?
     var onBriefHotkeyChange: ((CaptureHotkey) -> Void)?
+    var onCameraHotkeyChange: ((CaptureHotkey) -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -35,6 +36,11 @@ struct PeekSettingsCaptureSection: View {
             PeekShortcutRow.brief(hotkey: orchestrator.settings.briefHotkey) { newHotkey in
                 settings.setBriefHotkey(newHotkey)
                 onBriefHotkeyChange?(newHotkey)
+            }
+
+            PeekShortcutRow.camera(hotkey: orchestrator.settings.cameraHotkey) { newHotkey in
+                settings.setCameraHotkey(newHotkey)
+                onCameraHotkeyChange?(newHotkey)
             }
 
             captureScopeRow

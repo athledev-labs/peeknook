@@ -14,6 +14,7 @@ public struct PeekSettingsView: View {
     public var storageFootprint: any StorageFootprinting
     public var onCaptureHotkeyChange: ((CaptureHotkey) -> Void)?
     public var onBriefHotkeyChange: ((CaptureHotkey) -> Void)?
+    public var onCameraHotkeyChange: ((CaptureHotkey) -> Void)?
 
     @Environment(\.nookContentInsets) private var contentInsets
     @EnvironmentObject private var appState: AppState
@@ -34,7 +35,8 @@ public struct PeekSettingsView: View {
         usage: UsageStore,
         storageFootprint: any StorageFootprinting,
         onCaptureHotkeyChange: ((CaptureHotkey) -> Void)? = nil,
-        onBriefHotkeyChange: ((CaptureHotkey) -> Void)? = nil
+        onBriefHotkeyChange: ((CaptureHotkey) -> Void)? = nil,
+        onCameraHotkeyChange: ((CaptureHotkey) -> Void)? = nil
     ) {
         self.orchestrator = orchestrator
         self.setup = setup
@@ -44,6 +46,7 @@ public struct PeekSettingsView: View {
         self.storageFootprint = storageFootprint
         self.onCaptureHotkeyChange = onCaptureHotkeyChange
         self.onBriefHotkeyChange = onBriefHotkeyChange
+        self.onCameraHotkeyChange = onCameraHotkeyChange
     }
 
     public var body: some View {
@@ -64,7 +67,8 @@ public struct PeekSettingsView: View {
                             orchestrator: orchestrator,
                             settings: settings,
                             onCaptureHotkeyChange: onCaptureHotkeyChange,
-                            onBriefHotkeyChange: onBriefHotkeyChange
+                            onBriefHotkeyChange: onBriefHotkeyChange,
+                            onCameraHotkeyChange: onCameraHotkeyChange
                         )
                     }
 

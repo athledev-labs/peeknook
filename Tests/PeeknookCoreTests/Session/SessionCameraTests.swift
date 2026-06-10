@@ -221,6 +221,57 @@ final class SessionOrchestratorCameraTests: XCTestCase {
         XCTAssertEqual(orchestrator.phase, .idle)
     }
 
+    /// Readiness keys on the `camera.study` literal: denied Camera TCC surfaces the typed
+    /// permission failure (Privacy → Camera recovery) and the session is never started.
+    func testOpenCameraLiveWithDeniedCameraPermissionFailsTyped() {
+        let session = StubCameraSession()
+        let orchestrator = makeOrchestrator(session: session)
+        let suite = "peeknook.tests.camera-denied"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.removePersistentDomain(forName: suite)
+        let setup = SetupCoordinator(
+            settings: orchestrator.settings,
+            defaults: defaults,
+            permissionStatus: { CapturePermissionStatus(accessibilityTrusted: false, screenRecordingGranted: true, cameraGranted: false) }
+        )
+        setup.applyTestBypass()           // ollama + model complete…
+        setup.skipsLiveProbes = false     // …but probe the injected (camera-denied) status
+        orchestrator.setup = setup
+
+        orchestrator.openCameraLive()
+
+        guard case .failed(let failure) = orchestrator.phase else {
+            return XCTFail("Expected a typed permission failure, got \(orchestrator.phase)")
+        }
+        XCTAssertEqual(failure.kind, .permissionRequired(name: "Camera"))
+        XCTAssertEqual(failure.primaryRecovery, .openCameraSettings)
+        XCTAssertEqual(session.startPreviewCount, 0, "A denied camera must never start the session")
+    }
+
+    /// The flip side of the locked invariant: Camera granted opens the live preview even with
+    /// Screen Recording denied — camera.study never demands Screen Recording.
+    func testOpenCameraLiveIgnoresScreenRecordingState() async {
+        let session = StubCameraSession()
+        let orchestrator = makeOrchestrator(session: session)
+        let suite = "peeknook.tests.camera-granted"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.removePersistentDomain(forName: suite)
+        let setup = SetupCoordinator(
+            settings: orchestrator.settings,
+            defaults: defaults,
+            permissionStatus: { CapturePermissionStatus(accessibilityTrusted: false, screenRecordingGranted: false, cameraGranted: true) }
+        )
+        setup.applyTestBypass()
+        setup.skipsLiveProbes = false
+        orchestrator.setup = setup
+
+        orchestrator.openCameraLive()
+
+        XCTAssertEqual(orchestrator.phase, .cameraLive)
+        let started = await orchestrator.waitUntil { session.startPreviewCount == 1 }
+        XCTAssertTrue(started)
+    }
+
     /// ⌘⇧P during `.cameraLive` is a no-op: `beginCapture` only proceeds from idle/result, and the
     /// FSM explicitly rejects `beginCapture` in `.cameraLive` as belt-and-braces.
     func testBeginCaptureDuringCameraLiveIsIgnored() async {

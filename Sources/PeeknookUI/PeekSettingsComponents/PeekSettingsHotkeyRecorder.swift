@@ -161,4 +161,14 @@ extension PeekShortcutRow {
             onChange: onChange
         )
     }
+
+    static func camera(hotkey: CaptureHotkey, onChange: @escaping (CaptureHotkey) -> Void) -> PeekShortcutRow {
+        PeekShortcutRow(
+            icon: "camera",
+            title: "Camera shortcut",
+            detail: "Opens the live camera preview from anywhere.",
+            hotkey: hotkey,
+            onChange: onChange
+        )
+    }
 }

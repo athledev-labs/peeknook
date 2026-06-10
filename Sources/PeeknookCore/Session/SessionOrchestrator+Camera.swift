@@ -10,11 +10,23 @@ import Foundation
 @MainActor
 extension SessionOrchestrator {
     /// ⌘⇧C / the camera command: open the live camera preview. Legal from idle/result/failed.
-    /// No-op when no camera provider is registered. The Camera-TCC readiness gate lands with the
-    /// `camera.study` reachability slice (readiness keys on that profile literal, never on the
-    /// active profile — opening the camera must not demand Screen Recording).
+    /// No-op when no camera provider is registered. Readiness keys on the `camera.study` profile
+    /// literal — never the active profile (the single profile-source rule): opening the camera
+    /// requires Ollama + a model + Camera TCC, and must NOT demand Screen Recording.
     public func openCameraLive() {
         guard let session = captureRegistry.sessionController(for: .camera) else { return }
+        if let setup, !setup.readiness(for: .cameraStudy) {
+            if setup.ollamaStep == .complete, setup.modelStep == .complete {
+                // Ollama + model are fine, so the missing piece is camera.study's one
+                // permission. Enter and immediately fail the live phase so the user gets the
+                // typed Camera recovery (Privacy → Camera deep link), not generic setup copy.
+                guard case .applied = applyPhaseEvent(.openCameraLive) else { return }
+                _ = applyPhaseEvent(.cameraLiveFailed(.permissionRequired(.camera)))
+            } else {
+                _ = applyPhaseEvent(.setupNotReady)
+            }
+            return
+        }
         guard case .applied = applyPhaseEvent(.openCameraLive) else { return }
         abortSessionWork()
         stopSpeechOutput()

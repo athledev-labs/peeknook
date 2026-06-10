@@ -2120,6 +2120,30 @@
           }
         }
       }
+    },
+    "Camera shortcut": {
+      "comment": "Settings row title for the camera hotkey recorder",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "카메라 단축키"
+          }
+        }
+      }
+    },
+    "Opens the live camera preview from anywhere.": {
+      "comment": "Camera hotkey row detail",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "어디서나 라이브 카메라 미리보기를 엽니다."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

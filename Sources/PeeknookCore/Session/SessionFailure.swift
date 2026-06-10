@@ -12,17 +12,20 @@ public enum RecoveryAction: Equatable, Sendable {
     case switchModel
     case openScreenRecordingSettings
     case openAccessibilitySettings
+    case openCameraSettings
 }
 
 public extension CapturePermission {
-    /// The recovery a missing permission offers. Screen Recording and Accessibility open their
-    /// Privacy panes directly; Camera / Microphone / Speech Recognition fall back to the setup
-    /// drill-in until the camera PR adds their dedicated panes (no shipped profile requires them yet).
+    /// The recovery a missing permission offers. Screen Recording / Accessibility / Camera open
+    /// their Privacy panes directly; Microphone / Speech Recognition fall back to the setup
+    /// drill-in until the voice profiles add their dedicated panes (no shipped profile requires
+    /// them yet).
     var recoveryAction: RecoveryAction {
         switch self {
         case .screenRecording: return .openScreenRecordingSettings
         case .accessibility:   return .openAccessibilitySettings
-        case .camera, .microphone, .speechRecognition: return .openSetup
+        case .camera:          return .openCameraSettings
+        case .microphone, .speechRecognition: return .openSetup
         }
     }
 }
@@ -139,12 +142,15 @@ public extension SessionFailure {
                 secondaryRecovery: .tryAgain
             )
         case .permissionRequired(let name):
-            let isScreen = name.lowercased().contains("screen")
+            // Per-permission routing: match the display name back to its typed permission so the
+            // recovery opens the RIGHT Privacy pane (a substring heuristic once sent Camera to the
+            // Accessibility pane).
+            let permission = CapturePermission.allCases.first { $0.displayName == name }
             return SessionFailure(
                 kind: .permissionRequired(name: name),
                 title: "\(name) is off",
                 message: "Allow \(name) in System Settings → Privacy & Security, then try again.",
-                primaryRecovery: isScreen ? .openScreenRecordingSettings : .openAccessibilitySettings,
+                primaryRecovery: permission?.recoveryAction ?? .openSetup,
                 secondaryRecovery: .tryAgain
             )
         case .failed(let message):

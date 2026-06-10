@@ -86,9 +86,7 @@ final class CameraStudyLayoutTests: XCTestCase {
         XCTAssertEqual(profile.primaryGround, .camera)
         XCTAssertEqual(profile.activeGrounds, [.camera])
         XCTAssertEqual(profile.requiredPermissions, [.camera], "camera.study must never demand Screen Recording")
-        // Not yet in the built-in catalog — reachability (⌘⇧C + Camera TCC) is a later slice, so
-        // a stale persisted "camera.study" id still falls back to screen.default today.
-        XCTAssertFalse(GroundProfile.all.contains { $0.id == profile.id })
-        XCTAssertEqual(GroundProfile.builtIn(id: "camera.study").id, GroundProfile.screenDefault.id)
+        XCTAssertTrue(GroundProfile.all.contains { $0.id == profile.id })
+        XCTAssertEqual(GroundProfile.builtIn(id: "camera.study").id, profile.id)
     }
 }

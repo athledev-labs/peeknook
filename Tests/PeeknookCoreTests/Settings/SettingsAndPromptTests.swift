@@ -80,6 +80,20 @@ final class SettingsAndPromptTests: XCTestCase {
         XCTAssertTrue(message.contains("Actors"))
     }
 
+    func testCameraHotkeyDefaultsToCommandShiftCAndRoundTrips() throws {
+        // A settings blob written before the key existed keeps everything and defaults ⌘⇧C.
+        let legacy = Data("""
+        {"mode":"general","textModel":"gemma4:e4b"}
+        """.utf8)
+        XCTAssertEqual(try JSONDecoder().decode(PeeknookSettings.self, from: legacy).cameraHotkey, .defaultCamera)
+        XCTAssertEqual(CaptureHotkey.defaultCamera.display, "⇧⌘C")   // display order is ⌃⌥⇧⌘
+
+        var custom = PeeknookSettings(textModel: "gemma4:e4b")
+        custom.cameraHotkey = CaptureHotkey(keyCode: 40, carbonModifiers: 256 | 512, keySymbol: "K")
+        let back = try JSONDecoder().decode(PeeknookSettings.self, from: JSONEncoder().encode(custom))
+        XCTAssertEqual(back.cameraHotkey.keySymbol, "K")
+    }
+
     func testCaptureHotkeyDefaultsToCommandShiftPAndRoundTrips() throws {
         let legacy = Data("""
         {"mode":"general","textModel":"gemma4:e4b"}

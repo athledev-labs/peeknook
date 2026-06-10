@@ -441,6 +441,8 @@ public struct PeekHomeView: View {
             CapturePermissionStatus.requestScreenRecording()
         case .openAccessibilitySettings:
             CapturePermissionStatus.requestAccessibility()
+        case .openCameraSettings:
+            CapturePermissionStatus.requestCamera()
         }
     }
 
