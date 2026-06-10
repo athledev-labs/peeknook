@@ -58,7 +58,7 @@ The project is organized into four Swift Package Manager targets:
 
 Keep new backends behind these protocols. Do not widen call sites.
 
-- **`CaptureProviding`**: `func capture(scope:quick:) async throws -> CaptureResult`. The current implementation is `MacCaptureProvider` (ScreenCaptureKit), wired in `PeeknookServices.makeStack`.
+- **`CaptureProviding`**: `func capture(scope:quick:encoding:) async throws -> CaptureResult`. Encoding resolves via `CaptureEncodingPolicy` from `captureQuality` + scope + quick. Current implementations: `MacCaptureProvider` (ScreenCaptureKit) and `CameraCaptureProvider`, wired in `PeeknookServices.makeStack`.
 - **`InferenceEngine`**: streams `InferenceEvent` (`.token` / `.completed(InferenceStats?)`). The current implementation is `OllamaInferenceEngine`.
 
 `SessionOrchestrator` drives the phase machine in `SessionPhase`: `idle → capturing → previewing → inferring → result / failed`. It also owns `UsageStore` and warm-model tracking (`keep_alive`).
@@ -114,4 +114,4 @@ Do not break the following without an explicit product decision and migration pl
 - Every source file starts with `// SPDX-License-Identifier: Apache-2.0`.
 - **Accessibility**: use the shared helpers in `PeekAccessibility.swift`, `peekAction(label:hint:)` for icon+text controls, `peekDecorative()` for glyphs that duplicate a label, `peekLoading(_:)` for skeletons. Don't hand-roll `accessibility*` on new shared components. **VoiceOver audit (capture → result):** idle Capture/Brief/Resume and preflight pills; capturing/inferring status (`StageLabel`, `AnalyzingSkeleton`, web-lookup shimmer); optional preview confirm/cancel; result command bar, follow-up/brief composers, copy-answer; failure recovery card; setup step rows; context/archive/notice banners (recovery buttons stay separately focusable — never wrap the whole banner in `children: .combine`); history archive open/delete rows.
 - **Localization**: `PeeknookUI` strings live in `Resources/Localizable.xcstrings`. Route visible copy through `Text(peek:)` / `PeekLocalized(_:)` (resolves against `Bundle.module`, not `Bundle.main`). Keys are human-readable English and double as the fallback; add translations in the catalog, not in code.
-- Keep diffs focused and match surrounding style. Run `swift test` before declaring a change complete (currently 468 core tests). A SwiftUI **XCUITest** target still needs the generated `.xcodeproj` (`./Scripts/regenerate-xcodeproj.sh`); phase/settings/archive flows are covered today by core logic tests.
+- Keep diffs focused and match surrounding style. Run `swift test` before declaring a change complete (currently 488 core tests). A SwiftUI **XCUITest** target still needs the generated `.xcodeproj` (`./Scripts/regenerate-xcodeproj.sh`); phase/settings/archive flows are covered today by core logic tests.

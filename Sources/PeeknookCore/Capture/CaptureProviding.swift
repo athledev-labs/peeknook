@@ -241,7 +241,12 @@ public enum InferenceImageReplay: String, Codable, Sendable, CaseIterable, Ident
 public protocol CaptureProviding: Sendable {
     /// - Parameter quick: capture at lower fidelity (smaller image) to cut vision-prefill
     ///   latency, the dominant cost of local inference.
-    func capture(scope: CaptureScope, quick: Bool) async throws -> CaptureResult
+    /// - Parameter encoding: resolved JPEG long-edge cap and quality from ``CaptureEncodingPolicy``.
+    func capture(
+        scope: CaptureScope,
+        quick: Bool,
+        encoding: CaptureEncodingParams
+    ) async throws -> CaptureResult
 }
 
 // MARK: - Test-only stub
@@ -274,8 +279,12 @@ public struct StubCaptureProvider: CaptureProviding, Sendable {
         self.screenshotBase64 = screenshotBase64
     }
 
-    public func capture(scope: CaptureScope, quick: Bool) async throws -> CaptureResult {
-        _ = (scope, quick)
+    public func capture(
+        scope: CaptureScope,
+        quick: Bool,
+        encoding: CaptureEncodingParams
+    ) async throws -> CaptureResult {
+        _ = (scope, quick, encoding)
         if let captureDelayNanoseconds {
             try await Task.sleep(nanoseconds: captureDelayNanoseconds)
             try Task.checkCancellation()

@@ -59,7 +59,12 @@ extension SessionOrchestrator {
         let generation = lifecycle.snapshotCapture()
         lifecycle.cameraTask = Task {
             do {
-                let still = try await session.captureStill()
+                let encoding = CaptureEncodingPolicy.resolve(
+                    scope: settings.captureScope,
+                    quick: settings.quickMode,
+                    quality: settings.captureQuality
+                )
+                let still = try await session.captureStill(encoding: encoding)
                 guard lifecycle.isCurrentCapture(generation), !Task.isCancelled else { return }
                 // Teardown before the phase transition; no awaits follow, so cancelling our own
                 // task here is harmless and the commit below runs unconditionally.

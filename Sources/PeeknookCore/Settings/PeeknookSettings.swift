@@ -46,6 +46,8 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     public var cameraHotkey: CaptureHotkey
     /// How many screenshots replay as vision payloads per inference request (suggestions stay at 0).
     public var inferenceImageReplay: InferenceImageReplay
+    /// JPEG encoding tier for new vision captures (screen and camera).
+    public var captureQuality: CaptureQuality
     /// Opt-in: allow plain HTTP to a non-loopback Ollama host (screenshots in cleartext).
     public var acceptInsecureRemoteOllama: Bool
     /// The active ground-profile id (capture-surface bundle). Resolves via ``activeProfile``; an
@@ -84,6 +86,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         speechVoiceIdentifier: String = "",
         briefHotkey: CaptureHotkey = .defaultBrief,
         inferenceImageReplay: InferenceImageReplay = .latestOnly,
+        captureQuality: CaptureQuality = .balanced,
         acceptInsecureRemoteOllama: Bool = false,
         activeProfileID: String = GroundProfile.screenDefault.id,
         cameraHotkey: CaptureHotkey = .defaultCamera,
@@ -113,6 +116,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.briefHotkey = briefHotkey
         self.cameraHotkey = cameraHotkey
         self.inferenceImageReplay = inferenceImageReplay
+        self.captureQuality = captureQuality
         self.acceptInsecureRemoteOllama = acceptInsecureRemoteOllama
         self.activeProfileID = activeProfileID
         self.answerBackend = answerBackend
@@ -148,7 +152,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, customModels, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, highlightSpeechWhileReading, speechVoiceIdentifier, briefHotkey, inferenceImageReplay, acceptInsecureRemoteOllama, activeProfileID, cameraHotkey, answerBackend, openAICompatibleBaseURL, openAICompatibleModelTag, acceptInsecureRemoteOpenAICompatible
+        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, customModels, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, highlightSpeechWhileReading, speechVoiceIdentifier, briefHotkey, inferenceImageReplay, captureQuality, acceptInsecureRemoteOllama, activeProfileID, cameraHotkey, answerBackend, openAICompatibleBaseURL, openAICompatibleModelTag, acceptInsecureRemoteOpenAICompatible
     }
 
     // Tolerant decode, a saved blob missing a newer key keeps the rest of the user's
@@ -177,6 +181,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.briefHotkey = try c.decodeIfPresent(CaptureHotkey.self, forKey: .briefHotkey) ?? .defaultBrief
         self.cameraHotkey = try c.decodeIfPresent(CaptureHotkey.self, forKey: .cameraHotkey) ?? .defaultCamera
         self.inferenceImageReplay = try c.decodeIfPresent(InferenceImageReplay.self, forKey: .inferenceImageReplay) ?? .latestOnly
+        self.captureQuality = try c.decodeIfPresent(CaptureQuality.self, forKey: .captureQuality) ?? .balanced
         self.acceptInsecureRemoteOllama = try c.decodeIfPresent(Bool.self, forKey: .acceptInsecureRemoteOllama) ?? false
         self.activeProfileID = try c.decodeIfPresent(String.self, forKey: .activeProfileID) ?? GroundProfile.screenDefault.id
         // Decoded as a raw String so an unknown future backend (e.g. "sidecar" written by a newer

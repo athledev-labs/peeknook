@@ -50,6 +50,7 @@ struct PeekSettingsCaptureSection: View {
 
             captureScopeRow
             answerDepthRow
+            captureQualityRow
             inferenceImageReplayRow
 
             PeekSettingsToggleRow(
@@ -204,6 +205,22 @@ struct PeekSettingsCaptureSection: View {
             PeekPreflightMenuContent.answerDepthHomeMenu(
                 current: depth,
                 onSelect: { settings.setQuickMode($0) },
+                close: close
+            )
+        }
+    }
+
+    private var captureQualityRow: some View {
+        let quality = orchestrator.settings.captureQuality
+        return PeekSettingsMenuRow(
+            icon: quality.settingsIcon,
+            title: "Capture quality",
+            detail: quality.menuDetail,
+            value: quality.barLabel
+        ) { close in
+            PeekPreflightMenuContent.captureQualityHomeMenu(
+                current: quality,
+                onSelect: { settings.setCaptureQuality($0) },
                 close: close
             )
         }

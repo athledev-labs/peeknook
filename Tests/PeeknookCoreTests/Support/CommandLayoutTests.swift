@@ -30,15 +30,26 @@ final class CommandLayoutTests: XCTestCase {
         XCTAssertEqual(
             layout.forPlacement(.result).map(\.id),
             ["result.history", "result.export", "result.brief", "result.followUp",
-             "result.speak", "result.done", "result.newChat"]
+             "result.retake", "result.addImage", "result.speak", "result.done", "result.newChat"]
         )
     }
 
-    func testNoCameraLiveOrAddImageInScreenDefault() {
-        // camera.study lands with the camera PR; addImage stays reserved (deferred) — neither belongs
-        // in today's screen layout or the migration anchor breaks.
+    func testNoCameraLiveInScreenDefault() {
+        // camera.study lands with the camera PR — it must not appear in the screen layout yet.
         XCTAssertTrue(layout.forPlacement(.cameraLive).isEmpty)
-        XCTAssertFalse(layout.commands.contains { $0.action == .addImage })
+    }
+
+    func testRetakeAndAddImageCarryCaptureGates() {
+        XCTAssertEqual(descriptor("result.retake").requiredModules, [.screenCapture])
+        XCTAssertEqual(descriptor("result.retake").requiredPermissions, [.screenRecording])
+        XCTAssertEqual(descriptor("result.addImage").requiredModules, [.screenCapture])
+        XCTAssertEqual(descriptor("result.addImage").requiredPermissions, [.screenRecording])
+        XCTAssertEqual(descriptor("result.addImage").hotkey, .settingsSlot(.capture))
+    }
+
+    func testRetakeAndAddImageKeepResultBarTestIdentifiers() {
+        XCTAssertEqual(descriptor("result.retake").accessibilityIdentifier, "peeknook.retake")
+        XCTAssertEqual(descriptor("result.addImage").accessibilityIdentifier, "peeknook.addImage")
     }
 
     // MARK: Trailing-pin contract (uniform leading-scroll / trailing-pin split)

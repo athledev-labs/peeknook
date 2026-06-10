@@ -177,6 +177,7 @@ struct PeekIdleCommandBar: View {
     var onResume: () -> Void
 
     @Environment(\.nookResolvedTheme) private var theme
+    @State private var servedModels: [String] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -200,6 +201,14 @@ struct PeekIdleCommandBar: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .animation(.spring(response: 0.34, dampingFraction: 0.86), value: isBriefComposerVisible)
+        .task(id: servedModelsKey) {
+            guard orchestrator.settings.answerBackend == .openAICompatible,
+                  !orchestrator.settings.openAICompatibleBaseURL.isEmpty else {
+                servedModels = []
+                return
+            }
+            servedModels = await settings.openAICompatibleServedModels()
+        }
     }
 
     /// The reactive inputs the idle bar gates on, snapshotted for the pure resolver.
@@ -263,18 +272,22 @@ struct PeekIdleCommandBar: View {
     private var modelMenu: some View {
         ValueDropdownPill(
             symbol: "cpu",
-            title: TextModelCatalog.displayName(for: orchestrator.settings.textModel, custom: settings.customModels),
+            title: settings.activeModelDisplayName,
             help: "Answer model for the next capture"
         ) { close in
             PeekPreflightMenuContent.visionModelHomeMenu(
-                models: settings.availableModels,
-                isInstalled: { setup.isModelInstalled($0) },
-                isSelected: { modelCatalog.matchesModel(installedNames: [orchestrator.settings.textModel], wanted: $0.tag) },
+                models: settings.pickerModels(servedOpenAIModels: servedModels),
+                isInstalled: { settings.isPickerOptionInstalled($0) },
+                isSelected: { settings.isPickerOptionSelected($0, modelCatalog: modelCatalog) },
                 onSelect: selectModel,
-                onBrowseModels: onBrowseModels,
+                onBrowseModels: settings.showsModelLibraryBrowse ? onBrowseModels : nil,
                 close: close
             )
         }
+    }
+
+    private var servedModelsKey: String {
+        "\(orchestrator.settings.answerBackend.rawValue)|\(orchestrator.settings.openAICompatibleBaseURL)|\(orchestrator.settings.acceptInsecureRemoteOpenAICompatible)"
     }
 
     private var depthMenu: some View {

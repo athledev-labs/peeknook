@@ -10,26 +10,24 @@ import ScreenCaptureKit
 public struct MacCaptureProvider: CaptureProviding, Sendable {
     public init() {}
 
-    public func capture(scope: CaptureScope, quick: Bool) async throws -> CaptureResult {
+    public func capture(
+        scope: CaptureScope,
+        quick: Bool,
+        encoding: CaptureEncodingParams
+    ) async throws -> CaptureResult {
         guard CGPreflightScreenCaptureAccess() else {
             throw CaptureError.permissionRequired("Screen Recording")
         }
 
         let target = try await Self.captureTarget(scope: scope)
 
-        // Image size drives vision-prefill latency (the dominant local cost). Quick mode
-        // trades legibility for speed with a smaller image; a full screen gets more pixels
-        // than a single window because its text is smaller.
-        let maxPixel: Int
-        switch (scope, quick) {
-        case (.display, false): maxPixel = 1600
-        case (.display, true): maxPixel = 1152
-        case (.window, false): maxPixel = 1280
-        case (.window, true): maxPixel = 896
-        }
         // Vision is the product. Fail loud rather than silently shipping a text-only
         // capture that the UI would still label "vision".
-        guard let screenshotBase64 = CaptureImageEncoder.jpegBase64(from: target.image, maxPixel: maxPixel),
+        guard let screenshotBase64 = CaptureImageEncoder.jpegBase64(
+            from: target.image,
+            maxPixel: encoding.maxPixel,
+            quality: encoding.jpegQuality
+        ),
               !screenshotBase64.isEmpty else {
             let noun = scope == .display ? "screen" : "window"
             throw CaptureError.failed("Captured the \(noun) but couldn't encode the screenshot. Try again.")

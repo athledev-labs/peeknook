@@ -25,6 +25,10 @@
       "comment": "Tier B localization",
       "extractionState": "manual"
     },
+    "Add image": {
+      "comment": "Command-bar action: capture another screenshot into the thread.",
+      "extractionState": "manual"
+    },
     "Add model": {
       "comment": "Tier B localization",
       "extractionState": "manual"
@@ -115,6 +119,14 @@
     },
     "Capture shortcut": {
       "comment": "Tier B localization",
+      "extractionState": "manual"
+    },
+    "Capture a new screenshot and replace this chat": {
+      "comment": "Command-bar help: Retake button.",
+      "extractionState": "manual"
+    },
+    "Capture another screenshot and add it to this chat": {
+      "comment": "Command-bar help: Add image button.",
       "extractionState": "manual"
     },
     "Capture target for the next capture": {
@@ -663,6 +675,10 @@
     },
     "Reset usage stats?": {
       "comment": "Tier B localization",
+      "extractionState": "manual"
+    },
+    "Retake": {
+      "comment": "Command-bar action: fresh capture replacing the thread.",
       "extractionState": "manual"
     },
     "Resume": {

@@ -63,10 +63,10 @@ public final class CameraCaptureProvider: CameraSessionControlling, CaptureProvi
         #endif
     }
 
-    public func captureStill() async throws -> CaptureResult {
+    public func captureStill(encoding: CaptureEncodingParams) async throws -> CaptureResult {
         #if canImport(AVFoundation)
         guard session.isRunning else { throw CaptureError.failed("Camera preview is not running.") }
-        let base64 = try await capturePhotoJPEGBase64()
+        let base64 = try await capturePhotoJPEGBase64(encoding: encoding)
         guard !base64.isEmpty else {
             throw CaptureError.failed("Captured a camera frame but couldn't encode it. Try again.")
         }
@@ -81,9 +81,13 @@ public final class CameraCaptureProvider: CameraSessionControlling, CaptureProvi
         #endif
     }
 
-    public func capture(scope: CaptureScope, quick: Bool) async throws -> CaptureResult {
+    public func capture(
+        scope: CaptureScope,
+        quick: Bool,
+        encoding: CaptureEncodingParams
+    ) async throws -> CaptureResult {
         _ = (scope, quick)   // screen concepts; the camera ground ignores both by design
-        return try await captureStill()
+        return try await captureStill(encoding: encoding)
     }
 
     #if canImport(AVFoundation)
@@ -105,10 +109,10 @@ public final class CameraCaptureProvider: CameraSessionControlling, CaptureProvi
 
     /// The still, already JPEG-encoded on the delegate's queue (same `CaptureImageEncoder` and
     /// 1280px cap as screen captures) so only a `String` ever crosses back to the main actor.
-    private func capturePhotoJPEGBase64() async throws -> String {
+    private func capturePhotoJPEGBase64(encoding: CaptureEncodingParams) async throws -> String {
         defer { photoDelegate = nil }
         return try await withCheckedThrowingContinuation { continuation in
-            let delegate = PhotoCaptureDelegate { result in
+            let delegate = PhotoCaptureDelegate(encoding: encoding) { result in
                 continuation.resume(with: result)
             }
             photoDelegate = delegate
@@ -148,9 +152,11 @@ private struct SessionBox: @unchecked Sendable {
 /// Bridges `AVCapturePhotoOutput`'s delegate callback (arbitrary queue) to async/await, encoding
 /// the JPEG before resuming so no image type crosses an isolation boundary.
 private final class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate, @unchecked Sendable {
+    private let encoding: CaptureEncodingParams
     private let completion: (Result<String, Error>) -> Void
 
-    init(completion: @escaping (Result<String, Error>) -> Void) {
+    init(encoding: CaptureEncodingParams, completion: @escaping (Result<String, Error>) -> Void) {
+        self.encoding = encoding
         self.completion = completion
     }
 
@@ -164,7 +170,11 @@ private final class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegat
             return
         }
         guard let cgImage = photo.cgImageRepresentation(),
-              let base64 = CaptureImageEncoder.jpegBase64(from: cgImage) else {
+              let base64 = CaptureImageEncoder.jpegBase64(
+                from: cgImage,
+                maxPixel: encoding.maxPixel,
+                quality: encoding.jpegQuality
+              ) else {
             completion(.failure(CaptureError.failed("The camera returned an empty frame.")))
             return
         }

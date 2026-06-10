@@ -61,13 +61,8 @@ public enum CommandKind: Codable, Sendable, Equatable {
 public enum CommandAction: String, Codable, Sendable, CaseIterable {
     case capture, beginCameraCapture, shutter, cancel, confirmPreview
     case brief, resume, followUp, speak, done, newChat
-    case history, export, addImage
+    case history, export, retake, addImage
     // case planAction   ← Phase 5 sidecar (agent control)
-    //
-    // `addImage` is reserved but intentionally unused by `screenDefault`: it is functionally identical
-    // to the capture hotkey's "add a screenshot to this chat" from a result, so a lone button would be
-    // redundant and would break the migration anchor (today's result bar has no re-capture command).
-    // A deliberate retake(replace) / addImage(append) pair is a separate future product decision.
 }
 
 /// A hotkey slot backed by a ``PeeknookSettings`` field. `.camera` is reserved and inert until camera
@@ -288,24 +283,41 @@ public extension CommandLayout {
             placement: .result, defaultOrder: 3
         ),
         CommandDescriptor(
+            id: "result.retake", kind: .button, action: .retake,
+            titleKey: "Retake", symbol: "arrow.triangle.2.circlepath.camera",
+            helpKey: "Capture a new screenshot and replace this chat",
+            placement: .result,
+            requiredModules: [.screenCapture], requiredPermissions: [.screenRecording],
+            defaultOrder: 4
+        ),
+        CommandDescriptor(
+            id: "result.addImage", kind: .button, action: .addImage,
+            titleKey: "Add image", symbol: "photo.badge.plus",
+            helpKey: "Capture another screenshot and add it to this chat",
+            hotkey: .settingsSlot(.capture),
+            placement: .result,
+            requiredModules: [.screenCapture], requiredPermissions: [.screenRecording],
+            defaultOrder: 5
+        ),
+        CommandDescriptor(
             id: "result.speak", kind: .button, action: .speak,
             titleKey: "Speak", symbol: "speaker.wave.2",
             alternateFace: CommandFace(titleKey: "Stop", symbol: "stop.fill", helpKey: "Stop reading the answer aloud"),
             helpKey: "Read the answer aloud",
             placement: .result, visibility: .always,
-            requiredModules: [.speakAnswers], defaultOrder: 4
+            requiredModules: [.speakAnswers], defaultOrder: 6
         ),
         CommandDescriptor(
             id: "result.done", kind: .button, action: .done,
             titleKey: "Done", symbol: "house",
             helpKey: "End this chat and return to the home screen",
-            placement: .result, pinnedTrailing: true, prominent: true, defaultOrder: 5
+            placement: .result, pinnedTrailing: true, prominent: true, defaultOrder: 7
         ),
         CommandDescriptor(
             id: "result.newChat", kind: .button, action: .newChat,
             titleKey: "New chat", symbol: "arrow.counterclockwise",
             helpKey: "Discard this thread and start fresh",
-            placement: .result, defaultOrder: 6
+            placement: .result, defaultOrder: 8
         ),
     ])
 

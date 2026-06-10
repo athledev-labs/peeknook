@@ -25,6 +25,8 @@ public struct CommandBarContext: Sendable, Equatable {
     /// The brief composer is open — together with `briefHasContent` drives Brief's prominence.
     public var briefComposerVisible: Bool
     public var followUpComposerVisible: Bool
+    /// Context meter at critical fill — disables Add image on the result bar.
+    public var isContextBlocked: Bool
     /// Modules currently enabled in the active profile (`Module.isEnabled`). A command whose
     /// `requiredModules` are not all present is hidden (Speak when speak-answers is off, camera
     /// commands in a screen profile, …).
@@ -40,6 +42,7 @@ public struct CommandBarContext: Sendable, Equatable {
         briefHasContent: Bool = false,
         briefComposerVisible: Bool = false,
         followUpComposerVisible: Bool = false,
+        isContextBlocked: Bool = false,
         enabledModules: Set<ModuleID> = []
     ) {
         self.isPreviewing = isPreviewing
@@ -51,6 +54,7 @@ public struct CommandBarContext: Sendable, Equatable {
         self.briefHasContent = briefHasContent
         self.briefComposerVisible = briefComposerVisible
         self.followUpComposerVisible = followUpComposerVisible
+        self.isContextBlocked = isContextBlocked
         self.enabledModules = enabledModules
     }
 }
@@ -74,7 +78,9 @@ public extension CommandDescriptor {
     /// A visible-but-disabled command (e.g. Capture before Screen Recording is granted). Permission
     /// gates disable; module/visibility gates hide.
     func isDisabled(in context: CommandBarContext) -> Bool {
-        !requiredPermissions.isEmpty && !context.isReady
+        if !requiredPermissions.isEmpty && !context.isReady { return true }
+        if action == .addImage && context.isContextBlocked { return true }
+        return false
     }
 
     /// Whether the command is in its toggled (alternate-appearance) state — Brief filled when the

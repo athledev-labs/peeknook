@@ -165,6 +165,7 @@ struct PeekHomeResultView: View {
             briefHasContent: !orchestrator.sessionBrief.isEmpty,
             briefComposerVisible: isBriefComposerVisible,
             followUpComposerVisible: isFollowUpComposerVisible,
+            isContextBlocked: orchestrator.contextPressure == .critical,
             enabledModules: Set(ModuleID.allCases.filter {
                 Module.isEnabled($0, in: orchestrator.settings, profile: profile)
             })
@@ -197,6 +198,8 @@ struct PeekHomeResultView: View {
             } else {
                 orchestrator.speakLastAnswer()
             }
+        case .retake:   orchestrator.retake()
+        case .addImage: orchestrator.addImage()
         case .done:     onFinishChat()
         case .newChat:  onRequestNewChat()
         default:        break

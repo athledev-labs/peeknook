@@ -33,6 +33,17 @@ final class CommandBarResolutionTests: XCTestCase {
         }
     }
 
+    func testAddImageDisabledAtCriticalContextRetakeStaysEnabled() {
+        let add = descriptor("result.addImage")
+        let retake = descriptor("result.retake")
+        let ready = ctx(isReady: true, enabledModules: [.screenCapture])
+        XCTAssertFalse(add.isDisabled(in: ready))
+        XCTAssertFalse(retake.isDisabled(in: ready))
+        let blocked = ctx(isReady: true, isContextBlocked: true, enabledModules: [.screenCapture])
+        XCTAssertTrue(add.isDisabled(in: blocked))
+        XCTAssertFalse(retake.isDisabled(in: blocked))
+    }
+
     // MARK: Transient visibility
 
     func testResumeVisibilityTracksPreview() {
@@ -134,13 +145,15 @@ final class CommandBarResolutionTests: XCTestCase {
         briefHasContent: Bool = false,
         briefComposerVisible: Bool = false,
         followUpComposerVisible: Bool = false,
+        isContextBlocked: Bool = false,
         enabledModules: Set<ModuleID> = []
     ) -> CommandBarContext {
         CommandBarContext(
             isPreviewing: isPreviewing, isReady: isReady, hasResumePreview: hasResumePreview,
             hasConversationHistory: hasConversationHistory, showingFullConversation: showingFullConversation,
             isSpeaking: isSpeaking, briefHasContent: briefHasContent, briefComposerVisible: briefComposerVisible,
-            followUpComposerVisible: followUpComposerVisible, enabledModules: enabledModules
+            followUpComposerVisible: followUpComposerVisible, isContextBlocked: isContextBlocked,
+            enabledModules: enabledModules
         )
     }
 

@@ -16,7 +16,7 @@ public protocol CameraSessionControlling: AnyObject {
     /// and the host's nook-collapse teardown can both fire for the same exit.
     func stopPreview()
     /// Capture a still from the running session as a `CaptureResult` with `ground == .camera`.
-    func captureStill() async throws -> CaptureResult
+    func captureStill(encoding: CaptureEncodingParams) async throws -> CaptureResult
 }
 
 // MARK: - Test-only stub
@@ -53,7 +53,8 @@ public final class StubCameraSession: CameraSessionControlling, CaptureProviding
         isPreviewing = false
     }
 
-    public func captureStill() async throws -> CaptureResult {
+    public func captureStill(encoding: CaptureEncodingParams) async throws -> CaptureResult {
+        _ = encoding
         captureStillCount += 1
         if let captureStillError { throw captureStillError }
         if let captureDelayNanoseconds {
@@ -69,8 +70,12 @@ public final class StubCameraSession: CameraSessionControlling, CaptureProviding
         )
     }
 
-    public func capture(scope: CaptureScope, quick: Bool) async throws -> CaptureResult {
+    public func capture(
+        scope: CaptureScope,
+        quick: Bool,
+        encoding: CaptureEncodingParams
+    ) async throws -> CaptureResult {
         _ = (scope, quick)   // screen concepts; the camera ground ignores both by design
-        return try await captureStill()
+        return try await captureStill(encoding: encoding)
     }
 }

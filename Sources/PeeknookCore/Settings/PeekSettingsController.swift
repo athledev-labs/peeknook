@@ -105,6 +105,11 @@ public final class PeekSettingsController {
         update { $0.inferenceImageReplay = replay }
     }
 
+    public func setCaptureQuality(_ quality: CaptureQuality) {
+        guard settings.captureQuality != quality else { return }
+        update { $0.captureQuality = quality }
+    }
+
     public func setAcceptInsecureRemoteOllama(_ enabled: Bool) {
         guard settings.acceptInsecureRemoteOllama != enabled else { return }
         update { $0.acceptInsecureRemoteOllama = enabled }
@@ -295,6 +300,46 @@ public final class PeekSettingsController {
     /// Curated catalog plus the user's added models, deduped by tag.
     public var availableModels: [InferenceModelOption] {
         TextModelCatalog.merged(custom: settings.customModels)
+    }
+
+    /// Models shown in Home / Setup pickers for the active backend. Pass served OpenAI-compatible
+    /// tags from ``openAICompatibleServedModels()``; Ollama ignores the argument.
+    public func pickerModels(servedOpenAIModels: [String] = []) -> [InferenceModelOption] {
+        switch settings.answerBackend {
+        case .ollama:
+            return availableModels
+        case .openAICompatible:
+            return servedOpenAIModels.map {
+                InferenceModelOption(
+                    tag: $0,
+                    displayName: $0,
+                    provider: settings.answerBackend.providerLabel
+                )
+            }
+        }
+    }
+
+    /// Display name for the active answer model in preflight pickers.
+    public var activeModelDisplayName: String {
+        TextModelCatalog.displayName(for: settings.answerModel.tag, custom: settings.customModels)
+    }
+
+    /// Whether a picker row matches the active answer model (backend-aware via ``answerModel``).
+    public func isPickerOptionSelected(_ option: InferenceModelOption, modelCatalog: ModelCatalogService) -> Bool {
+        modelCatalog.matchesModel(installedNames: [settings.answerModel.tag], wanted: option.tag)
+    }
+
+    /// Whether a picker tag is installed locally. OpenAI-compatible servers load their own models.
+    public func isPickerOptionInstalled(_ tag: String) -> Bool {
+        switch settings.answerBackend {
+        case .ollama: return setup.isModelInstalled(tag)
+        case .openAICompatible: return true
+        }
+    }
+
+    /// Model library browse is Ollama-only; server-managed backends list served tags inline.
+    public var showsModelLibraryBrowse: Bool {
+        settings.answerBackend == .ollama
     }
 
     public var customModels: [CustomModelEntry] {

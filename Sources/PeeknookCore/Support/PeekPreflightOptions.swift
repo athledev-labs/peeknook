@@ -7,5 +7,6 @@ public enum PeekPreflightOptions {
     public static let captureScopes: [CaptureScope] = CaptureScope.allCases
     public static let answerDepths: [AnswerDepth] = AnswerDepth.allCases
     public static let inferenceImageReplays: [InferenceImageReplay] = InferenceImageReplay.allCases
+    public static let captureQualities: [CaptureQuality] = CaptureQuality.allCases
     public static let visionModels: [InferenceModelOption] = TextModelCatalog.offered
 }

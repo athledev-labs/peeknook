@@ -15,6 +15,7 @@ public struct PeekSetupView: View {
     @EnvironmentObject private var appState: AppState
     @State private var pendingDownload: InferenceModelOption?
     @State private var showsModelLibrary = false
+    @State private var servedModels: [String] = []
 
     public init(
         setup: SetupCoordinator,
@@ -53,6 +54,14 @@ public struct PeekSetupView: View {
         .onAppear { setup.startAutoRefresh() }
         .onDisappear { setup.stopAutoRefresh() }
         .task { await setup.refresh() }
+        .task(id: servedModelsKey) {
+            guard orchestrator.settings.answerBackend == .openAICompatible,
+                  !orchestrator.settings.openAICompatibleBaseURL.isEmpty else {
+                servedModels = []
+                return
+            }
+            servedModels = await settings.openAICompatibleServedModels()
+        }
         .peekModelDownloadConfirmation(pending: $pendingDownload) { option in
             settings.beginModelDownload(option)
         }
@@ -159,18 +168,22 @@ public struct PeekSetupView: View {
     private var modelPicker: some View {
         ValueDropdownPill(
             symbol: "cpu",
-            title: TextModelCatalog.displayName(for: setup.settings.textModel, custom: settings.customModels),
+            title: settings.activeModelDisplayName,
             help: "Answer model"
         ) { close in
             PeekPreflightMenuContent.visionModelHomeMenu(
-                models: settings.availableModels,
-                isInstalled: { setup.isModelInstalled($0) },
-                isSelected: { modelCatalog.matchesModel(installedNames: [setup.settings.textModel], wanted: $0.tag) },
+                models: settings.pickerModels(servedOpenAIModels: servedModels),
+                isInstalled: { settings.isPickerOptionInstalled($0) },
+                isSelected: { settings.isPickerOptionSelected($0, modelCatalog: modelCatalog) },
                 onSelect: selectModel,
-                onBrowseModels: { showsModelLibrary = true },
+                onBrowseModels: settings.showsModelLibraryBrowse ? { showsModelLibrary = true } : nil,
                 close: close
             )
         }
+    }
+
+    private var servedModelsKey: String {
+        "\(orchestrator.settings.answerBackend.rawValue)|\(orchestrator.settings.openAICompatibleBaseURL)|\(orchestrator.settings.acceptInsecureRemoteOpenAICompatible)"
     }
 
     private func selectModel(_ option: InferenceModelOption) {

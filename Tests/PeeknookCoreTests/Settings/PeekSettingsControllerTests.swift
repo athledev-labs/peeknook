@@ -105,6 +105,36 @@ final class PeekSettingsControllerTests: XCTestCase {
     }
 
     @MainActor
+    func testSetCaptureQualitySyncsAndPersists() {
+        let stack = PeeknookServices.makeStack(settings: .default, defaults: defaults)
+
+        stack.settings.setCaptureQuality(.high)
+        XCTAssertEqual(stack.orchestrator.settings.captureQuality, .high)
+        XCTAssertEqual(PeeknookSettings.load(from: defaults).captureQuality, .high)
+    }
+
+    @MainActor
+    func testPickerModelsFollowsActiveBackend() {
+        let stack = PeeknookServices.makeStack(
+            settings: .default, defaults: defaults, dependencies: .testing()
+        )
+        XCTAssertEqual(
+            stack.settings.pickerModels().map(\.tag),
+            stack.settings.availableModels.map(\.tag)
+        )
+
+        stack.settings.setAnswerBackend(.openAICompatible)
+        stack.settings.update { $0.openAICompatibleModelTag = "qwen2-vl-7b-instruct" }
+        let served = ["qwen2-vl-7b-instruct", "llama3.2:latest"]
+        XCTAssertEqual(
+            stack.settings.pickerModels(servedOpenAIModels: served).map(\.tag),
+            served
+        )
+        XCTAssertFalse(stack.settings.showsModelLibraryBrowse)
+        XCTAssertTrue(stack.settings.isPickerOptionInstalled("any-server-model"))
+    }
+
+    @MainActor
     func testPickModelOnOpenAICompatibleSelectsWithoutDownload() {
         let stack = PeeknookServices.makeStack(
             settings: .default, defaults: defaults, dependencies: .testing()

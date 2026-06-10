@@ -168,11 +168,16 @@ private final class CaptureCallCounter: CaptureProviding, @unchecked Sendable {
         self.inner = inner
     }
 
-    func capture(scope: CaptureScope, quick: Bool) async throws -> CaptureResult {
+    func capture(
+        scope: CaptureScope,
+        quick: Bool,
+        encoding: CaptureEncodingParams
+    ) async throws -> CaptureResult {
+        _ = encoding
         lock.lock()
         captureCount += 1
         lock.unlock()
-        return try await inner.capture(scope: scope, quick: quick)
+        return try await inner.capture(scope: scope, quick: quick, encoding: encoding)
     }
 }
 

@@ -16,8 +16,13 @@ private actor RecordingWebLookup: WebLookupProviding {
 /// Screen-slot provider that returns a camera-ground frame, exercising the runTurn ground gate
 /// without needing a camera profile.
 private struct CameraGroundStubProvider: CaptureProviding {
-    func capture(scope: CaptureScope, quick: Bool) async throws -> CaptureResult {
-        CaptureResult(
+    func capture(
+        scope: CaptureScope,
+        quick: Bool,
+        encoding: CaptureEncodingParams
+    ) async throws -> CaptureResult {
+        _ = encoding
+        return CaptureResult(
             text: "x",
             sourceLabel: "Camera (live)",
             screenshotBase64: StubCaptureProvider.defaultScreenshotBase64,

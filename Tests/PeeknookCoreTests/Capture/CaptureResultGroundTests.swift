@@ -116,15 +116,19 @@ final class CaptureResultGroundTests: XCTestCase {
 
 @MainActor
 final class CameraSessionStubTests: XCTestCase {
+    private static let sampleEncoding = CaptureEncodingPolicy.resolve(
+        scope: .window, quick: false, quality: .balanced
+    )
+
     func testCaptureStillRequiresRunningPreview() async throws {
         let session = StubCameraSession()
         do {
-            _ = try await session.captureStill()
+            _ = try await session.captureStill(encoding: Self.sampleEncoding)
             XCTFail("captureStill must throw before startPreview")
         } catch {}
 
         try await session.startPreview()
-        let still = try await session.captureStill()
+        let still = try await session.captureStill(encoding: Self.sampleEncoding)
         XCTAssertEqual(still.ground, .camera)
         XCTAssertNotNil(still.screenshotBase64)
     }
