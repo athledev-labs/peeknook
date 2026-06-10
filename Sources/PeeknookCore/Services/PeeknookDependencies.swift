@@ -13,6 +13,7 @@ public struct PeeknookDependencies {
     public var modelCatalog: ModelCatalogService
     public var conversationArchive: ConversationArchiveStore?
     public var storageFootprint: any StorageFootprinting
+    public var credentialStore: any CredentialStoring
 
     public init(
         captureRegistry: GroundRegistry,
@@ -23,7 +24,8 @@ public struct PeeknookDependencies {
         previewSpeechSynthesizer: any SpeechSynthesizing,
         modelCatalog: ModelCatalogService,
         conversationArchive: ConversationArchiveStore? = nil,
-        storageFootprint: (any StorageFootprinting)? = nil
+        storageFootprint: (any StorageFootprinting)? = nil,
+        credentialStore: any CredentialStoring = InMemoryCredentialStore()
     ) {
         self.captureRegistry = captureRegistry
         self.inference = inference
@@ -35,6 +37,7 @@ public struct PeeknookDependencies {
         self.conversationArchive = conversationArchive
         self.storageFootprint = storageFootprint
             ?? StorageFootprintService(archive: conversationArchive)
+        self.credentialStore = credentialStore
     }
 
     /// Production defaults: live capture, Ollama inference, on-device speech when available.
@@ -61,7 +64,8 @@ public struct PeeknookDependencies {
             speechRecognizer: speechRecognizer,
             answerSpeechSynthesizer: answerSpeechSynthesizer,
             previewSpeechSynthesizer: previewSpeechSynthesizer,
-            modelCatalog: ModelCatalogService.makeDefault()
+            modelCatalog: ModelCatalogService.makeDefault(),
+            credentialStore: KeychainCredentialStore()
         )
     }
 
@@ -78,7 +82,8 @@ public struct PeeknookDependencies {
         previewSpeechSynthesizer: (any SpeechSynthesizing)? = nil,
         modelCatalog: ModelCatalogService = ModelCatalogService.makeDefault(),
         conversationArchive: ConversationArchiveStore? = nil,
-        cameraSession: (any CaptureProviding)? = nil
+        cameraSession: (any CaptureProviding)? = nil,
+        credentialStore: any CredentialStoring = InMemoryCredentialStore()
     ) -> PeeknookDependencies {
         let preview = previewSpeechSynthesizer ?? answerSpeechSynthesizer
         var providers: [Ground: any CaptureProviding] = [.screen: capture]
@@ -91,7 +96,8 @@ public struct PeeknookDependencies {
             answerSpeechSynthesizer: answerSpeechSynthesizer,
             previewSpeechSynthesizer: preview,
             modelCatalog: modelCatalog,
-            conversationArchive: conversationArchive
+            conversationArchive: conversationArchive,
+            credentialStore: credentialStore
         )
     }
 }
