@@ -3,267 +3,91 @@
   "strings": {
     "Add anyway": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "그래도 추가"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Add model": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "모델 추가"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Advanced": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "고급"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Allow insecure HTTP": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "비보안 HTTP 허용"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Already in your library.": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "이미 라이브러리에 있습니다."
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Answer depth": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "답변 깊이"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Answer depth for the next capture": {
       "comment": "Command-bar help: depth dropdown.",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "다음 캡처의 답변 깊이"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Archive past chats and screenshots on this Mac (up to 25 chats / ~250 MB). Done keeps a chat; New chat deletes it. Turning this off deletes the whole archive.": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "이 Mac에 지난 채팅과 스크린샷을 보관합니다(최대 25개 / ~250MB). 완료는 채팅을 유지하고, 새 채팅은 삭제합니다. 끄면 전체 보관함이 삭제됩니다."
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Ask a follow-up about this answer": {
       "comment": "Command-bar help: Follow up button.",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "이 답변에 대해 후속 질문하기"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Back": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "뒤로"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Bold, code, and other inline formatting in answer text": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "답변에 굵게, 코드 등 서식 적용"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Brief": {
       "comment": "Command-bar action: open the session-brief composer.",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "브리프"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Brief shortcut": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "브리프 단축키"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Browse, download, and switch vision models": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "비전 모델 찾기, 다운로드, 전환"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Can't reach Ollama": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ollama에 연결할 수 없습니다"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Can't reach Ollama, check it's running.": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ollama에 연결할 수 없습니다. 실행 중인지 확인하세요."
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Cancel": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "취소"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Capture area": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "캡처 영역"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Capture failed": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "캡처 실패"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Capture shortcut": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "캡처 단축키"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Capture target for the next capture": {
       "comment": "Command-bar help: scope dropdown.",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "다음 캡처의 대상"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Change": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "변경"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Charts and breakdowns are in Stats on the home screen.": {
       "comment": "Tier B localization",
@@ -275,39 +99,15 @@
     },
     "Check server": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "서버 확인"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Checking vision support…": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "비전 지원 확인 중…"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Checking…": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "확인 중…"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Clear counters on this Mac": {
       "comment": "Tier B localization",
@@ -319,171 +119,59 @@
     },
     "Clears capture counts, token totals, and history on this Mac. You can't undo it.": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "이 Mac의 캡처 수, 토큰 합계, 기록을 지웁니다. 되돌릴 수 없습니다."
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Collapse section": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "섹션 접기"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Confirm before analyzing": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "분석 전 확인"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Context through this chat": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "이 채팅의 컨텍스트"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Copy the whole thread as Markdown": {
       "comment": "Command-bar help: Export button.",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "전체 스레드를 마크다운으로 복사"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Couldn't read the screen": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "화면을 읽을 수 없습니다"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Couldn't save chat": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "채팅을 저장하지 못했습니다"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Couldn't verify vision support. Peek will add it anyway.": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "비전 지원을 확인하지 못했습니다. 그래도 추가합니다."
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Custom": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "사용자 지정"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Custom server address": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "사용자 지정 서버 주소"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Date": {
       "comment": "X-axis title on the usage-over-time chart.",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "날짜"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Default is this Mac. Change only if Ollama runs elsewhere.": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "기본값은 이 Mac입니다. Ollama가 다른 곳에서 실행될 때만 변경하세요."
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Dictate session briefs and follow-ups on-device": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "세션 브리프와 후속 질문을 기기 내 음성으로 입력"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Discard this thread and start fresh": {
       "comment": "Command-bar help: New chat button.",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "이 스레드를 버리고 새로 시작"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Dismiss": {
       "comment": "Tier B localization",
@@ -491,123 +179,43 @@
     },
     "Display name": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "표시 이름"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Done": {
       "comment": "End the current chat and return home.",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "완료"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Download model": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "모델 다운로드"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "End this chat and return to the home screen": {
       "comment": "Command-bar help: Done button.",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "이 채팅을 끝내고 홈 화면으로 돌아가기"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Expand section": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "섹션 펼치기"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Export": {
       "comment": "Command-bar action: copy the whole conversation as Markdown.",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "내보내기"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Finish setup first": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "먼저 설정을 완료하세요"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Fix": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "수정"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Follow the spoken words in the answer with a live highlight": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "읽는 동안 답변 단어를 실시간으로 강조"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Follow up": {
       "comment": "Command-bar action: ask a follow-up about the answer.",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "후속 질문"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Full thread sent to the model": {
       "comment": "Tier B localization",
@@ -615,27 +223,11 @@
     },
     "Generated": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "생성"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Get ready": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "준비하기"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Hide this warning": {
       "comment": "Tier B localization",
@@ -643,39 +235,15 @@
     },
     "Highlight while reading": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "읽는 동안 강조"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Images sent to model": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "모델로 보내는 이미지"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Install, permissions, and a test capture": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "설치, 권한, 테스트 캡처"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Installed on this Mac": {
       "comment": "Tier B localization",
@@ -683,15 +251,7 @@
     },
     "Instant capture from anywhere on your Mac": {
       "comment": "Command-bar help: Capture button.",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mac 어디서나 즉시 캡처"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Licenses": {
       "comment": "Tier B localization",
@@ -699,87 +259,31 @@
     },
     "Listening…": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "듣는 중…"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Loading tags…": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "태그 불러오는 중…"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Manage models": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "모델 관리"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Metric": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "지표"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Model": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "모델"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Model Usage": {
       "comment": "Collapsible stats section for per-model breakdown.",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "모델별 사용량"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Model not installed": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "모델이 설치되지 않았습니다"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Models you pull with Ollama appear here when they aren't already in your picker.": {
       "comment": "Tier B localization",
@@ -787,75 +291,27 @@
     },
     "Morning/Afternoon headline on the idle home screen": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "대기 홈 화면의 아침/오후 인사"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Needed": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "필요"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "New chat": {
       "comment": "Discard the current thread and start fresh.",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "새 채팅"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Nickname (optional)": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "별명(선택)"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "No answer came back": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "답변이 없습니다"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "No models match": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "일치하는 모델 없음"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "No other models found": {
       "comment": "Tier B localization",
@@ -867,15 +323,7 @@
     },
     "No tags listed.": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "태그가 없습니다."
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "No usage yet. Capture with ⌘⇧P to start building stats.": {
       "comment": "Empty state when lifetime usage counters are zero.",
@@ -899,15 +347,7 @@
     },
     "Off": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "꺼짐"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Ollama": {
       "comment": "Tier B localization",
@@ -915,111 +355,39 @@
     },
     "Ollama isn't responding": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ollama가 응답하지 않습니다"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Ollama returned an error": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ollama가 오류를 반환했습니다"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Ollama server": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ollama 서버"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Ollama tag": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ollama 태그"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "On": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "켜짐"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "On this Mac": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "이 Mac"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Open Ollama": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ollama 열기"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Open settings": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "설정 열기"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Open setup": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "설정 열기"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Open the Ollama app or check your server address in Settings.": {
       "comment": "Tier B localization",
@@ -1027,39 +395,15 @@
     },
     "Opens the session-brief composer from anywhere.": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "어디서나 세션 브리프 작성기를 엽니다."
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Past chats": {
       "comment": "Header for the conversation archive.",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "이전 채팅"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Peek sends a screenshot with every capture. Pick a model that supports vision (image input).": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Peek은 캡처마다 스크린샷을 보냅니다. 비전(이미지 입력)을 지원하는 모델을 선택하세요."
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Peeknook captured nothing to send. Make sure Screen Recording is allowed, then try again.": {
       "comment": "Tier B localization",
@@ -1071,27 +415,11 @@
     },
     "Pick a voice, then preview how answers will sound": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "음성을 고르고 답변 미리듣기"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Preview capture target before sending": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "보내기 전에 캡처 대상 미리보기"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Privacy policy": {
       "comment": "Tier B localization",
@@ -1099,75 +427,27 @@
     },
     "Prompt In": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "프롬프트"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Propose next questions after each answer": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "각 답변 후 다음 질문 제안"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Read answers aloud": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "답변 읽어 주기"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Read the answer aloud": {
       "comment": "Command-bar help: Speak button.",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "답변 읽어 주기"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Reading voice": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "읽기 음성"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Recommended": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "추천"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Recommended for your Mac (%lld GB RAM)": {
       "comment": "Tier B localization",
@@ -1175,51 +455,19 @@
     },
     "Recording": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "녹화"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Remote Ollama needs HTTPS": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "원격 Ollama는 HTTPS가 필요합니다"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Remote servers must use HTTPS, or enable “Allow insecure HTTP” below.": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "원격 서버는 HTTPS를 사용하거나 아래에서 비보안 HTTP를 허용하세요."
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Render markdown in answers": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "답변에 마크다운 렌더링"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Report an issue": {
       "comment": "Tier B localization",
@@ -1231,63 +479,23 @@
     },
     "Reset stats": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "통계 초기화"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Reset usage stats?": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "사용 통계를 초기화할까요?"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Resume": {
       "comment": "Command-bar action: resume the last chat.",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "이어하기"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Save conversations": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "대화 저장"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Screenshots capture on-screen pixels. Avoid capturing windows that show passwords, tokens, or other sensitive content.": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "스크린샷은 화면 픽셀을 캡처합니다. 비밀번호, 토큰 등 민감한 내용이 보이는 창은 피하세요."
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Screenshots would leave this Mac in cleartext over HTTP. Use https:// in Settings, or enable “Allow insecure HTTP” under Vision → Advanced.": {
       "comment": "Tier B localization",
@@ -1295,39 +503,15 @@
     },
     "Search": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "검색"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Search the public Ollama library, results load from ollama.com.": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "공개 Ollama 라이브러리를 검색합니다. 결과는 ollama.com에서 불러옵니다."
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Send a DuckDuckGo query from capture context (queries leave this Mac)": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "캡처 맥락으로 DuckDuckGo 검색(쿼리는 이 Mac을 떠남)"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Send screenshots to a remote Ollama server without TLS (not recommended)": {
       "comment": "Tier B localization",
@@ -1339,51 +523,19 @@
     },
     "Server address": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "서버 주소"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Share": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "비율"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Show greeting": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "인사말 표시"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Show only the latest answer": {
       "comment": "Command-bar help: History button (expanded).",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "최신 답변만 표시"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Some label": {
       "comment": "Tier B localization",
@@ -1391,39 +543,15 @@
     },
     "Something went wrong": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "문제가 발생했습니다"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Speak": {
       "comment": "Command-bar action: read the answer aloud.",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "읽기"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Speak assistant answers with on-device text-to-speech": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "기기 내 TTS로 답변 읽기"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Start a fresh chat to reset the context window": {
       "comment": "Tier B localization",
@@ -1431,123 +559,43 @@
     },
     "Stop": {
       "comment": "Command-bar action: stop reading the answer aloud.",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "중지"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Stop reading the answer aloud": {
       "comment": "Command-bar help: Stop button.",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "답변 읽기 중지"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Suggest follow-ups": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "후속 질문 제안"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Supports vision, ready to add.": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "비전 지원, 추가 가능."
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Switch model": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "모델 전환"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Tags": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "태그"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Tap a bar for a breakdown · bars = prompt size per answer (full thread)": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "막대를 탭하면 세부 정보 · 막대 = 답변당 프롬프트 크기(전체 스레드)"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Tap the keys on the right to rebind.": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "오른쪽 키를 눌러 다시 지정하세요."
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Text-only": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "텍스트 전용"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Text-only, it won't read your screenshots. You can still add it to test.": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "텍스트 전용이라 스크린샷을 읽지 않습니다. 테스트용으로는 추가할 수 있습니다."
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "The Ollama server address in Settings looks invalid. Check it, then try again.": {
       "comment": "Tier B localization",
@@ -1559,219 +607,75 @@
     },
     "Token Mix": {
       "comment": "Collapsible stats section for prompt vs output tokens.",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "토큰 비율"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Tokens": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "토큰"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Try again": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "다시 시도"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Type any Ollama tag. Peek pulls it if it isn't installed yet.": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ollama 태그를 입력하세요. 설치되지 않았으면 Peek이 받아옵니다."
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Usage Over Time": {
       "comment": "Collapsible stats section for cumulative usage on a calendar timeline.",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "시간별 사용량"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Usage Overview": {
       "comment": "Collapsible stats section for headline metrics.",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "사용량 개요"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Use this": {
       "comment": "Command-bar action: accept the previewed capture.",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "사용하기"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Used in the idle greeting on this Mac. Leave blank to use your account name.": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "이 Mac의 대기 인사말에 사용됩니다. 비우면 계정 이름을 사용합니다."
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "View the full conversation thread": {
       "comment": "Command-bar help: History button (collapsed).",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "전체 대화 스레드 보기"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Vision": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "비전"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Vision model": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "비전 모델"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Vision model for the next capture": {
       "comment": "Command-bar help: model dropdown.",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "다음 캡처에 사용할 비전 모델"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Vision unknown": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "비전 미확인"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Voice input": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "음성 입력"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Web lookup": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "웹 검색"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Working": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "진행 중"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "breakdown": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "세부"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "context": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "컨텍스트"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "⚠︎ This model can’t see your screen. Peeknook sends a screenshot with every capture, so a text-only model will ignore the image. Pick a vision model (like Gemma 4) for screen capture.": {
       "comment": "Tier B localization",
@@ -1779,15 +683,7 @@
     },
     "Capture": {
       "comment": "Command-bar action: take a screenshot and answer.",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "캡처"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Close": {
       "comment": "Dismiss the current overlay or list.",
@@ -1795,15 +691,7 @@
     },
     "History": {
       "comment": "Open the list of past chats.",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "기록"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Clear all": {
       "comment": "Delete every saved chat in the archive.",
@@ -1955,195 +843,67 @@
     },
     "Download": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "다운로드"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Finish setup before capturing.": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "캡처 전에 설정을 완료하세요."
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Ollama, model, and Screen Recording are set.": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ollama, 모델, 화면 기록이 준비되었습니다."
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Press a shortcut. Esc to cancel.": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "단축키를 누르세요. Esc로 취소."
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Setup": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "설정"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Setup incomplete": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "설정 미완료"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Still needed: model, Screen Recording.": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "아직 필요: 모델, 화면 기록."
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Still needed: Ollama, model, Screen Recording.": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "아직 필요: Ollama, 모델, 화면 기록."
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Stop preview": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "미리듣기 중지"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Preview reading voice": {
       "comment": "Tier B localization",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "읽기 음성 미리듣기"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Camera": {
       "comment": "Trust label for a camera-ground capture turn",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "카메라"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Shutter": {
       "comment": "Camera shutter command",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "셔터"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Capture a photo from the camera": {
       "comment": "Shutter command tooltip",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "카메라로 사진 촬영"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Camera preview": {
       "comment": "Live camera preview placeholder / a11y label",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "카메라 미리보기"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Camera shortcut": {
       "comment": "Settings row title for the camera hotkey recorder",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "카메라 단축키"
-          }
-        }
-      }
+      "extractionState": "manual"
     },
     "Opens the live camera preview from anywhere.": {
       "comment": "Camera hotkey row detail",
-      "extractionState": "manual",
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "어디서나 라이브 카메라 미리보기를 엽니다."
-          }
-        }
-      }
+      "extractionState": "manual"
     }
   },
   "version": "1.0"
