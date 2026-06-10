@@ -13,12 +13,16 @@ final class OllamaURLProtocolStub: URLProtocol {
 
     static var responsesByPath: [String: [QueuedResponse]] = [:]
     static var recordedBodies: [Data] = []
+    /// One entry per request (nil = no Authorization header) — lets backend tests assert the
+    /// bearer key is injected only when a credential resolves.
+    static var recordedAuthorizationHeaders: [String?] = []
 
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     override func startLoading() {
         let path = request.url?.path ?? "/"
+        Self.recordedAuthorizationHeaders.append(request.value(forHTTPHeaderField: "Authorization"))
         if request.httpMethod == "POST", let body = Self.requestBody(from: request) {
             Self.recordedBodies.append(body)
         }

@@ -163,45 +163,66 @@ public extension SessionFailure {
         }
     }
 
-    static func from(inferenceError: InferenceError) -> SessionFailure {
+    /// Backend-aware: the error cases are generic slots (`.ollamaUnreachable` is "the inference
+    /// server is unreachable"), so the *copy* must name the server the user actually configured —
+    /// an OpenAI-compatible connection failure claiming "Ollama isn't responding" sends them
+    /// debugging the wrong process. Defaulted to `.ollama` so existing call sites are unchanged.
+    static func from(
+        inferenceError: InferenceError,
+        backend: InferenceBackend = .ollama
+    ) -> SessionFailure {
+        let ollama = backend == .ollama
         switch inferenceError {
         case .invalidBaseURL:
             return SessionFailure(
                 kind: .ollamaUnreachable,
-                title: "Can't reach Ollama",
-                message: "The Ollama server address in Settings looks invalid. Check it, then try again.",
+                title: ollama ? "Can't reach Ollama" : "Can't reach the inference server",
+                message: ollama
+                    ? "The Ollama server address in Settings looks invalid. Check it, then try again."
+                    : "The inference server address in Settings looks invalid. Check it, then try again.",
                 primaryRecovery: .checkOllama,
                 secondaryRecovery: .tryAgain
             )
         case .insecureRemoteHTTP:
             return SessionFailure(
                 kind: .ollamaUnreachable,
-                title: "Remote Ollama needs HTTPS",
-                message: "Screenshots would leave this Mac in cleartext over HTTP. Use https:// in Settings, or enable “Allow insecure HTTP” under Vision → Advanced.",
+                title: ollama ? "Remote Ollama needs HTTPS" : "Remote server needs HTTPS",
+                message: "Screenshots would leave this Mac in cleartext over HTTP. Use https:// in Settings, or enable “Allow insecure HTTP” under Answer model → Advanced.",
                 primaryRecovery: .checkOllama,
                 secondaryRecovery: .tryAgain
             )
         case .ollamaUnreachable(let message):
             return SessionFailure(
                 kind: .ollamaUnreachable,
-                title: "Ollama isn't responding",
+                title: ollama ? "Ollama isn't responding" : "Your inference server isn't responding",
                 message: message,
                 primaryRecovery: .checkOllama,
                 secondaryRecovery: .tryAgain
             )
         case .modelMissing(let model, let hint):
+            if ollama {
+                return SessionFailure(
+                    kind: .modelMissing(tag: model),
+                    title: "Model not installed",
+                    message: "“\(model)” isn't downloaded yet. Download it, or switch to a model you already have.",
+                    primaryRecovery: .downloadModel(tag: model),
+                    secondaryRecovery: .switchModel,
+                    technicalDetail: hint
+                )
+            }
+            // No download path on an OpenAI-compatible server — the user loads models there.
             return SessionFailure(
                 kind: .modelMissing(tag: model),
-                title: "Model not installed",
-                message: "“\(model)” isn't downloaded yet. Download it, or switch to a model you already have.",
-                primaryRecovery: .downloadModel(tag: model),
-                secondaryRecovery: .switchModel,
+                title: "Model not loaded",
+                message: "“\(model)” isn't available on your inference server. Load it there, or pick a model the server lists.",
+                primaryRecovery: .switchModel,
+                secondaryRecovery: .tryAgain,
                 technicalDetail: hint
             )
         case .http(let status, let message):
             return SessionFailure(
                 kind: .ollamaUnreachable,
-                title: "Ollama returned an error",
+                title: ollama ? "Ollama returned an error" : "The inference server returned an error",
                 message: message,
                 primaryRecovery: .tryAgain,
                 secondaryRecovery: .checkOllama,
@@ -211,9 +232,9 @@ public extension SessionFailure {
     }
 
     /// Best-effort mapping for an arbitrary error thrown during inference.
-    static func from(error: Error) -> SessionFailure {
+    static func from(error: Error, backend: InferenceBackend = .ollama) -> SessionFailure {
         if let inference = error as? InferenceError {
-            return .from(inferenceError: inference)
+            return .from(inferenceError: inference, backend: backend)
         }
         if let urlError = error as? URLError {
             switch urlError.code {
@@ -221,8 +242,11 @@ public extension SessionFailure {
                  .timedOut, .cannotFindHost, .dnsLookupFailed:
                 return .from(
                     inferenceError: .ollamaUnreachable(
-                        "Lost connection to Ollama. Check that it is still running, then try again."
-                    )
+                        backend == .ollama
+                            ? "Lost connection to Ollama. Check that it is still running, then try again."
+                            : "Lost connection to the inference server. Check that it is still running, then try again."
+                    ),
+                    backend: backend
                 )
             default:
                 break

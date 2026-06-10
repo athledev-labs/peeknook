@@ -295,9 +295,10 @@ public enum InferenceError: Error, Sendable, LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .invalidBaseURL:
-            "Invalid Ollama URL in Settings."
+            // Thrown by EndpointURLPolicy for every backend — keep the copy backend-neutral.
+            "Invalid inference server URL in Settings."
         case .insecureRemoteHTTP:
-            "Remote Ollama must use HTTPS, or enable “Allow insecure HTTP” in Settings → Vision."
+            "A remote server must use HTTPS, or enable “Allow insecure HTTP” in Settings → Answer model."
         case .ollamaUnreachable(let msg):
             msg
         case .modelMissing(let model, let hint):

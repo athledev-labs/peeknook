@@ -65,4 +65,37 @@ final class SessionFailureTests: XCTestCase {
         XCTAssertEqual(failure.kind, .ollamaUnreachable)
         XCTAssertEqual(failure.primaryRecovery, .checkOllama)
     }
+
+    /// An OpenAI-compatible connection failure must not claim "Ollama isn't responding" — that
+    /// sends the user debugging a process they aren't running.
+    func testOpenAICompatibleUnreachableUsesBackendNeutralCopy() {
+        let failure = SessionFailure.from(
+            inferenceError: .ollamaUnreachable("No response from the inference server."),
+            backend: .openAICompatible
+        )
+        XCTAssertEqual(failure.kind, .ollamaUnreachable)
+        XCTAssertFalse(failure.title.contains("Ollama"), "Title must not name Ollama: \(failure.title)")
+
+        let urlFailure = SessionFailure.from(
+            error: URLError(.cannotConnectToHost), backend: .openAICompatible
+        )
+        XCTAssertFalse(urlFailure.message.contains("Ollama"), "Copy must not name Ollama: \(urlFailure.message)")
+    }
+
+    func testOllamaUnreachableStillUsesOllamaCopyByDefault() {
+        let failure = SessionFailure.from(inferenceError: .ollamaUnreachable("Start Ollama"))
+        XCTAssertTrue(failure.title.contains("Ollama"))
+    }
+
+    /// No download path exists on an OpenAI-compatible server — the model-missing recovery must
+    /// not offer an Ollama pull.
+    func testOpenAICompatibleModelMissingOffersSwitchNotDownload() {
+        let failure = SessionFailure.from(
+            inferenceError: .modelMissing("qwen2-vl", hint: "Load it on the server"),
+            backend: .openAICompatible
+        )
+        XCTAssertEqual(failure.kind, .modelMissing(tag: "qwen2-vl"))
+        XCTAssertEqual(failure.primaryRecovery, .switchModel)
+        XCTAssertNotEqual(failure.primaryRecovery, .downloadModel(tag: "qwen2-vl"))
+    }
 }
