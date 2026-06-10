@@ -56,6 +56,38 @@ final class PeekSettingsControllerTests: XCTestCase {
     }
 
     @MainActor
+    func testSetActiveProfilePersistsAndDeleteActiveResetsToScreenDefault() throws {
+        let stack = PeeknookServices.makeStack(
+            settings: .default, defaults: defaults, dependencies: .testing()
+        )
+        let copy = try XCTUnwrap(stack.profileStore.duplicate(.screenDefault, name: "Mine"))
+
+        stack.settings.setActiveProfile(id: copy.id)
+        XCTAssertEqual(stack.orchestrator.settings.activeProfileID, copy.id)
+        XCTAssertEqual(PeeknookSettings.load(from: defaults).activeProfileID, copy.id)
+        XCTAssertEqual(stack.orchestrator.resolvedActiveProfile, copy)
+
+        stack.settings.deleteProfile(id: copy.id)
+        XCTAssertEqual(
+            stack.orchestrator.settings.activeProfileID, GroundProfile.screenDefault.id,
+            "Deleting the active profile resets the persisted id explicitly."
+        )
+        XCTAssertEqual(stack.orchestrator.resolvedActiveProfile, .screenDefault)
+    }
+
+    @MainActor
+    func testDeleteNonActiveProfileLeavesActiveUnchanged() throws {
+        let stack = PeeknookServices.makeStack(
+            settings: .default, defaults: defaults, dependencies: .testing()
+        )
+        let copy = try XCTUnwrap(stack.profileStore.duplicate(.screenDefault, name: "Mine"))
+
+        stack.settings.deleteProfile(id: copy.id)
+        XCTAssertEqual(stack.orchestrator.settings.activeProfileID, GroundProfile.screenDefault.id)
+        XCTAssertTrue(stack.profileStore.catalog.profiles.isEmpty)
+    }
+
+    @MainActor
     func testSetAnswerBackendSyncsAndPersists() {
         let stack = PeeknookServices.makeStack(
             settings: .default, defaults: defaults, dependencies: .testing()

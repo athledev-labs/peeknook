@@ -1,12 +1,24 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "A profile bundles a standing instruction, an answer model, and feature overrides. The active profile shapes every capture.": {
+      "comment": "Settings: Profiles section intro.",
+      "extractionState": "manual"
+    },
     "API key (optional)": {
       "comment": "Tier B localization",
       "extractionState": "manual"
     },
     "API key (saved — enter a new key to replace)": {
       "comment": "Tier B localization",
+      "extractionState": "manual"
+    },
+    "Activate this profile": {
+      "comment": "A11y hint: profile Use pill.",
+      "extractionState": "manual"
+    },
+    "Active": {
+      "comment": "Settings: active profile badge.",
       "extractionState": "manual"
     },
     "Add anyway": {
@@ -75,6 +87,10 @@
     },
     "Browse, download, and switch vision models": {
       "comment": "Tier B localization",
+      "extractionState": "manual"
+    },
+    "Built-in": {
+      "comment": "Settings: profile row subtitle.",
       "extractionState": "manual"
     },
     "Can't reach Ollama": {
@@ -169,6 +185,10 @@
       "comment": "Tier B localization",
       "extractionState": "manual"
     },
+    "Copy of %@": {
+      "comment": "Seed name for a duplicated profile.",
+      "extractionState": "manual"
+    },
     "Copy the whole thread as Markdown": {
       "comment": "Command-bar help: Export button.",
       "extractionState": "manual"
@@ -201,6 +221,14 @@
       "comment": "Tier B localization",
       "extractionState": "manual"
     },
+    "Delete profile": {
+      "comment": "A11y: profile delete button.",
+      "extractionState": "manual"
+    },
+    "Delete this profile?": {
+      "comment": "Profile delete confirm title.",
+      "extractionState": "manual"
+    },
     "Dictate session briefs and follow-ups on-device": {
       "comment": "Tier B localization",
       "extractionState": "manual"
@@ -223,6 +251,14 @@
     },
     "Download model": {
       "comment": "Tier B localization",
+      "extractionState": "manual"
+    },
+    "Duplicate": {
+      "comment": "Settings: new-profile row button.",
+      "extractionState": "manual"
+    },
+    "Duplicate Screen into an editable copy": {
+      "comment": "Settings: new-profile row subtitle.",
       "extractionState": "manual"
     },
     "End this chat and return to the home screen": {
@@ -297,6 +333,10 @@
       "comment": "Command-bar help: Capture button.",
       "extractionState": "manual"
     },
+    "Its instruction, model binding, and overrides are removed. Chats are not affected.": {
+      "comment": "Profile delete confirm message.",
+      "extractionState": "manual"
+    },
     "Licenses": {
       "comment": "Tier B localization",
       "extractionState": "manual"
@@ -351,6 +391,10 @@
     },
     "New chat": {
       "comment": "Discard the current thread and start fresh.",
+      "extractionState": "manual"
+    },
+    "New profile": {
+      "comment": "Settings: new-profile row title.",
       "extractionState": "manual"
     },
     "Nickname (optional)": {
@@ -489,6 +533,10 @@
       "comment": "Tier B localization",
       "extractionState": "manual"
     },
+    "Profiles": {
+      "comment": "Settings section title.",
+      "extractionState": "manual"
+    },
     "Prompt In": {
       "comment": "Tier B localization",
       "extractionState": "manual"
@@ -527,6 +575,10 @@
     },
     "Remote servers must use HTTPS, or enable “Allow insecure HTTP” below.": {
       "comment": "Tier B localization",
+      "extractionState": "manual"
+    },
+    "Removes this profile": {
+      "comment": "A11y hint: profile delete button.",
       "extractionState": "manual"
     },
     "Render markdown in answers": {
@@ -705,6 +757,10 @@
       "comment": "Collapsible stats section for headline metrics.",
       "extractionState": "manual"
     },
+    "Use": {
+      "comment": "Settings: activate-profile pill.",
+      "extractionState": "manual"
+    },
     "Use this": {
       "comment": "Command-bar action: accept the previewed capture.",
       "extractionState": "manual"
@@ -735,6 +791,10 @@
     },
     "Working": {
       "comment": "Tier B localization",
+      "extractionState": "manual"
+    },
+    "Your profile": {
+      "comment": "Settings: user profile row subtitle.",
       "extractionState": "manual"
     },
     "breakdown": {
