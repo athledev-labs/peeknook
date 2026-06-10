@@ -156,7 +156,7 @@ struct PeekHomeResultView: View {
 
     /// The reactive inputs the result bar gates on, snapshotted for the pure resolver.
     private var commandContext: CommandBarContext {
-        let profile = orchestrator.settings.activeProfile
+        let profile = orchestrator.resolvedActiveProfile
         return CommandBarContext(
             isReady: setup.isReady,
             hasConversationHistory: orchestrator.hasConversationHistory,

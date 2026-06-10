@@ -204,7 +204,7 @@ struct PeekIdleCommandBar: View {
 
     /// The reactive inputs the idle bar gates on, snapshotted for the pure resolver.
     private var commandContext: CommandBarContext {
-        let profile = orchestrator.settings.activeProfile
+        let profile = orchestrator.resolvedActiveProfile
         return CommandBarContext(
             isReady: setup.isReady,
             hasResumePreview: IdleResumePreview.from(orchestrator) != nil,

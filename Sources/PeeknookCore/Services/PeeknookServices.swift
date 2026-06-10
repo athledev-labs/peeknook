@@ -11,6 +11,7 @@ public enum PeeknookServices {
         public let settings: PeekSettingsController
         public let modelCatalog: ModelCatalogService
         public let storageFootprint: any StorageFootprinting
+        public let profileStore: ProfileStore
     }
 
     @MainActor
@@ -20,7 +21,9 @@ public enum PeeknookServices {
         dependencies: PeeknookDependencies = .production()
     ) -> Stack {
         var settings = settings
+        let profileStore = ProfileStore(defaults: defaults)
         let setup = SetupCoordinator(settings: settings, defaults: defaults)
+        setup.profileStore = profileStore
         setup.applyRecommendedModelIfNeeded()
         settings = setup.settings
 
@@ -36,6 +39,7 @@ public enum PeeknookServices {
         )
         orchestrator.setup = setup
         orchestrator.usage = usage
+        orchestrator.profileStore = profileStore
         if let archive = dependencies.conversationArchive {
             orchestrator.conversationArchive = archive
             orchestrator.captureBlobStore = archive.blobStore
@@ -68,7 +72,8 @@ public enum PeeknookServices {
             usage: usage,
             settings: settingsController,
             modelCatalog: dependencies.modelCatalog,
-            storageFootprint: storageFootprint
+            storageFootprint: storageFootprint,
+            profileStore: profileStore
         )
     }
 

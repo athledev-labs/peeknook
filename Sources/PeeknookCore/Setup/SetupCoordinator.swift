@@ -24,6 +24,9 @@ public final class SetupCoordinator {
 
     public var settings: PeeknookSettings
     public weak var orchestrator: SessionOrchestrator?
+    /// User-profile catalog (set by `PeeknookServices.makeStack`); nil = built-ins only. Setup and
+    /// the orchestrator share ONE store so they always resolve the same active profile.
+    public var profileStore: ProfileStore?
     /// When true, ``refresh()`` is a no-op and ``isReady`` does not require live TCC probes.
     public var skipsLiveProbes = false
     private let defaults: UserDefaults
@@ -54,7 +57,7 @@ public final class SetupCoordinator {
         defaults.bool(forKey: Self.onboardingCompleteKey)
     }
 
-    public var isReady: Bool { readiness(for: settings.activeProfile) }
+    public var isReady: Bool { readiness(for: resolvedActiveProfile) }
 
     /// Per-profile readiness: setup steps complete, then (unless probes are bypassed) every
     /// permission the profile's active grounds require is granted. `screen.default` requires only
@@ -75,7 +78,15 @@ public final class SetupCoordinator {
     /// profile-conditional setup checklist. `screen.default` yields a single Screen Recording row, so
     /// the checklist is unchanged today; a `camera.*` profile would yield a Camera row instead.
     public var permissionChecklist: [PermissionRequirement] {
-        permissionChecklist(for: settings.activeProfile)
+        permissionChecklist(for: resolvedActiveProfile)
+    }
+
+    /// The same resolver the orchestrator uses (built-ins + user catalog → `screen.default`).
+    private var resolvedActiveProfile: GroundProfile {
+        GroundProfile.resolve(
+            id: settings.activeProfileID,
+            in: profileStore?.catalog.profiles ?? []
+        )
     }
 
     public func permissionChecklist(for profile: GroundProfile) -> [PermissionRequirement] {
@@ -249,7 +260,7 @@ public final class SetupCoordinator {
     private func evaluateCaptureStep() -> SetupStepState {
         if skipsLiveProbes { return .complete }
         let status = permissionStatusProvider()
-        let missing = settings.activeProfile.requiredPermissions
+        let missing = resolvedActiveProfile.requiredPermissions
             .filter { !status.grants($0) }
             .sorted { $0.rawValue < $1.rawValue }
         if missing.isEmpty { return .complete }

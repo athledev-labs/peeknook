@@ -48,7 +48,10 @@ final class CameraStudyLayoutTests: XCTestCase {
     /// live camera with no way to capture.
     func testShutterVisibleUnderScreenDefaultActiveProfile() {
         let settings = PeeknookSettings(textModel: "x")
-        XCTAssertEqual(settings.activeProfile.id, GroundProfile.screenDefault.id)
+        XCTAssertEqual(
+            GroundProfile.resolve(id: settings.activeProfileID, in: []).id,
+            GroundProfile.screenDefault.id
+        )
 
         let cameraModules = Set(ModuleID.allCases.filter {
             Module.isEnabled($0, in: settings, profile: .cameraStudy)

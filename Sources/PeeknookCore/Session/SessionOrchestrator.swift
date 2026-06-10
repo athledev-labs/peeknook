@@ -57,6 +57,9 @@ public final class SessionOrchestrator {
     public var settings: PeeknookSettings
     public weak var setup: SetupCoordinator?
     public var usage: UsageStore?
+    /// User-profile catalog (set by `PeeknookServices.makeStack`). Nil = built-ins only, which is
+    /// exactly the pre-profiles behavior — tests and minimal hosts need not provide one.
+    public var profileStore: ProfileStore?
     /// Opt-in local conversation archive (see `PeeknookSettings.persistConversation`). Stores every
     /// answered chat as its own thread so the user can list, resume, and delete past chats.
     public var conversationArchive: ConversationArchiveStore?
@@ -79,6 +82,16 @@ public final class SessionOrchestrator {
     /// Settings takes effect on the next turn without rebuilding the orchestrator.
     var inference: any InferenceEngine {
         inferenceRegistry.engine(for: settings.answerModel.backend)
+    }
+
+    /// The active profile resolved against built-ins + the user catalog (unknown/deleted id →
+    /// `screen.default`). `.cameraLive`-scoped gates deliberately do NOT use this — they read the
+    /// `GroundProfile.cameraStudy` literal (the single profile-source rule).
+    public var resolvedActiveProfile: GroundProfile {
+        GroundProfile.resolve(
+            id: settings.activeProfileID,
+            in: profileStore?.catalog.profiles ?? []
+        )
     }
     let speechRecognizer: any SpeechRecognizing
     let answerSpeechSynthesizer: any SpeechSynthesizing

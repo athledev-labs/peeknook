@@ -142,7 +142,7 @@ public extension GroundProfile {
         isBuiltIn: true
     )
 
-    /// Built-in profiles. v1 ships exactly these two — no profile editor (H3).
+    /// Built-in profiles. The user's own profiles live in ``ProfileStore``/`peeknook.profiles.v1`.
     static var all: [GroundProfile] { [.screenDefault, .cameraStudy] }
 
     /// Resolve a profile id to its built-in, falling back to `screen.default` for an unknown id
@@ -150,9 +150,35 @@ public extension GroundProfile {
     static func builtIn(id: String) -> GroundProfile {
         all.first { $0.id == id } ?? .screenDefault
     }
-}
 
-public extension PeeknookSettings {
-    /// The active ground profile, resolved from `activeProfileID` (unknown/stale id → `screen.default`).
-    var activeProfile: GroundProfile { GroundProfile.builtIn(id: activeProfileID) }
+    /// THE active-profile resolver: built-ins + the user catalog, unknown/deleted id →
+    /// `screen.default` (the existing fallback). Both the orchestrator and the setup coordinator
+    /// resolve through this one function so they can never split-brain.
+    static func resolve(id: String, in userProfiles: [GroundProfile]) -> GroundProfile {
+        all.first { $0.id == id }
+            ?? userProfiles.first { $0.id == id }
+            ?? .screenDefault
+    }
+
+    /// Copy with edited user-profile fields (identity, grounds, and `isBuiltIn` are never
+    /// editable). For ``ProfileStore`` and the profile editor.
+    func with(
+        displayName: String?,
+        instruction: String?,
+        modelBinding: ProfileModelBinding?,
+        moduleOverrides: ModuleOverrides
+    ) -> GroundProfile {
+        GroundProfile(
+            id: id,
+            displayNameKey: displayNameKey,
+            symbol: symbol,
+            primaryGround: primaryGround,
+            activeGrounds: activeGrounds,
+            isBuiltIn: isBuiltIn,
+            displayName: displayName,
+            instruction: instruction,
+            modelBinding: modelBinding,
+            moduleOverrides: moduleOverrides
+        )
+    }
 }

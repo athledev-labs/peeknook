@@ -66,11 +66,11 @@ final class GroundProfileTests: XCTestCase {
         XCTAssertFalse(decoded.isBuiltIn)
     }
 
-    // MARK: PeeknookSettings.activeProfile accessor
+    // MARK: Active-profile resolution
 
     func testActiveProfileIDDefaultsToScreenDefault() {
         XCTAssertEqual(PeeknookSettings().activeProfileID, "screen.default")
-        XCTAssertEqual(PeeknookSettings().activeProfile, .screenDefault)
+        XCTAssertEqual(GroundProfile.resolve(id: PeeknookSettings().activeProfileID, in: []), .screenDefault)
     }
 
     func testActiveProfileIDDecodesTolerantlyFromLegacyBlob() throws {
@@ -81,15 +81,33 @@ final class GroundProfileTests: XCTestCase {
     }
 
     func testUnknownActiveProfileIDFallsBackToScreenDefault() {
-        var settings = PeeknookSettings()
-        settings.activeProfileID = "does.not.exist"
-        XCTAssertEqual(settings.activeProfile, .screenDefault)
+        XCTAssertEqual(GroundProfile.resolve(id: "does.not.exist", in: []), .screenDefault)
     }
 
     func testCameraStudyResolvesFromTheCatalog() {
-        var settings = PeeknookSettings()
-        settings.activeProfileID = "camera.study"
-        XCTAssertEqual(settings.activeProfile, .cameraStudy)
+        XCTAssertEqual(GroundProfile.resolve(id: "camera.study", in: []), .cameraStudy)
         XCTAssertEqual(GroundProfile.all.map(\.id), ["screen.default", "camera.study"])
+    }
+
+    func testResolveEmptyCatalogMatchesLegacyBuiltIn() {
+        for id in ["screen.default", "camera.study", "stale.uuid", ""] {
+            XCTAssertEqual(GroundProfile.resolve(id: id, in: []), GroundProfile.builtIn(id: id))
+        }
+    }
+
+    func testResolveUserProfileByIdAndBuiltInsWinIdCollisions() {
+        let user = GroundProfile(
+            id: "u1", displayNameKey: "Screen", symbol: "macwindow",
+            primaryGround: .screen, activeGrounds: [.screen], isBuiltIn: false,
+            displayName: "Mine"
+        )
+        XCTAssertEqual(GroundProfile.resolve(id: "u1", in: [user]), user)
+        // A user entry reusing a built-in id can never shadow the built-in.
+        let masquerader = user.with(
+            displayName: "Fake screen", instruction: nil, modelBinding: nil, moduleOverrides: .none
+        )
+        XCTAssertEqual(
+            GroundProfile.resolve(id: "screen.default", in: [masquerader]), .screenDefault
+        )
     }
 }
