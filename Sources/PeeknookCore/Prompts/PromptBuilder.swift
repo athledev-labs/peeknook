@@ -14,9 +14,14 @@ enum PromptBuilder {
             outputSection,
         ]
         if let appendix = agentAppendix?.trimmingCharacters(in: .whitespacesAndNewlines), !appendix.isEmpty {
+            // Fenced so user-pasted text (which may itself contain `## headings`) reads as the
+            // custom-agent block's CONTENT, never as new top-level prompt sections.
             parts.append("""
             ## Custom agent
+            The user configured these standing instructions (between the --- markers):
+            ---
             \(appendix)
+            ---
             """)
         }
         return parts.joined(separator: "\n\n")

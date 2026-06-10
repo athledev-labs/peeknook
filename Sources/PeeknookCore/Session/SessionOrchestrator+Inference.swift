@@ -69,6 +69,7 @@ extension SessionOrchestrator {
         }
         let request = InferenceRequest(
             mode: settings.mode,
+            agentSystemAppendix: activeAgentAppendix,
             messages: inferenceMessages(
                 from: budgeted,
                 webLookup: webLookupSnapshot,
@@ -191,8 +192,11 @@ extension SessionOrchestrator {
             return
         }
         isFetchingSuggestions = true
+        // The appendix rides symmetrically; both engines' suggestion pass uses the static
+        // follow-up prompt today, so pills stay persona-blind in v1 (recorded seam).
         let request = InferenceRequest(
             mode: settings.mode,
+            agentSystemAppendix: activeAgentAppendix,
             messages: inferenceMessages(from: conversation, policy: .suggestions),
             model: settings.answerModel.tag,
             endpoint: settings.activeEndpoint,
