@@ -78,10 +78,10 @@ public final class SessionOrchestrator {
     /// `openCameraLive()`, cleared by `stopCameraPreview()` (the single teardown choke point).
     public internal(set) var activeCameraSession: (any CameraSessionControlling)?
     let inferenceRegistry: InferenceBackendRegistry
-    /// The engine for the user's active backend, resolved per call so a backend switch in
-    /// Settings takes effect on the next turn without rebuilding the orchestrator.
+    /// The engine for the active answer model's backend (profile binding, else global), resolved
+    /// per call so a backend switch or profile switch takes effect on the next turn.
     var inference: any InferenceEngine {
-        inferenceRegistry.engine(for: settings.answerModel.backend)
+        inferenceRegistry.engine(for: activeAnswerModel.backend)
     }
 
     /// The active profile resolved against built-ins + the user catalog (unknown/deleted id →

@@ -35,12 +35,12 @@ extension SessionOrchestrator {
         // (it surfaces its own failure downstream). Gated to capture turns that carry an image.
         if let capture, capture.hasVision {
             let visionReadiness = await visionGate.readiness(
-                of: settings.answerModel.tag,
-                endpoint: settings.activeEndpoint
+                of: activeAnswerModel.tag,
+                endpoint: activeInferenceEndpoint
             )
             guard lifecycle.isCurrentSession(sessionGen), !Task.isCancelled else { return }
             if visionReadiness == .textOnly {
-                _ = applyPhaseEvent(.inferenceFailed(.modelLacksVision(tag: settings.answerModel.tag)))
+                _ = applyPhaseEvent(.inferenceFailed(.modelLacksVision(tag: activeAnswerModel.tag)))
                 return
             }
         }
@@ -76,8 +76,8 @@ extension SessionOrchestrator {
                 policy: inferencePolicy,
                 imageBase64ByTurnID: imageBase64ByTurnID
             ),
-            model: settings.answerModel.tag,
-            endpoint: settings.activeEndpoint,
+            model: activeAnswerModel.tag,
+            endpoint: activeInferenceEndpoint,
             quickMode: settings.quickMode
         )
         let stream = inference.stream(request: request)
@@ -109,9 +109,9 @@ extension SessionOrchestrator {
                 return
             }
             if let capture {
-                usage?.record(capture: capture, inference: finalStats, modelTag: settings.answerModel.tag)
+                usage?.record(capture: capture, inference: finalStats, modelTag: activeAnswerModel.tag)
             } else {
-                usage?.recordFollowUp(inference: finalStats, modelTag: settings.answerModel.tag)
+                usage?.recordFollowUp(inference: finalStats, modelTag: activeAnswerModel.tag)
             }
             if let prompt = finalStats?.promptTokens, prompt > 0 { lastPromptTokens = prompt }
             turnCounter += 1
@@ -125,7 +125,7 @@ extension SessionOrchestrator {
         } catch {
             if !Task.isCancelled, lifecycle.isCurrentSession(sessionGen) {
                 _ = applyPhaseEvent(
-                    .inferenceFailed(.from(error: error, backend: settings.answerModel.backend))
+                    .inferenceFailed(.from(error: error, backend: activeAnswerModel.backend))
                 )
             }
         }
@@ -198,8 +198,8 @@ extension SessionOrchestrator {
             mode: settings.mode,
             agentSystemAppendix: activeAgentAppendix,
             messages: inferenceMessages(from: conversation, policy: .suggestions),
-            model: settings.answerModel.tag,
-            endpoint: settings.activeEndpoint,
+            model: activeAnswerModel.tag,
+            endpoint: activeInferenceEndpoint,
             quickMode: settings.quickMode
         )
         let expectedTurn = turnCounter
@@ -239,8 +239,8 @@ extension SessionOrchestrator {
         guard contextWindow == nil else { return }
         Task {
             if let length = await inference.contextLength(
-                model: settings.answerModel.tag,
-                endpoint: settings.activeEndpoint
+                model: activeAnswerModel.tag,
+                endpoint: activeInferenceEndpoint
             ) {
                 contextWindow = length
             }

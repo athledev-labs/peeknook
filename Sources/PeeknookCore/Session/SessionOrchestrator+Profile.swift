@@ -12,4 +12,15 @@ extension SessionOrchestrator {
     var activeAgentAppendix: String? {
         ProfileInstruction.sanitized(resolvedActiveProfile.instruction)
     }
+
+    /// The model the next turn answers with: the active profile's binding, else global.
+    var activeAnswerModel: ModelReference {
+        settings.answerModel(for: resolvedActiveProfile)
+    }
+
+    /// The endpoint the next turn hits, derived from the binding's backend (see
+    /// `PeeknookSettings.endpoint(for:)`).
+    var activeInferenceEndpoint: InferenceEndpoint {
+        settings.endpoint(for: resolvedActiveProfile)
+    }
 }
