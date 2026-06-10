@@ -20,6 +20,7 @@ struct PeekHomeResultView: View {
 
     @Environment(\.nookResolvedTheme) private var theme
     @Environment(\.nookContentInsets) private var contentInsets
+    @State private var didCopyThread = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -149,7 +150,18 @@ struct PeekHomeResultView: View {
             spacing: 4,
             resolveHotkey: hotkey(for:),
             dynamicHelp: { $0 == .brief ? PeekSessionBriefStrip.buttonHelp(for: orchestrator) : nil },
-            dispatch: dispatch(_:)
+            dispatch: dispatch(_:),
+            special: { command in
+                guard command.action == .export else { return nil }
+                return AnyView(
+                    CopyThreadCommandButton(
+                        command: command,
+                        context: commandContext,
+                        didCopy: didCopyThread,
+                        onCopy: copyThread
+                    )
+                )
+            }
         )
         .padding(.top, 4)
     }
@@ -183,7 +195,7 @@ struct PeekHomeResultView: View {
     private func dispatch(_ action: CommandAction) {
         switch action {
         case .history:  onToggleHistory()
-        case .export:   orchestrator.copyConversationMarkdown()
+        case .export:   copyThread()
         case .brief:
             PeekSessionBriefStrip.toggleComposer(
                 orchestrator: orchestrator,
@@ -236,5 +248,32 @@ struct PeekHomeResultView: View {
         } else {
             focusFollowUpField.wrappedValue = false
         }
+    }
+
+    private func copyThread() {
+        let markdown = orchestrator.conversationMarkdown()
+        guard !markdown.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        orchestrator.copyConversationMarkdown()
+        didCopyThread = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { didCopyThread = false }
+    }
+}
+
+private struct CopyThreadCommandButton: View {
+    let command: CommandDescriptor
+    let context: CommandBarContext
+    let didCopy: Bool
+    let onCopy: () -> Void
+
+    var body: some View {
+        NookToolbarButton(
+            title: didCopy ? "Copied" : command.resolvedTitleKey(in: context),
+            symbol: didCopy ? "checkmark" : command.resolvedSymbol(in: context),
+            help: didCopy ? "Copied" : command.resolvedHelpKey(in: context),
+            testIdentifier: command.accessibilityIdentifier,
+            prominent: command.isProminent(in: context),
+            action: onCopy
+        )
+        .disabled(command.isDisabled(in: context))
     }
 }

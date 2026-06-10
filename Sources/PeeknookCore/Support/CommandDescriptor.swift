@@ -265,7 +265,7 @@ public extension CommandLayout {
         ),
         CommandDescriptor(
             id: "result.export", kind: .button, action: .export,
-            titleKey: "Export", symbol: "square.and.arrow.up",
+            titleKey: "Copy thread", symbol: "doc.on.doc",
             helpKey: "Copy the whole thread as Markdown",
             placement: .result, visibility: .showingFullConversation, defaultOrder: 1
         ),
