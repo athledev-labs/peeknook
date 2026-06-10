@@ -20,6 +20,16 @@ public struct GroundProfile: Equatable, Sendable, Identifiable {
     public let primaryGround: Ground
     public let activeGrounds: Set<Ground>
     public let isBuiltIn: Bool
+    /// User-copy literal name (typed by the user — rendered verbatim, never a catalog key).
+    /// Nil for built-ins, which localize through `displayNameKey`.
+    public let displayName: String?
+    /// Free-text persona the profile injects into the system prompt (via `agentSystemAppendix`).
+    /// Nil/empty = none. Sanitized (trim + cap) on decode; see ``ProfileInstruction``.
+    public let instruction: String?
+    /// Optional answer-model override; nil = the global `answerModel`/`activeEndpoint`.
+    public let modelBinding: ProfileModelBinding?
+    /// Sparse per-profile module forcing; `.none` = pure global read-through.
+    public let moduleOverrides: ModuleOverrides
 
     public init(
         id: String,
@@ -27,7 +37,11 @@ public struct GroundProfile: Equatable, Sendable, Identifiable {
         symbol: String,
         primaryGround: Ground,
         activeGrounds: Set<Ground>,
-        isBuiltIn: Bool
+        isBuiltIn: Bool,
+        displayName: String? = nil,
+        instruction: String? = nil,
+        modelBinding: ProfileModelBinding? = nil,
+        moduleOverrides: ModuleOverrides = .none
     ) {
         self.id = id
         self.displayNameKey = displayNameKey
@@ -35,6 +49,10 @@ public struct GroundProfile: Equatable, Sendable, Identifiable {
         self.primaryGround = primaryGround
         self.activeGrounds = activeGrounds
         self.isBuiltIn = isBuiltIn
+        self.displayName = displayName
+        self.instruction = instruction
+        self.modelBinding = modelBinding
+        self.moduleOverrides = moduleOverrides
     }
 
     /// Union of the required permissions of every active ground. Supplementary grounds (AX via
@@ -49,6 +67,7 @@ public struct GroundProfile: Equatable, Sendable, Identifiable {
 extension GroundProfile: Codable {
     private enum CodingKeys: String, CodingKey {
         case id, displayNameKey, symbol, primaryGround, activeGrounds, isBuiltIn
+        case displayName, instruction, modelBinding, moduleOverrides
     }
 
     public init(from decoder: Decoder) throws {
@@ -65,6 +84,14 @@ extension GroundProfile: Codable {
         grounds.insert(primaryGround)   // the primary ground is always active
         activeGrounds = grounds
         isBuiltIn = try container.decodeIfPresent(Bool.self, forKey: .isBuiltIn) ?? false
+        // The profiles-v1 fields, each individually `try?`-shielded: a malformed field degrades
+        // to its default without taking the profile (or the whole catalog) down with it.
+        displayName = ((try? container.decodeIfPresent(String.self, forKey: .displayName)) ?? nil)
+        instruction = ProfileInstruction.sanitized(
+            (try? container.decodeIfPresent(String.self, forKey: .instruction)) ?? nil
+        )
+        modelBinding = ((try? container.decodeIfPresent(ProfileModelBinding.self, forKey: .modelBinding)) ?? nil)
+        moduleOverrides = ((try? container.decodeIfPresent(ModuleOverrides.self, forKey: .moduleOverrides)) ?? nil) ?? .none
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -75,6 +102,13 @@ extension GroundProfile: Codable {
         try container.encode(primaryGround.rawValue, forKey: .primaryGround)
         try container.encode(activeGrounds.map(\.rawValue).sorted(), forKey: .activeGrounds)
         try container.encode(isBuiltIn, forKey: .isBuiltIn)
+        // Conditional: a built-in (all four at their defaults) encodes exactly the six legacy keys.
+        try container.encodeIfPresent(displayName, forKey: .displayName)
+        try container.encodeIfPresent(instruction, forKey: .instruction)
+        try container.encodeIfPresent(modelBinding, forKey: .modelBinding)
+        if moduleOverrides != .none {
+            try container.encode(moduleOverrides, forKey: .moduleOverrides)
+        }
     }
 }
 
