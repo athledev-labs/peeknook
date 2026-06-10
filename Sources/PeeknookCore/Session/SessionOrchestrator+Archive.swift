@@ -69,8 +69,10 @@ extension SessionOrchestrator {
 
     /// Write the current chat to the archive (off the main actor) when persistence is on; no-op
     /// otherwise. The first save mints the thread's stable id and creation date.
+    /// Write-gated per profile (the same verdict as the blob write — see `archiveWritesEnabled`);
+    /// restore/list/resume and purge-on-disable stay on the global toggle.
     public func persistConversationNow() {
-        guard settings.persistConversation, conversationArchive != nil, !conversation.isEmpty else { return }
+        guard archiveWritesEnabled, conversationArchive != nil, !conversation.isEmpty else { return }
         if activeThreadID == nil {
             activeThreadID = UUID()
             activeThreadCreatedAt = Date()

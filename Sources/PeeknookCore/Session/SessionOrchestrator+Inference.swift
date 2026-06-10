@@ -47,7 +47,8 @@ extension SessionOrchestrator {
 
         // Web lookup is gated on the ground explicitly, never on incidental nils: a camera frame
         // must not become a search query even once composite turns carry screen text alongside it.
-        if settings.webLookupEnabled, let capture, capture.ground == .screen {
+        if let capture, capture.ground == .screen,
+           moduleEnabled(.webLookup, for: gatingProfile(forTurnGround: capture.ground)) {
             isFetchingWebLookup = true
             let snapshot = await webLookup.lookup(capture: capture)
             isFetchingWebLookup = false
@@ -118,9 +119,10 @@ extension SessionOrchestrator {
             let usage = finalStats.map { TurnUsage(stats: $0, contextWindow: contextWindow) }
             conversation.append(ChatTurn(id: turnCounter, kind: .assistant(answer), turnUsage: usage))
             _ = applyPhaseEvent(.inferenceCompleted(answer: answer))
+            let turnProfile = gatingProfile(forTurnGround: capture?.ground)
             persistConversationNow()
-            speakLastAnswer()
-            fetchSuggestions()
+            speakLastAnswer(gatedBy: turnProfile)
+            fetchSuggestions(gatedBy: turnProfile)
             ensureContextWindowLoaded()
         } catch {
             if !Task.isCancelled, lifecycle.isCurrentSession(sessionGen) {
@@ -181,13 +183,14 @@ extension SessionOrchestrator {
         }
     }
 
-    /// Generates the dynamic action pills for the answer just shown. Controlled only by the
-    /// `suggestFollowUps` setting, it's a separate, non-blocking call, so quick mode (which is
-    /// about answer terseness) doesn't disable it. Applies only if the same answer is on screen.
-    private func fetchSuggestions() {
+    /// Generates the dynamic action pills for the answer just shown. Controlled by the
+    /// `suggestFollowUps` module (global setting + the turn profile's override), it's a separate,
+    /// non-blocking call, so quick mode (which is about answer terseness) doesn't disable it.
+    /// Applies only if the same answer is on screen.
+    private func fetchSuggestions(gatedBy turnProfile: GroundProfile) {
         lifecycle.suggestionTask?.cancel()
         suggestedFollowUps = []
-        guard settings.suggestFollowUps else {
+        guard moduleEnabled(.suggestFollowUps, for: turnProfile) else {
             isFetchingSuggestions = false
             return
         }

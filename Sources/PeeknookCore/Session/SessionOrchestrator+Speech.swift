@@ -82,7 +82,7 @@ extension SessionOrchestrator {
     /// Toggle on-device dictation for briefs and follow-ups. Returns the final transcript when stopping.
     @discardableResult
     public func toggleVoiceInput() async -> String? {
-        guard settings.voiceInputEnabled else { return nil }
+        guard moduleEnabled(.voiceInput, for: resolvedActiveProfile) else { return nil }
         if isListeningForVoice {
             let final = speechRecognizer.stopListening()
             isListeningForVoice = false
@@ -117,7 +117,13 @@ extension SessionOrchestrator {
     }
 
     public func speakLastAnswer() {
-        guard settings.speakAnswersEnabled else { return }
+        speakLastAnswer(gatedBy: resolvedActiveProfile)
+    }
+
+    /// `runTurn` passes the TURN's gating profile (camera turns gate on the `cameraStudy`
+    /// literal); the public overload gates on the active profile for UI-initiated reads.
+    func speakLastAnswer(gatedBy profile: GroundProfile) {
+        guard moduleEnabled(.speakAnswers, for: profile) else { return }
         let text = AnswerDisplayText.plainForSpeech(lastAssistantText ?? streamedAnswer)
         guard !text.isEmpty else { return }
         stopPreviewSpeech()

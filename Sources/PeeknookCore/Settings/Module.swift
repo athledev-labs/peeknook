@@ -25,6 +25,10 @@ public enum ModuleID: String, Codable, Sendable, CaseIterable, Hashable {
 /// every module answers from the global setting or the active ground.
 public enum Module {
     public static func isEnabled(_ id: ModuleID, in settings: PeeknookSettings, profile: GroundProfile) -> Bool {
+        // Per-profile forcing for the five opt-in modules only — `ModuleOverrides` filters at its
+        // own boundaries too, so a corrupt blob can never decouple a grounded module from its
+        // ground. Absent override = inherit the global setting (never "off").
+        if let forced = profile.moduleOverrides.value(for: id) { return forced }
         switch id {
         case .webLookup:        return settings.webLookupEnabled
         case .voiceInput:       return settings.voiceInputEnabled

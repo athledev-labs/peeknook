@@ -23,7 +23,9 @@ extension SessionOrchestrator {
     }
 
     func storedCapture(_ capture: CaptureResult) -> CaptureResult {
-        guard settings.persistConversation,
+        // The same per-profile write gate as the thread save, keyed by THIS capture's ground —
+        // a blob must never be written for a turn whose thread save is gated off (orphan).
+        guard moduleEnabled(.saveConversation, for: gatingProfile(forTurnGround: capture.ground)),
               let base64 = capture.screenshotBase64,
               !base64.isEmpty,
               let store = captureBlobStore else { return capture }
