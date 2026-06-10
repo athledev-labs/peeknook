@@ -33,6 +33,8 @@ public final class StubCameraSession: CameraSessionControlling, CaptureProviding
     public var startPreviewError: Error?
     /// When set, `captureStill()` throws it.
     public var captureStillError: Error?
+    /// When set, `captureStill()` awaits this long first (for cancellation-race tests).
+    public var captureDelayNanoseconds: UInt64?
     public var stillBase64: String
 
     public init(stillBase64: String = StubCaptureProvider.defaultScreenshotBase64) {
@@ -54,6 +56,10 @@ public final class StubCameraSession: CameraSessionControlling, CaptureProviding
     public func captureStill() async throws -> CaptureResult {
         captureStillCount += 1
         if let captureStillError { throw captureStillError }
+        if let captureDelayNanoseconds {
+            try await Task.sleep(nanoseconds: captureDelayNanoseconds)
+            try Task.checkCancellation()
+        }
         guard isPreviewing else { throw CaptureError.failed("Camera preview is not running.") }
         return CaptureResult(
             text: nil,

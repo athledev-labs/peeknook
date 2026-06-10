@@ -72,6 +72,8 @@ public struct PeekCompactView: View {
                 : "Finish setup first"
         case .previewing:
             return "Opening preview to confirm"
+        case .cameraLive:
+            return "Live camera preview open"
         case .result:
             return "Answer ready, tap to expand"
         case .failed(let failure):
@@ -91,6 +93,8 @@ public struct PeekCompactView: View {
             return "Retry capture"
         case .result:
             return "Open answer"
+        case .cameraLive:
+            return "Live camera preview"
         case .capturing, .inferring, .previewing:
             return loadingPresentation?.label ?? "Opening preview to confirm"
         }

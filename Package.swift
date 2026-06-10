@@ -75,6 +75,13 @@ let package = Package(
             dependencies: ["PeeknookCore"],
             path: "Tests/PeeknookCoreTests",
             swiftSettings: strictConcurrency
+        ),
+        // Pure UI-layer logic (layout math, internal helpers) — no rendering, no XCUITest.
+        .testTarget(
+            name: "PeeknookUILogicTests",
+            dependencies: ["PeeknookUI"],
+            path: "Tests/PeeknookUILogicTests",
+            swiftSettings: strictConcurrency
         )
     ]
 )

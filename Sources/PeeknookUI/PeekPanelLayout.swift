@@ -79,6 +79,21 @@ enum PeekPanelLayout {
         return min(440, max(260, visibleHeight * 0.42))
     }
 
+    /// Usable content width for the camera preview inside the fixed expanded panel
+    /// (`expandedWidth` 520 minus the host content insets and home-column padding).
+    static let cameraPreviewUsableWidth: CGFloat = 480
+
+    /// Live camera preview size for a panel content width. PURE and **width-keyed by design**: the
+    /// panel width is fixed by the host, and a live preview layer has no intrinsic SwiftUI size —
+    /// so height = width / aspect, clamped to a band that can never push the host top bar off the
+    /// notch screen. Never derive this from `visibleFrame.height` or `resultContentMaxHeight`.
+    static func cameraPreviewSize(forWidth width: CGFloat, aspect: CGFloat = 16.0 / 9.0) -> CGSize {
+        let usableWidth = (width.isFinite && width > 0) ? width : cameraPreviewUsableWidth
+        let safeAspect = (aspect.isFinite && aspect > 0) ? aspect : 16.0 / 9.0
+        let height = min(270, max(180, usableWidth / safeAspect)).rounded()
+        return CGSize(width: usableWidth.rounded(), height: height)
+    }
+
     private static var notchScreen: NSScreen? {
         NSScreen.screens.first(where: { $0.safeAreaInsets.top > 0 })
             ?? NSScreen.main

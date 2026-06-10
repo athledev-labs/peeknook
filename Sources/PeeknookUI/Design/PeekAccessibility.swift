@@ -12,6 +12,7 @@ enum PeekTestID {
     static let stats = "peeknook.stats"
     static let pastChats = "peeknook.pastChats"
     static let showGreeting = "peeknook.settings.showGreeting"
+    static let cameraPreview = "peeknook.cameraPreview"
 }
 
 /// Reusable accessibility conventions for Peeknook's shared components. Apply these instead of

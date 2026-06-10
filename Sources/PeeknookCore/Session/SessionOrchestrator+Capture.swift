@@ -178,9 +178,12 @@ extension SessionOrchestrator {
     }
 
     /// Cancel any in-flight capture, inference, web-lookup, or suggestion work and bump the session
-    /// generations so a late async completion can't mutate state after the user moved on.
+    /// generations so a late async completion can't mutate state after the user moved on. Also the
+    /// teardown backstop for the live camera: every exit that aborts session work (cancel, dismiss,
+    /// open-thread, delete-thread, new capture) stops the preview too.
     func abortSessionWork() {
         lifecycle.invalidateAllWork()
+        stopCameraPreview()
         isFetchingSuggestions = false
         isFetchingWebLookup = false
     }

@@ -21,6 +21,16 @@ public enum SessionEvent: Sendable, Equatable {
     case retryCapture
     case openThreadRestored(answer: String)
     case deleteActiveThreadToIdle
+    /// idle/result/failed → `.cameraLive` (open the live camera preview).
+    case openCameraLive
+    /// `.cameraLive` → `.capturing`: the still is taken; from there the capture path is the
+    /// unchanged commit → runTurn → result pipeline.
+    case shutter
+    /// `.cameraLive` → `.idle`. Outside `.cameraLive` this is a **no-op, not a reject**, so the
+    /// host's nook-collapse teardown can fire it unconditionally on every collapse.
+    case cancelCameraLive
+    /// `.cameraLive` → `.failed` (startPreview / captureStill error surface).
+    case cameraLiveFailed(SessionFailure)
 }
 
 /// Guards the FSM needs that are not encoded in the phase enum itself.
@@ -124,6 +134,20 @@ public struct SessionPhaseMachine: Sendable {
         case .deleteActiveThreadToIdle:
             phase = .idle
             return .applied(phase)
+        case .openCameraLive:
+            return applyOpenCameraLive()
+        case .shutter:
+            guard case .cameraLive = phase else { return .rejected }
+            phase = .capturing
+            return .applied(phase)
+        case .cancelCameraLive:
+            guard case .cameraLive = phase else { return .noOp }
+            phase = .idle
+            return .applied(phase)
+        case .cameraLiveFailed(let failure):
+            guard case .cameraLive = phase else { return .rejected }
+            phase = .failed(failure)
+            return .applied(phase)
         }
     }
 
@@ -132,7 +156,18 @@ public struct SessionPhaseMachine: Sendable {
         case .idle, .result, .failed:
             phase = .capturing
             return .applied(phase)
-        default:
+        case .capturing, .previewing, .cameraLive, .inferring:
+            // ⌘⇧P during the live camera preview is a documented no-op, not a default fallthrough.
+            return .rejected
+        }
+    }
+
+    private mutating func applyOpenCameraLive() -> SessionTransitionResult {
+        switch phase {
+        case .idle, .result, .failed:
+            phase = .cameraLive
+            return .applied(phase)
+        case .capturing, .previewing, .cameraLive, .inferring:
             return .rejected
         }
     }

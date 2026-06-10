@@ -10,6 +10,8 @@ final class SessionLifecycleCoordinator {
 
     var inferenceTask: Task<Void, Never>?
     var suggestionTask: Task<Void, Never>?
+    /// Camera live-preview work (startPreview / the in-flight shutter still).
+    var cameraTask: Task<Void, Never>?
 
     var pendingPreview: CapturePreview?
     var pendingCapture: CaptureResult?
@@ -34,6 +36,8 @@ final class SessionLifecycleCoordinator {
         inferenceTask = nil
         suggestionTask?.cancel()
         suggestionTask = nil
+        cameraTask?.cancel()
+        cameraTask = nil
     }
 
     func cancelInferenceAndSuggestions() {

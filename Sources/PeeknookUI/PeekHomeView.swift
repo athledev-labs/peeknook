@@ -214,10 +214,11 @@ public struct PeekHomeView: View {
         }
     }
 
-    /// Stats and Model Library stay available on idle, result, and failed; block during capture flow.
+    /// Stats and Model Library stay available on idle, result, and failed; block during capture flow
+    /// and while the live camera is open (drilling in would hide a running camera surface).
     private var allowsGlobalDrillIn: Bool {
         switch orchestrator.phase {
-        case .capturing, .previewing, .inferring:
+        case .capturing, .previewing, .inferring, .cameraLive:
             return false
         default:
             return true
@@ -274,6 +275,10 @@ public struct PeekHomeView: View {
                                 onResume: resumeChat
                             )
                             .padding(.top, 4)
+                        } else if case .cameraLive = orchestrator.phase {
+                            // The live-camera bar has its OWN dispatch (.cancel must tear the
+                            // session down) — never route it through PeekHomeActiveControls.
+                            PeekCameraLiveControls(orchestrator: orchestrator)
                         } else {
                             PeekHomeActiveControls(
                                 orchestrator: orchestrator,

@@ -6,6 +6,11 @@ public enum SessionPhase: Equatable, Sendable {
     case idle
     case capturing
     case previewing(CapturePreview)
+    /// Pre-capture live camera preview (shutter not pressed). Distinct from `.previewing`, which is
+    /// the *post*-capture confirm step. Deliberately payload-free: the live session controller is a
+    /// `@MainActor AnyObject` and would break this enum's derived `Equatable`/`Sendable` — the
+    /// orchestrator holds it instead (`activeCameraSession`).
+    case cameraLive
     case inferring
     case result(String)
     case failed(SessionFailure)

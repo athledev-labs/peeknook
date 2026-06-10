@@ -140,6 +140,12 @@ public final class PeeknookModule: NookModule {
         configuration.setTopBarTrailingItems {
             PeekGlobalTopBarItems(orchestrator: self.orchestrator)
         }
+        // PRIVACY KILL-PATH: nook-collapse and hide are NOT phase changes, so the phase-observation
+        // loop below can never see them. These hooks fire the camera cancel unconditionally — it is
+        // a no-op outside `.cameraLive` and idempotent against the loop's own pin release. Without
+        // this, a `.stayResident` module would keep the camera running with no visible UI.
+        configuration.onCompact = { [weak self] in self?.orchestrator.cancelCameraLive() }
+        configuration.onHide = { [weak self] in self?.orchestrator.cancelCameraLive() }
         configuration.onReady = { [weak self] coordinator in
             self?.registerHotkeys(on: coordinator)
             self?.startPreviewPhaseHandling(on: coordinator)
@@ -200,15 +206,18 @@ public final class PeeknookModule: NookModule {
         }
     }
 
-    /// When confirm-before-analyze is on, capture can finish while the nook is still
-    /// compact, expand to Home so the preview confirm UI is reachable, and pin the
-    /// surface until the user confirms or cancels.
+    /// Pin the nook open while a phase needs the panel on screen — the post-capture confirm
+    /// (`.previewing`) and the live camera (`.cameraLive`) — expanding to Home on entry and
+    /// releasing the pin on exit. This loop observes *phase changes only*: collapse/hide are
+    /// driven by the configuration's `onCompact`/`onHide` hooks (see `makeConfiguration`), which
+    /// cancel the camera and thereby move the phase, after which this loop releases the pin.
     private func startPreviewPhaseHandling(on coordinator: AppCoordinator) {
         previewPhaseTask?.cancel()
         previewPhaseTask = Task { @MainActor [weak self] in
             guard let self else { return }
             let pinning = context.services.resolve(NookPresentationPinningKey.self)
-            var wasPreviewing = false
+            enum PinnedPhase { case capturePreview, cameraLive }
+            var activePin: PinnedPhase?
 
             while !Task.isCancelled {
                 await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
@@ -219,25 +228,34 @@ public final class PeeknookModule: NookModule {
                     }
                 }
 
-                let isPreviewing: Bool
-                if case .previewing = self.orchestrator.phase {
-                    isPreviewing = true
-                } else {
-                    isPreviewing = false
+                let pinned: PinnedPhase?
+                switch self.orchestrator.phase {
+                case .previewing: pinned = .capturePreview
+                case .cameraLive: pinned = .cameraLive
+                default: pinned = nil
                 }
 
-                if isPreviewing, !wasPreviewing {
+                if let pinned, pinned != activePin {
                     coordinator.showHome()
                     coordinator.showNook()
                     previewPinHandle?.release()
-                    previewPinHandle = pinning.pin(reason: "capture-preview")
-                } else if !isPreviewing, wasPreviewing {
+                    switch pinned {
+                    case .capturePreview: previewPinHandle = pinning.pin(reason: "capture-preview")
+                    case .cameraLive: previewPinHandle = pinning.pin(reason: "camera-live")
+                    }
+                } else if pinned == nil, activePin != nil {
                     previewPinHandle?.release()
                     previewPinHandle = nil
                 }
 
-                wasPreviewing = isPreviewing
+                activePin = pinned
             }
         }
+    }
+
+    /// `.stayResident` keeps this module alive across module switches — never leave the camera
+    /// running behind another module's surface.
+    public func prepareForSwitchAway() async {
+        orchestrator.cancelCameraLive()
     }
 }

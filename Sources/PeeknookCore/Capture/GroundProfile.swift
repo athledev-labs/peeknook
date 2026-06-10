@@ -93,7 +93,23 @@ public extension GroundProfile {
         isBuiltIn: true
     )
 
-    /// Built-in profiles. `camera.study` is added with the camera PR, never speculatively before it.
+    /// Camera-first profile: requires Camera TCC only — **not** Screen Recording. Defined here so
+    /// every `.cameraLive`-scoped gate (command-bar modules, readiness) can key on this literal —
+    /// the single profile-source rule: ⌘⇧C is event-scoped, `activeProfileID` never changes in v1,
+    /// and the live-camera surface always resolves against `cameraStudy`, never `activeProfile`.
+    /// No `.selectedText`: an AX text selection has no on-screen target for a camera frame, so
+    /// including it would silently widen what a camera capture sends.
+    static let cameraStudy = GroundProfile(
+        id: "camera.study",
+        displayNameKey: "Camera",
+        symbol: "camera",
+        primaryGround: .camera,
+        activeGrounds: [.camera],
+        isBuiltIn: true
+    )
+
+    /// Built-in profiles. `cameraStudy` joins this catalog with the reachability slice (⌘⇧C +
+    /// Camera TCC); until then `builtIn(id: "camera.study")` still falls back to `screenDefault`.
     static var all: [GroundProfile] { [.screenDefault] }
 
     /// Resolve a profile id to its built-in, falling back to `screen.default` for an unknown id

@@ -70,6 +70,10 @@ public final class SessionOrchestrator {
     var activeThreadCreatedAt: Date?
 
     let captureRegistry: GroundRegistry
+    /// The live camera session while `.cameraLive` is on screen, nil otherwise. Held here — not as
+    /// a phase payload — so `SessionPhase` stays a value-type `Equatable`/`Sendable` enum. Set by
+    /// `openCameraLive()`, cleared by `stopCameraPreview()` (the single teardown choke point).
+    public internal(set) var activeCameraSession: (any CameraSessionControlling)?
     let inference: any InferenceEngine
     let speechRecognizer: any SpeechRecognizing
     let answerSpeechSynthesizer: any SpeechSynthesizing

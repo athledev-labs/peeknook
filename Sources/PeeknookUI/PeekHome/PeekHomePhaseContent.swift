@@ -20,6 +20,8 @@ struct PeekHomePhaseContent: View {
             activeLoadingContent
         case .previewing(let preview):
             previewContent(preview)
+        case .cameraLive:
+            PeekCameraLiveView(orchestrator: orchestrator)
         case .result:
             EmptyView()
         case .failed(let failure):

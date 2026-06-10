@@ -159,10 +159,11 @@ public struct PeekGlobalTopBarItems: View {
         return hasArchivedThreads
     }
 
-    /// Stats and Past chats stay available on idle, result, and failed; block during capture flow.
+    /// Stats and Past chats stay available on idle, result, and failed; block during capture flow
+    /// and while the live camera is open (drilling in would hide a running camera surface).
     private var allowsGlobalDrillIn: Bool {
         switch orchestrator.phase {
-        case .capturing, .previewing, .inferring:
+        case .capturing, .previewing, .inferring, .cameraLive:
             return false
         default:
             return true

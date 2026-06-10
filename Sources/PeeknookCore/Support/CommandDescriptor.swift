@@ -308,4 +308,29 @@ public extension CommandLayout {
             placement: .result, defaultOrder: 6
         ),
     ])
+
+    /// The camera profile's layout: everything from ``screenDefault`` plus the `.cameraLive`
+    /// Shutter / Cancel group. A separate layout — `screenDefault` itself never gains `.cameraLive`
+    /// descriptors (its empty `.cameraLive` placement is the Phase 1.5 migration anchor).
+    ///
+    /// Cancel deliberately carries **no** module or permission gate: a live camera surface must
+    /// never render without an exit, whatever the active profile or TCC state. Shutter gates on
+    /// the camera module + permission; the renderer resolves both against the `camera.study`
+    /// profile literal (the single profile-source rule), not the active profile.
+    static let cameraStudy = CommandLayout(commands: screenDefault.commands + [
+        CommandDescriptor(
+            id: "cameraLive.cancel", kind: .button, action: .cancel,
+            titleKey: "Cancel", symbol: "xmark",
+            placement: .cameraLive, defaultOrder: 0
+        ),
+        CommandDescriptor(
+            id: "cameraLive.shutter", kind: .button, action: .shutter,
+            titleKey: "Shutter", symbol: "circle.inset.filled",
+            helpKey: "Capture a photo from the camera",
+            hotkey: .settingsSlot(.camera),
+            placement: .cameraLive, pinnedTrailing: true, prominent: true,
+            requiredModules: [.cameraCapture], requiredPermissions: [.camera],
+            defaultOrder: 1
+        ),
+    ])
 }

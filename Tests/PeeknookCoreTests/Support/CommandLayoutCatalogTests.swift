@@ -34,16 +34,60 @@ final class CommandLayoutCatalogTests: XCTestCase {
         )
     }
 
+    func testEveryCameraStudyLocalizationKeyExistsInTheCatalog() throws {
+        let catalogKeys = try loadCatalogKeys()
+
+        var referenced = Set<String>()
+        for command in CommandLayout.cameraStudy.commands {
+            referenced.insert(command.titleKey)
+            command.helpKey.map { referenced.insert($0) }
+            if let face = command.alternateFace {
+                face.titleKey.map { referenced.insert($0) }
+                face.helpKey.map { referenced.insert($0) }
+            }
+        }
+
+        let missing = referenced.subtracting(catalogKeys).sorted()
+        XCTAssertTrue(
+            missing.isEmpty,
+            "cameraStudy references \(missing.count) localization key(s) missing from "
+                + "Localizable.xcstrings (add them, with a ko translation): \(missing)"
+        )
+    }
+
+    /// Key *presence* alone doesn't guard translations — assert the camera additions carry `ko`.
+    /// (Scoped to the camera keys: the legacy catalog has partial ko coverage by design.)
+    func testCameraKeysCarryKoreanTranslations() throws {
+        let strings = try loadCatalogStrings()
+
+        var keys = Set<String>()
+        for command in CommandLayout.cameraStudy.commands where command.placement == .cameraLive {
+            keys.insert(command.titleKey)
+            command.helpKey.map { keys.insert($0) }
+        }
+        keys.formUnion(["Camera", "Camera preview"])   // trust label + preview surface copy
+
+        for key in keys.sorted() {
+            let entry = strings[key] as? [String: Any]
+            let localizations = entry?["localizations"] as? [String: Any]
+            XCTAssertNotNil(localizations?["ko"], "\(key) is missing a ko translation")
+        }
+    }
+
     // MARK: - Loading the source catalog
 
     private func loadCatalogKeys() throws -> Set<String> {
+        try Set(loadCatalogStrings().keys)
+    }
+
+    private func loadCatalogStrings() throws -> [String: Any] {
         let url = try Self.catalogURL()
         let data = try Data(contentsOf: url)
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         guard let strings = json?["strings"] as? [String: Any] else {
             throw XCTSkip("Could not parse strings table at \(url.path)")
         }
-        return Set(strings.keys)
+        return strings
     }
 
     /// `Sources/PeeknookUI/Resources/Localizable.xcstrings`, resolved from this test's `#filePath`

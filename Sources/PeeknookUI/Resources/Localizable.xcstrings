@@ -2084,6 +2084,42 @@
           }
         }
       }
+    },
+    "Shutter": {
+      "comment": "Camera shutter command",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "셔터"
+          }
+        }
+      }
+    },
+    "Capture a photo from the camera": {
+      "comment": "Shutter command tooltip",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "카메라로 사진 촬영"
+          }
+        }
+      }
+    },
+    "Camera preview": {
+      "comment": "Live camera preview placeholder / a11y label",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "카메라 미리보기"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
