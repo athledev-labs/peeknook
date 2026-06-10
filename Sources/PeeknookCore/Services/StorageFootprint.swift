@@ -135,7 +135,7 @@ public struct StorageFootprintService: StorageFootprinting, Sendable {
         let archiveState = await archiveState(persistConversation: persistConversation)
         let diskState: OllamaFootprintState
         let memoryState: OllamaMemoryFootprintState
-        if OllamaURLPolicy.usesRemoteOllama(ollamaBaseURL) {
+        if EndpointURLPolicy.usesRemoteHost(ollamaBaseURL) {
             let reason = "Disk and memory usage are only shown for local Ollama."
             diskState = .unavailable(reason: reason)
             memoryState = .unavailable(reason: reason)

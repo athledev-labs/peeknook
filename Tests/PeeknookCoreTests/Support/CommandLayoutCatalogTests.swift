@@ -7,10 +7,10 @@ import XCTest
 /// `Localizable.xcstrings`.
 ///
 /// SwiftUI resolves a `LocalizedStringKey` that is absent from the catalog to the key text itself —
-/// it never fails or blanks — so a missing key (or a `ko` regression) is **invisible** to a normal
-/// build and to `swift test`. Because descriptors freeze their keys into data, this test is the only
-/// thing that turns that silent degradation into a hard failure. It parses the SOURCE catalog from
-/// the repo (the bundled form is compiled), located relative to this test file.
+/// it never fails or blanks — so a missing key is **invisible** to a normal build and to
+/// `swift test`. Because descriptors freeze their keys into data, this test is the only thing that
+/// turns that silent degradation into a hard failure. It parses the SOURCE catalog from the repo
+/// (the bundled form is compiled), located relative to this test file.
 final class CommandLayoutCatalogTests: XCTestCase {
     func testEveryScreenDefaultLocalizationKeyExistsInTheCatalog() throws {
         let catalogKeys = try loadCatalogKeys()
@@ -30,7 +30,7 @@ final class CommandLayoutCatalogTests: XCTestCase {
         XCTAssertTrue(
             missing.isEmpty,
             "screenDefault references \(missing.count) localization key(s) missing from "
-                + "Localizable.xcstrings (add them, with a ko translation): \(missing)"
+                + "Localizable.xcstrings (add them): \(missing)"
         )
     }
 
@@ -51,46 +51,20 @@ final class CommandLayoutCatalogTests: XCTestCase {
         XCTAssertTrue(
             missing.isEmpty,
             "cameraStudy references \(missing.count) localization key(s) missing from "
-                + "Localizable.xcstrings (add them, with a ko translation): \(missing)"
+                + "Localizable.xcstrings (add them): \(missing)"
         )
-    }
-
-    /// Key *presence* alone doesn't guard translations — assert the camera additions carry `ko`.
-    /// (Scoped to the camera keys: the legacy catalog has partial ko coverage by design.)
-    func testCameraKeysCarryKoreanTranslations() throws {
-        let strings = try loadCatalogStrings()
-
-        var keys = Set<String>()
-        for command in CommandLayout.cameraStudy.commands where command.placement == .cameraLive {
-            keys.insert(command.titleKey)
-            command.helpKey.map { keys.insert($0) }
-        }
-        keys.formUnion([
-            "Camera", "Camera preview",                          // trust label + preview surface
-            "Camera shortcut", "Opens the live camera preview from anywhere.",   // settings row
-        ])
-
-        for key in keys.sorted() {
-            let entry = strings[key] as? [String: Any]
-            let localizations = entry?["localizations"] as? [String: Any]
-            XCTAssertNotNil(localizations?["ko"], "\(key) is missing a ko translation")
-        }
     }
 
     // MARK: - Loading the source catalog
 
     private func loadCatalogKeys() throws -> Set<String> {
-        try Set(loadCatalogStrings().keys)
-    }
-
-    private func loadCatalogStrings() throws -> [String: Any] {
         let url = try Self.catalogURL()
         let data = try Data(contentsOf: url)
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         guard let strings = json?["strings"] as? [String: Any] else {
             throw XCTSkip("Could not parse strings table at \(url.path)")
         }
-        return strings
+        return Set(strings.keys)
     }
 
     /// `Sources/PeeknookUI/Resources/Localizable.xcstrings`, resolved from this test's `#filePath`

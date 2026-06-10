@@ -147,11 +147,11 @@ final class OllamaInferenceEngineHTTPTests: XCTestCase {
     }
 
     func testUsesRemoteOllamaHostParsing() {
-        XCTAssertFalse(OllamaURLPolicy.usesRemoteOllama("http://127.0.0.1:11434"))
-        XCTAssertFalse(OllamaURLPolicy.usesRemoteOllama("http://localhost:11434"))
-        XCTAssertFalse(OllamaURLPolicy.usesRemoteOllama("http://[::1]:11434"))
-        XCTAssertTrue(OllamaURLPolicy.usesRemoteOllama("http://192.168.1.10:11434"))
-        XCTAssertTrue(OllamaURLPolicy.usesRemoteOllama("http://ollama.home:11434"))
+        XCTAssertFalse(EndpointURLPolicy.usesRemoteHost("http://127.0.0.1:11434"))
+        XCTAssertFalse(EndpointURLPolicy.usesRemoteHost("http://localhost:11434"))
+        XCTAssertFalse(EndpointURLPolicy.usesRemoteHost("http://[::1]:11434"))
+        XCTAssertTrue(EndpointURLPolicy.usesRemoteHost("http://192.168.1.10:11434"))
+        XCTAssertTrue(EndpointURLPolicy.usesRemoteHost("http://ollama.home:11434"))
     }
 
     // MARK: - Follow-up suggestions (non-streaming /api/chat through the unified client)

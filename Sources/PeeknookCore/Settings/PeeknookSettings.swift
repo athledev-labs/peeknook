@@ -105,7 +105,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
 
     /// True when inference is configured to a host other than the default local Ollama loopback.
     public var usesRemoteOllama: Bool {
-        OllamaURLPolicy.usesRemoteOllama(ollamaBaseURL)
+        EndpointURLPolicy.usesRemoteHost(ollamaBaseURL)
     }
 
     /// True when a remote Ollama URL uses plain HTTP without the insecure opt-in.

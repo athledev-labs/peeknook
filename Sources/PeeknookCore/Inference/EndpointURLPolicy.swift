@@ -2,8 +2,10 @@
 
 import Foundation
 
-/// Validates Ollama server URLs: http/https only, HTTPS required for non-loopback unless opted in.
-public enum OllamaURLPolicy: Sendable {
+/// Validates inference endpoint URLs: http/https only, HTTPS required for non-loopback unless
+/// opted in. Backend-neutral — every HTTP backend must route its base URL through this policy
+/// before issuing its first request.
+public enum EndpointURLPolicy: Sendable {
     public enum ValidationResult: Equatable, Sendable {
         case valid(URL)
         case invalidURL
@@ -11,8 +13,8 @@ public enum OllamaURLPolicy: Sendable {
         case insecureRemoteHTTP
     }
 
-    /// True when inference targets a host other than local loopback.
-    public static func usesRemoteOllama(_ urlString: String) -> Bool {
+    /// True when the endpoint targets a host other than local loopback.
+    public static func usesRemoteHost(_ urlString: String) -> Bool {
         guard let url = normalizedURL(from: urlString), let host = url.host else {
             return !isLoopbackSubstring(in: urlString)
         }
@@ -62,3 +64,6 @@ public enum OllamaURLPolicy: Sendable {
         return lower.contains("127.0.0.1") || lower.contains("localhost") || lower.contains("[::1]")
     }
 }
+
+/// Transitional alias from the pre-rename type name.
+public typealias OllamaURLPolicy = EndpointURLPolicy

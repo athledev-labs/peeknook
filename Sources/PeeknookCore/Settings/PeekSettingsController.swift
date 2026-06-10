@@ -93,7 +93,7 @@ public final class PeekSettingsController {
     public func setOllamaBaseURL(_ url: String) -> Bool {
         let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
         guard settings.ollamaBaseURL != trimmed else { return true }
-        switch OllamaURLPolicy.validate(trimmed, acceptInsecureRemote: settings.acceptInsecureRemoteOllama) {
+        switch EndpointURLPolicy.validate(trimmed, acceptInsecureRemote: settings.acceptInsecureRemoteOllama) {
         case .valid:
             update { $0.ollamaBaseURL = trimmed }
             return true

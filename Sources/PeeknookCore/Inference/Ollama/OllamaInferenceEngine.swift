@@ -44,7 +44,7 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
     // MARK: - Ollama HTTP
 
     private func resolveBaseURL(_ string: String, acceptInsecureRemote: Bool) throws -> URL {
-        try OllamaURLPolicy.resolveOrThrow(string, acceptInsecureRemote: acceptInsecureRemote)
+        try EndpointURLPolicy.resolveOrThrow(string, acceptInsecureRemote: acceptInsecureRemote)
     }
 
     private func resolveEndpoint(_ endpoint: InferenceEndpoint) throws -> URL {

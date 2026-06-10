@@ -63,26 +63,26 @@ final class SecurityHardeningTests: XCTestCase {
 
     // MARK: - Workstream C
 
-    func testOllamaURLPolicyLoopbackAndHTTPS() {
-        XCTAssertFalse(OllamaURLPolicy.usesRemoteOllama("http://127.0.0.1:11434"))
-        XCTAssertFalse(OllamaURLPolicy.usesRemoteOllama("http://localhost:11434"))
-        XCTAssertFalse(OllamaURLPolicy.usesRemoteOllama("http://[::1]:11434"))
-        XCTAssertTrue(OllamaURLPolicy.usesRemoteOllama("http://192.168.1.10:11434"))
+    func testEndpointURLPolicyLoopbackAndHTTPS() {
+        XCTAssertFalse(EndpointURLPolicy.usesRemoteHost("http://127.0.0.1:11434"))
+        XCTAssertFalse(EndpointURLPolicy.usesRemoteHost("http://localhost:11434"))
+        XCTAssertFalse(EndpointURLPolicy.usesRemoteHost("http://[::1]:11434"))
+        XCTAssertTrue(EndpointURLPolicy.usesRemoteHost("http://192.168.1.10:11434"))
 
         XCTAssertEqual(
-            OllamaURLPolicy.validate("http://127.0.0.1:11434", acceptInsecureRemote: false),
+            EndpointURLPolicy.validate("http://127.0.0.1:11434", acceptInsecureRemote: false),
             .valid(URL(string: "http://127.0.0.1:11434")!)
         )
         XCTAssertEqual(
-            OllamaURLPolicy.validate("http://192.168.1.10:11434", acceptInsecureRemote: false),
+            EndpointURLPolicy.validate("http://192.168.1.10:11434", acceptInsecureRemote: false),
             .insecureRemoteHTTP
         )
         XCTAssertEqual(
-            OllamaURLPolicy.validate("https://192.168.1.10:11434", acceptInsecureRemote: false),
+            EndpointURLPolicy.validate("https://192.168.1.10:11434", acceptInsecureRemote: false),
             .valid(URL(string: "https://192.168.1.10:11434")!)
         )
         XCTAssertEqual(
-            OllamaURLPolicy.validate("ftp://127.0.0.1:11434", acceptInsecureRemote: false),
+            EndpointURLPolicy.validate("ftp://127.0.0.1:11434", acceptInsecureRemote: false),
             .unsupportedScheme
         )
     }

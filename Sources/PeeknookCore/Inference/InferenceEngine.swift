@@ -134,7 +134,7 @@ public struct MockInferenceEngine: InferenceEngine, Sendable {
     public var declaredCapabilities: [String]?
 
     public init(
-        tokens: [String] = ["안녕", " ", "informal ", "greeting."],
+        tokens: [String] = ["hello", " ", "from ", "the mock."],
         delayNanoseconds: UInt64 = 0,
         completionStats: InferenceStats? = nil,
         sendsCompletion: Bool = true,

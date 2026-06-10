@@ -97,7 +97,7 @@ public struct OllamaSetupClient: Sendable {
     // MARK: - HTTP
 
     private func resolveBaseURL(_ string: String, acceptInsecureRemote: Bool) throws -> URL {
-        try OllamaURLPolicy.resolveOrThrow(string, acceptInsecureRemote: acceptInsecureRemote)
+        try EndpointURLPolicy.resolveOrThrow(string, acceptInsecureRemote: acceptInsecureRemote)
     }
 
     private func ping(baseURL: URL) async throws {
