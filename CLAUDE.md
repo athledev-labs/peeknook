@@ -61,7 +61,7 @@ Keep new backends behind these protocols. Do not widen call sites.
 - **`CaptureProviding`**: `func capture(scope:quick:encoding:) async throws -> CaptureResult`. Encoding resolves via `CaptureEncodingPolicy` from `captureQuality` + scope + quick. Current implementations: `MacCaptureProvider` (ScreenCaptureKit) and `CameraCaptureProvider`, wired in `PeeknookServices.makeStack`.
 - **`InferenceEngine`**: streams `InferenceEvent` (`.token` / `.completed(InferenceStats?)`). The current implementation is `OllamaInferenceEngine`.
 
-`SessionOrchestrator` drives the phase machine in `SessionPhase`: `idle → capturing → previewing → inferring → result / failed`. It also owns `UsageStore` and warm-model tracking (`keep_alive`).
+`SessionOrchestrator` drives the phase machine in `SessionPhase`: `idle → capturing → previewing → inferring → result / failed`. It also owns `UsageStore` and warm-model tracking (`keep_alive`). The orchestrator is a facade: UI binds to it, while domain logic lives in internal session coordinators under `Session/Coordinators/`. See `internal/engineering/BUILDING_STANDARDS.md` and `internal/engineering/ORCHESTRATOR_SPINE.md` for extraction rules (maintainer notes, not in the public repo).
 
 ## Invariants
 
@@ -90,7 +90,7 @@ Do not break the following without an explicit product decision and migration pl
 | Concern | Path |
 |---------|------|
 | Capture | `Sources/PeeknookCore/Capture/{CaptureProviding,MacCaptureProvider,CaptureImageEncoder,CapturePermissions}.swift` |
-| Session | `Sources/PeeknookCore/Session/{SessionOrchestrator,SessionOrchestrator+*,SessionPhase,Conversation}.swift` |
+| Session | `Sources/PeeknookCore/Session/{SessionOrchestrator,SessionOrchestrator+*,SessionPhase,Conversation}.swift` (facade + SessionControl/Profile/Export extensions); domain coordinators in `Session/Coordinators/` |
 | Persistence | `Sources/PeeknookCore/Archive/{ConversationModels,ConversationArchiveStore,CaptureBlobStore}.swift`; `ConversationStore.swift` (legacy reader) |
 | Model catalog | `Sources/PeeknookCore/Settings/ModelCatalogService.swift` (UI facade; Ollama clients stay in `Inference/Ollama/`) |
 | History switcher | `Sources/PeeknookUI/PeekConversationArchiveView.swift` (glass list of past chats) |

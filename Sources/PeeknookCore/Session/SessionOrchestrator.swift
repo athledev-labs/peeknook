@@ -33,11 +33,6 @@ public final class SessionOrchestrator {
     /// model's context window, together the chat's context-usage meter.
     public var lastPromptTokens: Int?
     public var contextWindow: Int?
-    var lastInferenceAt: Date?
-    /// True when Ollama `/api/ps` reports the active model resident (survives app relaunch).
-    var activeModelResidentInMemory = false
-    /// Injectable in tests so `/api/ps` can be stubbed without hitting the network.
-    var _ollamaResidencyClient: OllamaSetupClient?
     var turnCounter = 0
 
     /// Sticky intent for the active chat — cleared on New chat. In-memory only (not archived).
@@ -69,15 +64,6 @@ public final class SessionOrchestrator {
     /// Opt-in local conversation archive (see `PeeknookSettings.persistConversation`). Stores every
     /// answered chat as its own thread so the user can list, resume, and delete past chats.
     public var conversationArchive: ConversationArchiveStore?
-    var _captureBlobStore: CaptureBlobStore?
-    /// Blob ids written during the current in-memory session (purged on New chat when not archived).
-    var sessionBlobIDs = Set<UUID>()
-    var screenshotCache: [UUID: String] = [:]
-    /// Identity of the chat currently on screen within the archive. Assigned on first save, carried
-    /// across follow-ups, cleared when a fresh chat begins. Nil means "not yet archived".
-    var activeThreadID: UUID?
-    var activeThreadCreatedAt: Date?
-    var activeThreadCustomTitle: String?
 
     let captureRegistry: GroundRegistry
     /// The live camera session while `.cameraLive` is on screen, nil otherwise. Held here — not as
@@ -103,8 +89,15 @@ public final class SessionOrchestrator {
     let speechRecognizer: any SpeechRecognizing
     let answerSpeechSynthesizer: any SpeechSynthesizing
     let previewSpeechSynthesizer: any SpeechSynthesizing
-    var archiveIOTask: Task<Void, Never>?
-    var isPrewarming = false
+
+    // Internal domain coordinators (see Coordinators/ and internal/engineering/ORCHESTRATOR_SPINE.md).
+    // Lazy so each can hold a weak back-reference to the facade; @ObservationIgnored because they
+    // are plumbing, not observable state — views observe the facade's published properties only.
+    @ObservationIgnored private(set) lazy var speechCoordinator = SpeechCoordinator(session: self)
+    @ObservationIgnored private(set) lazy var archiveCoordinator = ArchiveCoordinator(session: self)
+    @ObservationIgnored private(set) lazy var cameraCoordinator = CameraCoordinator(session: self)
+    @ObservationIgnored private(set) lazy var captureCoordinator = CaptureCoordinator(session: self)
+    @ObservationIgnored private(set) lazy var inferenceCoordinator = InferenceCoordinator(session: self)
 
     /// Last transient, one-shot signal for the UI (e.g. a toast/banner) that isn't part of the
     /// persistent ``SessionPhase``. `noticeToken` increments on every emit so the UI can react even
@@ -188,7 +181,7 @@ public final class SessionOrchestrator {
         self.speechRecognizer = speechRecognizer
         self.answerSpeechSynthesizer = speechSynthesizer
         self.previewSpeechSynthesizer = previewSpeechSynthesizer ?? speechSynthesizer
-        wireSpeechCallbacks()
+        speechCoordinator.wireCallbacks()
     }
 
     /// One engine for every backend — the single-engine convenience tests and simple hosts use
@@ -246,5 +239,255 @@ public final class SessionOrchestrator {
             pendingCaptureAvailable: lifecycle.pendingCapture != nil
         )
         return phaseMachine.apply(event, context: context)
+    }
+
+    // MARK: - Brief composer
+
+    public func setSessionBrief(_ text: String) {
+        sessionBrief = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    public func focusBriefComposer() {
+        briefComposerFocusToken += 1
+    }
+
+    // MARK: - Speech (delegates to SpeechCoordinator)
+
+    /// Short on-device sample for the Reading voice picker in Settings.
+    public static let readingVoicePreviewSample =
+        "This is how I'll read your answers aloud."
+
+    public func clearSpeechReadAlongHighlight() {
+        speechCoordinator.clearReadAlongHighlight()
+    }
+
+    public func dismissVoiceInputIssue() {
+        voiceInputIssue = nil
+    }
+
+    /// Toggle on-device dictation for briefs and follow-ups. Returns the final transcript when stopping.
+    @discardableResult
+    public func toggleVoiceInput() async -> String? {
+        await speechCoordinator.toggleVoiceInput()
+    }
+
+    public func stopVoiceInput() {
+        speechCoordinator.stopVoiceInput()
+    }
+
+    public func speakLastAnswer() {
+        speechCoordinator.speakLastAnswer(gatedBy: resolvedActiveProfile)
+    }
+
+    /// `runTurn` passes the TURN's gating profile (camera turns gate on the `cameraStudy`
+    /// literal); the public overload gates on the active profile for UI-initiated reads.
+    func speakLastAnswer(gatedBy profile: GroundProfile) {
+        speechCoordinator.speakLastAnswer(gatedBy: profile)
+    }
+
+    /// Speaks a fixed preview line with the chosen voice (or the current setting when nil).
+    public func previewReadingVoice(voiceIdentifier: String? = nil) {
+        speechCoordinator.previewReadingVoice(voiceIdentifier: voiceIdentifier)
+    }
+
+    public func stopSpeaking() {
+        speechCoordinator.stopSpeaking()
+    }
+
+    /// Stops the settings voice sample without interrupting an in-progress answer read-aloud.
+    public func stopVoicePreview() {
+        speechCoordinator.stopPreviewSpeech()
+    }
+
+    /// Settings preview only — result UI should use ``isSpeakingLastAnswer``.
+    public var isSpeakingAnswer: Bool {
+        isSpeakingVoicePreview || isSpeakingLastAnswer
+    }
+
+    func stopSpeechOutput() {
+        speechCoordinator.stopSpeaking()
+    }
+
+    // MARK: - Conversation archive (delegates to ArchiveCoordinator)
+
+    /// Restore the most recent saved chat at launch when the user has persistence enabled (migrating
+    /// the legacy single-file store first). Leaves the phase at `.idle` so it surfaces as a resumable
+    /// thread, not an auto-opened result.
+    public func loadPersistedConversationIfEnabled() {
+        archiveCoordinator.loadPersistedConversationIfEnabled()
+    }
+
+    /// Summaries of every archived chat (newest first) for the History switcher. Empty when
+    /// persistence is off or nothing is saved.
+    public func availableThreads() async -> [ConversationSummary] {
+        await archiveCoordinator.availableThreads()
+    }
+
+    /// Open an archived chat by id: load it into memory and surface its last answer as a result.
+    public func openThread(id: UUID) async {
+        await archiveCoordinator.openThread(id: id)
+    }
+
+    /// Rename one archived chat. Empty title clears a custom name and reverts to the derived label.
+    public func renameThread(id: UUID, title: String) {
+        archiveCoordinator.renameThread(id: id, title: title)
+    }
+
+    /// Delete one archived chat. If it's the one on screen, also clear it from memory and return idle.
+    public func deleteThread(id: UUID) {
+        archiveCoordinator.deleteThread(id: id)
+    }
+
+    /// Write the current chat to the archive (off the main actor) when persistence is on; no-op
+    /// otherwise. See ``ArchiveCoordinator/persistConversationNow()``.
+    public func persistConversationNow() {
+        archiveCoordinator.persistConversationNow()
+    }
+
+    public func dismissArchivePersistenceIssue() {
+        archivePersistenceIssue = nil
+    }
+
+    /// Called when archive bootstrap fails (Keychain unavailable) so the user sees a banner before the first save.
+    public func reportArchiveBootstrapFailure(_ error: ConversationArchiveError) {
+        archivePersistenceIssue = error
+    }
+
+    /// Delete just the chat on screen from the archive, called when the user discards a thread.
+    public func discardActiveThread() {
+        archiveCoordinator.discardActiveThread()
+    }
+
+    /// Wipe the whole archive, called when the user turns persistence off or taps Clear all.
+    public func purgeAllConversations() {
+        archiveCoordinator.purgeAllConversations()
+    }
+
+    /// Identity of the chat currently on screen within the archive (nil = "not yet archived").
+    var activeThreadID: UUID? {
+        archiveCoordinator.activeThreadID
+    }
+
+    // MARK: - Screenshot blobs (delegates to ArchiveCoordinator)
+
+    /// External screenshot storage shared with the conversation archive. Blobs are written only when
+    /// ``PeeknookSettings/persistConversation`` is enabled.
+    public var captureBlobStore: CaptureBlobStore? {
+        get { archiveCoordinator.captureBlobStore }
+        set { archiveCoordinator.captureBlobStore = newValue }
+    }
+
+    /// Resolved JPEG base64 for a capture turn (inline, cache, or blob file).
+    public func screenshotBase64(for capture: CaptureResult) -> String? {
+        archiveCoordinator.screenshotBase64(for: capture)
+    }
+
+    /// Lazy blob load for History row thumbnails (cache-backed).
+    public func archiveThumbnailBase64(blobID: UUID?) -> String? {
+        archiveCoordinator.archiveThumbnailBase64(blobID: blobID)
+    }
+
+    func storedCapture(_ capture: CaptureResult) -> CaptureResult {
+        archiveCoordinator.storedCapture(capture)
+    }
+
+    func preloadImageBase64(for turns: [ChatTurn], replayIDs: Set<Int>) -> [Int: String] {
+        archiveCoordinator.preloadImageBase64(for: turns, replayIDs: replayIDs)
+    }
+
+    func purgeSessionBlobs() {
+        archiveCoordinator.purgeSessionBlobs()
+    }
+
+    // MARK: - Live camera (delegates to CameraCoordinator)
+
+    /// ⌘⇧C / the camera command: open the live camera preview. Legal from idle/result/failed.
+    public func openCameraLive() {
+        cameraCoordinator.openCameraLive()
+    }
+
+    /// The Shutter command: grab a still from the live session and feed it into the unchanged
+    /// commit → runTurn → result pipeline.
+    public func shutter() {
+        cameraCoordinator.shutter()
+    }
+
+    /// Cancel / Escape from the live preview, and the host's unconditional collapse teardown.
+    public func cancelCameraLive() {
+        cameraCoordinator.cancelCameraLive()
+    }
+
+    /// THE single camera teardown choke point (idempotent) — see ``CameraCoordinator``.
+    func stopCameraPreview() {
+        cameraCoordinator.stopCameraPreview()
+    }
+
+    // MARK: - Capture (delegates to CaptureCoordinator)
+
+    /// Hotkey / compact affordance entry: capture → preview → infer. Starts a fresh chat only when
+    /// there is no answered thread yet; otherwise appends the screenshot to the current session.
+    public func beginCapture() {
+        captureCoordinator.beginCapture()
+    }
+
+    /// Capture a new screenshot to **replace** the current chat (answer a different screen).
+    public func retake() {
+        captureCoordinator.retake()
+    }
+
+    /// Capture a new screenshot and **add** it to the current chat (continue with another image).
+    public func addImage() {
+        captureCoordinator.addImage()
+    }
+
+    /// Retry after a failure. Re-infers on the last committed screenshot when one exists;
+    /// otherwise re-runs capture (which re-checks setup readiness).
+    public func retryAfterFailure() {
+        captureCoordinator.retryAfterFailure()
+    }
+
+    public func confirmPreview() {
+        captureCoordinator.confirmPreview()
+    }
+
+    /// Appends the confirmed screenshot as an image turn (resetting first for a fresh chat) and
+    /// runs the answer. Shared by the screen pipeline and the camera shutter.
+    func commitCapture(_ capture: CaptureResult, intent: CaptureIntent) {
+        captureCoordinator.commitCapture(capture, intent: intent)
+    }
+
+    // MARK: - Inference (delegates to InferenceCoordinator)
+
+    /// Pre-load the model when the notch opens so the user's first capture is warm, not cold.
+    /// Idempotent and cheap; no-op when already warm or in flight.
+    public func prewarm() {
+        inferenceCoordinator.prewarm()
+    }
+
+    /// Runs one turn against the conversation so far. `capturedNow` is non-nil when this turn
+    /// introduced a new screenshot (first capture or Add image), that drives usage accounting.
+    func runTurn(capturedNow capture: CaptureResult?) async {
+        await inferenceCoordinator.runTurn(capturedNow: capture)
+    }
+
+    /// Refresh whether Ollama `/api/ps` reports the active answer model as loaded in memory.
+    func refreshActiveModelResidency() async {
+        await inferenceCoordinator.refreshActiveModelResidency()
+    }
+
+    /// Warm-model gate for honest loading copy — see ``InferenceCoordinator/modelLikelyWarm``.
+    var modelLikelyWarm: Bool {
+        inferenceCoordinator.modelLikelyWarm
+    }
+
+    /// True while a prewarm pass is in flight (used by tests' polling helpers).
+    var isPrewarming: Bool {
+        inferenceCoordinator.isPrewarming
+    }
+
+    /// Injectable in tests so `/api/ps` can be stubbed without hitting the network.
+    var _ollamaResidencyClient: OllamaSetupClient? {
+        get { inferenceCoordinator.residencyClient }
+        set { inferenceCoordinator.residencyClient = newValue }
     }
 }
