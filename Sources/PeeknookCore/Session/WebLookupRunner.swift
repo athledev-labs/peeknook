@@ -48,6 +48,8 @@ public struct WebLookupRunner: WebLookupProviding, Sendable {
         do {
             let results = try await client.search(query: query)
             return WebLookupSnapshot(query: query, results: results)
+        } catch let error as WebSearchError where error == .noResults {
+            return WebLookupSnapshot(query: query, results: [])
         } catch {
             return WebLookupSnapshot(
                 query: query,

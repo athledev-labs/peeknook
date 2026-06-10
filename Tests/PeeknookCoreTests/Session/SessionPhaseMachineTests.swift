@@ -66,6 +66,11 @@ final class SessionPhaseMachineTests: XCTestCase {
         XCTAssertEqual(machine.apply(.retryCapture, context: .init()), .applied(.capturing))
     }
 
+    func testInferenceStartedFromFailed() {
+        var machine = SessionPhaseMachine(phase: .failed(.emptyAnswer))
+        XCTAssertEqual(machine.apply(.inferenceStarted, context: .init()), .applied(.inferring))
+    }
+
     func testSetupNotReadyFromIdle() {
         var machine = SessionPhaseMachine(phase: .idle)
         guard case .applied(.failed) = machine.apply(.setupNotReady, context: .init()) else {

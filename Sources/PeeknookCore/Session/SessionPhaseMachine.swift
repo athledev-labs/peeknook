@@ -89,7 +89,7 @@ public struct SessionPhaseMachine: Sendable {
             return .applied(phase)
         case .inferenceStarted:
             switch phase {
-            case .capturing, .previewing, .result:
+            case .capturing, .previewing, .result, .failed:
                 phase = .inferring
                 return .applied(phase)
             default:

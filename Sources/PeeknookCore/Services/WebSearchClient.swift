@@ -77,14 +77,24 @@ public struct WebSearchClient: Sendable {
     public static let minimumIntervalBetweenSearches: TimeInterval = 2
 
     public var session: URLSession
+    /// When set, replaces network search (unit tests only).
+    public var searchHook: (@Sendable (String, Int) async throws -> [WebSearchResult])?
 
-    public init(session: URLSession = .shared) {
+    public init(
+        session: URLSession = .shared,
+        searchHook: (@Sendable (String, Int) async throws -> [WebSearchResult])? = nil
+    ) {
         self.session = session
+        self.searchHook = searchHook
     }
 
     public func search(query: String, maxResults: Int = 8) async throws -> [WebSearchResult] {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { throw WebSearchError.emptyQuery }
+
+        if let searchHook {
+            return try await searchHook(trimmed, maxResults)
+        }
 
         var request = URLRequest(url: URL(string: "https://html.duckduckgo.com/html/")!)
         request.httpMethod = "POST"

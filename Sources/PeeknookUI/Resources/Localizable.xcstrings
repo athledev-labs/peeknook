@@ -845,6 +845,26 @@
       "comment": "Tier B localization",
       "extractionState": "manual"
     },
+    "Web lookup blocked": {
+      "comment": "Collapsible section title when sensitive content blocks web lookup.",
+      "extractionState": "manual"
+    },
+    "Web lookup skipped — wait a few seconds between searches.": {
+      "comment": "Web lookup table empty state when rate limited.",
+      "extractionState": "manual"
+    },
+    "Web lookup unavailable — check your network connection.": {
+      "comment": "Web lookup table empty state when fetch failed.",
+      "extractionState": "manual"
+    },
+    "Web lookup skipped — sensitive content detected.": {
+      "comment": "Web lookup table empty state when secrets or password manager detected.",
+      "extractionState": "manual"
+    },
+    "No web results for \"%@\".": {
+      "comment": "Web lookup table empty state for organic zero results.",
+      "extractionState": "manual"
+    },
     "Working": {
       "comment": "Tier B localization",
       "extractionState": "manual"

@@ -93,7 +93,7 @@ public extension SessionFailure {
     static let emptyAnswer = SessionFailure(
         kind: .emptyAnswer,
         title: "No answer came back",
-        message: "The model finished without producing any text. Try again, or switch to a different model.",
+        message: "The model finished without producing any text. Try again on this screenshot, or switch to a different model.",
         primaryRecovery: .tryAgain,
         secondaryRecovery: .switchModel
     )

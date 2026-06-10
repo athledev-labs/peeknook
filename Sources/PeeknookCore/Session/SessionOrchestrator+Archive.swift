@@ -123,11 +123,16 @@ extension SessionOrchestrator {
 
     /// Wipe the whole archive, called when the user turns persistence off or taps Clear all.
     public func purgeAllConversations() {
+        abortSessionWork()
+        streamedAnswer = ""
+        sessionBrief = ""
+        lifecycle.clearPendingCapture()
         enqueueArchiveIO { archive in
             await archive.deleteAll()
         }
-        activeThreadID = nil
-        activeThreadCreatedAt = nil
+        resetConversation()
+        _ = applyPhaseEvent(.deleteActiveThreadToIdle)
+        archivePersistenceIssue = nil
     }
 
     /// Serializes archive read/write so delete/purge cannot race a late save.

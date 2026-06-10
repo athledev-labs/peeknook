@@ -34,8 +34,29 @@ struct PeekWebLookupTableView: View {
     @State private var isExpanded = true
 
     private var queryLabel: String {
-        if let snapshot { return snapshot.query }
-        return "Web lookup"
+        guard let snapshot else { return PeekLocalized("Web lookup") }
+        if snapshot.lookupFailure == .sensitiveContent {
+            return PeekLocalized("Web lookup blocked")
+        }
+        if snapshot.query.isEmpty { return PeekLocalized("Web lookup") }
+        return snapshot.query
+    }
+
+    private var emptyStateMessage: String? {
+        guard let snapshot, snapshot.results.isEmpty else { return nil }
+        if snapshot.lookupFailed {
+            switch snapshot.lookupFailure {
+            case .rateLimited:
+                return PeekLocalized("Web lookup skipped — wait a few seconds between searches.")
+            case .unavailable:
+                return PeekLocalized("Web lookup unavailable — check your network connection.")
+            case .sensitiveContent:
+                return PeekLocalized("Web lookup skipped — sensitive content detected.")
+            case .none:
+                return PeekLocalized("Web lookup unavailable — check your network connection.")
+            }
+        }
+        return String(format: PeekLocalized("No web results for \"%@\"."), snapshot.query)
     }
 
     private var filteredResults: [WebSearchResult] {
@@ -72,8 +93,8 @@ struct PeekWebLookupTableView: View {
                             .foregroundStyle(theme.secondaryLabel)
                     }
                     .peekLoading("Searching the web…")
-                } else if let snapshot, snapshot.results.isEmpty {
-                    Text("No web results for \"\(snapshot.query)\".")
+                } else if let message = emptyStateMessage {
+                    Text(message)
                         .font(.system(size: 10))
                         .foregroundStyle(theme.tertiaryLabel)
                         .fixedSize(horizontal: false, vertical: true)

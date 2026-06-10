@@ -63,10 +63,36 @@ extension SessionOrchestrator {
         startNewChat()
     }
 
-    /// Retry after a failure, re-runs a fresh capture (which re-checks setup readiness).
+    /// Retry after a failure. Re-infers on the last committed screenshot when one exists;
+    /// otherwise re-runs capture (which re-checks setup readiness).
     public func retryAfterFailure() {
         guard case .failed = phase else { return }
+        if let capture = pendingOrphanImageCapture() {
+            retryInferenceOnCommittedCapture(capture)
+            return
+        }
         startCapture(intent: .fresh)
+    }
+
+    /// Last image turn with no trailing assistant — the orphan left by a post-commit inference failure.
+    private func pendingOrphanImageCapture() -> CaptureResult? {
+        guard let last = conversation.last, case .image(let capture) = last.kind else { return nil }
+        guard let base64 = screenshotBase64(for: capture) else { return nil }
+        return CaptureResult(
+            text: capture.text,
+            sourceLabel: capture.sourceLabel,
+            appName: capture.appName,
+            windowTitle: capture.windowTitle,
+            screenshotBase64: base64,
+            ground: capture.ground
+        )
+    }
+
+    private func retryInferenceOnCommittedCapture(_ capture: CaptureResult) {
+        abortSessionWork()
+        streamedAnswer = ""
+        stopSpeechOutput()
+        lifecycle.inferenceTask = Task { await runTurn(capturedNow: capture) }
     }
 
     private func startCapture(intent: CaptureIntent) {

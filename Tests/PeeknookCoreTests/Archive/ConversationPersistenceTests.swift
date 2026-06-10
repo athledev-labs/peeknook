@@ -104,6 +104,99 @@ final class ConversationPersistenceTests: XCTestCase {
         XCTAssertTrue(afterDiscard.isEmpty, "Discarding the active chat should remove it from the archive")
     }
 
+    func testPurgeAllClearsInMemoryAndReturnsIdle() async throws {
+        let (store, dir) = tempArchive()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let orchestrator = SessionOrchestrator(
+            settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b", persistConversation: true),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "hello")]),
+            inference: MockInferenceEngine(tokens: ["answer"])
+        )
+        orchestrator.conversationArchive = store
+        orchestrator.beginCapture()
+        _ = await orchestrator.waitForResult("answer")
+        _ = await store.waitForSummaries(count: 1)
+
+        orchestrator.purgeAllConversations()
+
+        guard case .idle = orchestrator.phase else {
+            XCTFail("Expected idle after purge, got \(orchestrator.phase)")
+            return
+        }
+        XCTAssertTrue(orchestrator.conversation.isEmpty)
+        XCTAssertFalse(orchestrator.hasConversation)
+        let summaries = await store.waitForSummaries(count: 0)
+        XCTAssertTrue(summaries.isEmpty)
+    }
+
+    func testSetPersistConversationOffPurgesDiskAndMemory() async throws {
+        let (store, dir) = tempArchive()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let orchestrator = SessionOrchestrator(
+            settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b", persistConversation: true),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "hello")]),
+            inference: MockInferenceEngine(tokens: ["saved"])
+        )
+        orchestrator.conversationArchive = store
+        let defaults = UserDefaults(suiteName: "peeknook.test.\(UUID().uuidString)")!
+        let setup = SetupCoordinator(settings: orchestrator.settings, defaults: defaults)
+        let controller = PeekSettingsController(
+            orchestrator: orchestrator,
+            setup: setup,
+            defaults: defaults,
+            inference: MockInferenceEngine(tokens: ["x"])
+        )
+
+        orchestrator.beginCapture()
+        _ = await orchestrator.waitForResult("saved")
+        _ = await store.waitForSummaries(count: 1)
+
+        controller.setPersistConversation(false)
+
+        guard case .idle = orchestrator.phase else {
+            XCTFail("Expected idle after toggle off, got \(orchestrator.phase)")
+            return
+        }
+        XCTAssertTrue(orchestrator.conversation.isEmpty)
+        XCTAssertFalse(controller.settings.persistConversation)
+        let summaries = await store.waitForSummaries(count: 0)
+        XCTAssertTrue(summaries.isEmpty)
+    }
+
+    func testPersistConversationOffThenOnDoesNotResurrectThread() async throws {
+        let (store, dir) = tempArchive()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let orchestrator = SessionOrchestrator(
+            settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b", persistConversation: true),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "hello")]),
+            inference: MockInferenceEngine(tokens: ["saved"])
+        )
+        orchestrator.conversationArchive = store
+        let defaults = UserDefaults(suiteName: "peeknook.test.\(UUID().uuidString)")!
+        let setup = SetupCoordinator(settings: orchestrator.settings, defaults: defaults)
+        let controller = PeekSettingsController(
+            orchestrator: orchestrator,
+            setup: setup,
+            defaults: defaults,
+            inference: MockInferenceEngine(tokens: ["x"])
+        )
+
+        orchestrator.beginCapture()
+        _ = await orchestrator.waitForResult("saved")
+        _ = await store.waitForSummaries(count: 1)
+
+        controller.setPersistConversation(false)
+        _ = await store.waitForSummaries(count: 0)
+        controller.setPersistConversation(true)
+
+        let summaries = await store.summaries()
+        XCTAssertTrue(summaries.isEmpty, "Re-enabling persistence must not resurrect a purged thread from memory")
+        XCTAssertTrue(orchestrator.conversation.isEmpty)
+    }
+
     func testConversationMarkdownRendersTurns() async {
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b"),
