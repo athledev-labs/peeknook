@@ -60,6 +60,10 @@ Peeknook records local usage metadata (capture counts, token estimates, timing) 
 - Usage stats stay in local preferences (`opennook.module.com.peeknook.app` UserDefaults suite).
 - Conversation archive is **off by default**.
 - Model-library browse does not run until you open **Manage models** / **Browse**; it does not send screenshots.
+- The optional **OpenAI-compatible backend** (Settings → Answer model → Backend) targets a local
+  server (LM Studio, vLLM) by default. Its optional API key is stored **only in the macOS Keychain**
+  (service `com.peeknook.app.inference-credentials`, device-local, not synced) — never in
+  UserDefaults, settings files, or logs; requests carry it only as an `Authorization` header.
 
 ## When data can leave your Mac
 
@@ -69,6 +73,7 @@ You control the following opt-in or configuration-dependent features:
 |---------|---------|----------------------|
 | Web lookup | Off | Search query to DuckDuckGo HTML (`html.duckduckgo.com`) |
 | Remote Ollama URL | Off (local default) | Screenshots, prompts, and answers to the Ollama host you configure. HTTPS is required unless you enable **Allow insecure HTTP** (cleartext). |
+| OpenAI-compatible backend | Off (Ollama is the default backend) | Screenshots, prompts, and answers to the OpenAI-compatible server you configure (`/v1/chat/completions`). The same HTTPS gate applies: plain HTTP is loopback-only unless you enable **Allow insecure HTTP**. The optional API key lives in the Keychain and is sent only to that server. |
 | Ollama `:cloud` model tags | Off (not the default model) | Same as inference above: payloads go to your configured Ollama endpoint; `:cloud` tags may be executed on Ollama's cloud infrastructure per Ollama's behavior. |
 | Model library catalog browse | Only when you browse | Search terms and model/tag names to `https://ollama-models-api.devcomfort.workers.dev` (community proxy for ollama.com library metadata). No screenshots. |
 | Save conversations | Off | Nothing leaves your Mac; active screenshots stay in memory only (no blob files on disk). When on, encrypted thread JSON, encrypted screenshot blobs, and the encrypted metadata index stay local. |
@@ -84,11 +89,13 @@ You control the following opt-in or configuration-dependent features:
 - Turning **Save conversations** off purges the entire archive.
 - When the archive exceeds **25 threads** or **~250 MB**, Peeknook deletes the oldest threads automatically.
 - **Reset stats** clears usage metadata in Settings → Data.
+- The OpenAI-compatible API key is removed via **Clear API key** in Settings → Answer model (or by saving an empty key). Like the archive keys, the Keychain item survives app uninstall until cleared there or in Keychain Access.
 - Uninstalling Peeknook does not automatically delete archive files. Remove the Conversations folder under the paths above (use the **container** path for the shipped app).
 
 ## Third-party services
 
 - **Ollama** (user-installed or user-configured): runs models locally or on a server/endpoint you configure, including optional `:cloud` tags.
+- **OpenAI-compatible server** (optional backend, user-installed or user-configured): LM Studio, vLLM, or any `/v1/chat/completions` server you point Peeknook at. Peeknook sends it the same payloads it would send Ollama and nothing else.
 - **DuckDuckGo** (opt-in web lookup only): HTML search results.
 - **Ollama model catalog proxy** (model library browse only): `https://ollama-models-api.devcomfort.workers.dev` — tag and search metadata from the public Ollama library; not operated by Peeknook and not used during capture inference.
 

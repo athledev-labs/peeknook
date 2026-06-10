@@ -54,6 +54,8 @@ struct OllamaRemoteModelCatalog: RemoteModelCataloging, Sendable {
 public struct ModelCatalogService: Sendable {
     private let remote: any RemoteModelCataloging
 
+    /// Provenance for REMOTE CATALOG results, which come from the Ollama library regardless of
+    /// the active answer backend — not the active backend's name (`InferenceBackend.providerLabel`).
     public var providerLabel: String { "Ollama" }
 
     init(remote: any RemoteModelCataloging) {

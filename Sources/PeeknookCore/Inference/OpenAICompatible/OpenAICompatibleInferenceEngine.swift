@@ -210,6 +210,17 @@ public struct OpenAICompatibleInferenceEngine: InferenceEngine, Sendable {
         }
     }
 
+    // MARK: - Served models (Settings picker)
+
+    /// Model ids the server lists on `/v1/models`; empty on any failure — the Settings picker
+    /// shows its "no models found" hint instead of an error.
+    public func listServedModels(baseURL: String, acceptInsecureRemote: Bool) async -> [String] {
+        guard let base = try? EndpointURLPolicy.resolveOrThrow(
+            baseURL, acceptInsecureRemote: acceptInsecureRemote
+        ) else { return [] }
+        return (try? await client.modelIDs(base: base, apiKey: resolveAPIKey(defaultKeyRef))) ?? []
+    }
+
     // MARK: - Capability probes (honestly unknown)
 
     /// `/v1/models` reports no context metadata — nil keeps the context meter quiet, never wrong.

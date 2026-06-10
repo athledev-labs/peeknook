@@ -9,6 +9,14 @@ public enum InferenceBackend: String, Codable, Sendable, CaseIterable {
     case ollama
     case openAICompatible
     // case sidecar            // ← Phase 5 agent transport, not a vision backend
+
+    /// User-facing backend name (the Settings picker pills, served-model provenance).
+    public var providerLabel: String {
+        switch self {
+        case .ollama: "Ollama"
+        case .openAICompatible: "OpenAI-compatible"
+        }
+    }
 }
 
 /// A model capability as reported by the backend (e.g. Ollama's `/api/show` capabilities list).

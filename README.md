@@ -105,9 +105,24 @@ ollama pull gemma4:e4b           # or the tag Settings suggests
 - **`:cloud` tags:** shown with a **Cloud** badge in the model browser. Peeknook does not host inference; payloads go to your Ollama endpoint, which may use Ollama's cloud runtime for those tags.
 - **Model library browse** contacts `https://ollama-models-api.devcomfort.workers.dev` for search/tag metadata only (no screenshots). Browse is not used during capture.
 
+### OpenAI-compatible servers (LM Studio, vLLM)
+
+Settings → Answer model → **Backend** switches inference from Ollama to any local
+OpenAI-compatible server (`/v1/chat/completions`). Point it at the server address (e.g.
+`http://127.0.0.1:1234` for LM Studio), pick a model from the server's `/v1/models` list, and
+capture as usual. Notes:
+
+- Local-first and HTTPS-gated like Ollama: plain HTTP works for loopback only, remote servers
+  need HTTPS unless you enable **Allow insecure HTTP**.
+- The optional API key (most local servers need none) is stored in the macOS **Keychain**, never
+  in settings files; see [PRIVACY.md](PRIVACY.md).
+- These servers don't report model capabilities, so Peeknook can't verify vision support up
+  front — load a multimodal model (e.g. a Qwen-VL variant) or the screenshot is silently ignored.
+- Ollama setup steps don't apply on this backend; server health shows in Settings → Answer model.
+
 ### Bring your own model
 
-Gemma 4 is the default, but the picker is open: **Vision model → Add a model…** (in Home, Setup, or Settings) accepts any Ollama tag, pulls it if needed, and selects it, so you can try the latest open models in your notch without a code change. Custom models persist and can be removed from Settings.
+Gemma 4 is the default, but the picker is open: **Answer model → Add a model…** (in Home, Setup, or Settings) accepts any Ollama tag, pulls it if needed, and selects it, so you can try the latest open models in your notch without a code change. Custom models persist and can be removed from Settings.
 
 Because every capture sends a screenshot, **pick a model that supports image input**. Peeknook reads the model's `/api/show` capabilities and warns when a chosen model is text-only. Note: some otherwise-multimodal models (e.g. NVIDIA's Nemotron 3 family) currently run **text-only** under Ollama because Ollama doesn't load their separate vision projector (`mmproj`) files, those will ignore the screenshot until upstream support lands.
 

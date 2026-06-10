@@ -192,14 +192,22 @@ public struct PeekSettingsView: View {
     }
 
     private var shouldExpandVisionModelSection: Bool {
-        !setup.isReady
+        if orchestrator.settings.answerBackend == .openAICompatible {
+            // Server-managed backend: expand while unconfigured or unreachable.
+            return !setup.isReady
+                || orchestrator.settings.openAICompatibleBaseURL.isEmpty
+                || orchestrator.settings.openAICompatibleModelTag.isEmpty
+                || ollamaStatusTone == .error
+        }
+        return !setup.isReady
             || !setup.isModelInstalled(orchestrator.settings.textModel)
             || setup.ollamaStep != .complete
             || ollamaStatusTone == .error
     }
 
     private var inferenceCheckKey: String {
-        "\(orchestrator.settings.ollamaBaseURL)|\(orchestrator.settings.textModel)"
+        let settings = orchestrator.settings
+        return "\(settings.answerBackend.rawValue)|\(settings.ollamaBaseURL)|\(settings.textModel)|\(settings.openAICompatibleBaseURL)|\(settings.openAICompatibleModelTag)"
     }
 
     private func applyPendingFocusIfNeeded() {

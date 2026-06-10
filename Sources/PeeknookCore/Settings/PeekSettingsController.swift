@@ -176,6 +176,18 @@ public final class PeekSettingsController {
         credentialStore.hasKey(for: .openAICompatiblePrimary)
     }
 
+    /// Model ids served by the configured OpenAI-compatible server, for the Settings picker.
+    /// Empty when unconfigured, unreachable, or when the registered engine is a test double —
+    /// the picker degrades to its "no models found" hint, never an error.
+    public func openAICompatibleServedModels() async -> [String] {
+        guard let engine = inferenceRegistry.engine(for: .openAICompatible)
+            as? OpenAICompatibleInferenceEngine else { return [] }
+        return await engine.listServedModels(
+            baseURL: settings.openAICompatibleBaseURL,
+            acceptInsecureRemote: settings.acceptInsecureRemoteOpenAICompatible
+        )
+    }
+
     public func setDisplayName(_ name: String) {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard settings.displayName != trimmed else { return }

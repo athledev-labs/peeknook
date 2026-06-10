@@ -255,6 +255,33 @@ final class OpenAICompatibleInferenceEngineTests: XCTestCase {
         }
     }
 
+    // MARK: - Served models (Settings picker)
+
+    func testListServedModelsReturnsServerIDs() async {
+        OllamaURLProtocolStub.responsesByPath["/v1/models"] = [
+            .init(
+                statusCode: 200,
+                body: Data(#"{"data":[{"id":"qwen2-vl-7b-instruct"},{"id":"llama-3.2-3b"}]}"#.utf8),
+                headers: [:]
+            )
+        ]
+        let served = await makeEngine().listServedModels(baseURL: baseURL, acceptInsecureRemote: false)
+        XCTAssertEqual(served, ["qwen2-vl-7b-instruct", "llama-3.2-3b"])
+    }
+
+    func testListServedModelsDegradesToEmptyOnFailure() async {
+        OllamaURLProtocolStub.responsesByPath["/v1/models"] = [
+            .init(statusCode: 500, body: Data(), headers: [:])
+        ]
+        let served = await makeEngine().listServedModels(baseURL: baseURL, acceptInsecureRemote: false)
+        XCTAssertEqual(served, [], "Picker degrades to its empty hint, never an error.")
+
+        let gated = await makeEngine().listServedModels(
+            baseURL: "http://192.168.1.50:1234", acceptInsecureRemote: false
+        )
+        XCTAssertEqual(gated, [], "The HTTPS gate applies to discovery too.")
+    }
+
     // MARK: - Capability probes stay honestly unknown
 
     func testCapabilitiesAndContextLengthReturnNilAlways() async {

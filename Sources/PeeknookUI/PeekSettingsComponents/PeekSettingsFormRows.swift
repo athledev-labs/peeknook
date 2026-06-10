@@ -10,6 +10,10 @@ struct PeekSettingsFormField: View {
     @Binding var text: String
     var placeholder: String?
     var monospaced = false
+    /// Renders a SecureField (dots, never readable) for write-only credential entry.
+    var secure = false
+    /// Commit hook (Return key) — secure fields store on commit, not per keystroke.
+    var onSubmit: (() -> Void)? = nil
 
     @Environment(\.nookResolvedTheme) private var theme
     @FocusState private var isFocused: Bool
@@ -26,7 +30,7 @@ struct PeekSettingsFormField: View {
                     .foregroundStyle(theme.tertiaryLabel)
             }
 
-            TextField(placeholder ?? title, text: $text)
+            inputField
                 .textFieldStyle(.plain)
                 .font(.system(size: 11, weight: .regular, design: monospaced ? .monospaced : .default))
                 .foregroundStyle(theme.primaryLabel.opacity(0.95))
@@ -40,6 +44,16 @@ struct PeekSettingsFormField: View {
                         .stroke(theme.subtleStroke.opacity(isFocused ? 0.55 : 0.3), lineWidth: 1)
                 )
                 .focused($isFocused)
+                .onSubmit { onSubmit?() }
+        }
+    }
+
+    @ViewBuilder
+    private var inputField: some View {
+        if secure {
+            SecureField(placeholder ?? title, text: $text)
+        } else {
+            TextField(placeholder ?? title, text: $text)
         }
     }
 }

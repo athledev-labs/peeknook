@@ -113,6 +113,7 @@ struct PeekSurfaceFilterPill: View {
     @Environment(\.nookResolvedTheme) private var theme
     let title: String
     let isSelected: Bool
+    var hint = "Filter stats by date range"
     let action: () -> Void
     @State private var isHovered = false
 
@@ -139,6 +140,6 @@ struct PeekSurfaceFilterPill: View {
         .buttonStyle(.borderless)
         .fixedSize(horizontal: true, vertical: false)
         .peekHoverFeedback($isHovered, motion: isSelected ? .link : nil)
-        .peekAction(label: title, hint: "Filter stats by date range")
+        .peekAction(label: title, hint: hint)
     }
 }

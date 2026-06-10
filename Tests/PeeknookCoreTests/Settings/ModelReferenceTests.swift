@@ -22,6 +22,11 @@ final class ModelReferenceTests: XCTestCase {
         XCTAssertFalse(ollama.matches(openAI), "Identity is backend-qualified: same tag on two backends is two models.")
     }
 
+    func testProviderLabelPerBackend() {
+        XCTAssertEqual(InferenceBackend.ollama.providerLabel, "Ollama")
+        XCTAssertEqual(InferenceBackend.openAICompatible.providerLabel, "OpenAI-compatible")
+    }
+
     func testBareNameNormalizesToLatest() {
         let bareTag = ModelReference(backend: .ollama, tag: "gemma4")
         let latest = ModelReference(backend: .ollama, tag: "gemma4:latest")
