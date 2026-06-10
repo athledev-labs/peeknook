@@ -126,4 +126,48 @@ final class ProfileStoreTests: XCTestCase {
     func testHandSetCameraStudyActiveIDResolvesHarmlessly() {
         XCTAssertEqual(GroundProfile.resolve(id: "camera.study", in: []), .cameraStudy)
     }
+
+    // MARK: - Editor mutations
+
+    func testSetInstructionCapsAndClearsAndPersists() throws {
+        let store = makeStore()
+        let copy = try XCTUnwrap(store.duplicate(.screenDefault, name: "Mine"))
+        store.setInstruction(id: copy.id, String(repeating: "x", count: 9_000))
+        XCTAssertEqual(store.profile(id: copy.id).instruction?.count, ProfileInstruction.maxLength)
+        XCTAssertEqual(
+            ProfileStore(defaults: defaults).profile(id: copy.id).instruction?.count,
+            ProfileInstruction.maxLength
+        )
+        store.setInstruction(id: copy.id, "")
+        XCTAssertNil(store.profile(id: copy.id).instruction)
+    }
+
+    func testSetAndClearModelBindingPersists() throws {
+        let store = makeStore()
+        let copy = try XCTUnwrap(store.duplicate(.screenDefault, name: "Mine"))
+        store.setModelBinding(id: copy.id, ProfileModelBinding(backend: .ollama, tag: "llava:13b"))
+        XCTAssertEqual(
+            ProfileStore(defaults: defaults).profile(id: copy.id).modelBinding?.tag, "llava:13b"
+        )
+        store.setModelBinding(id: copy.id, nil)
+        XCTAssertNil(store.profile(id: copy.id).modelBinding, "Clearing falls back to the global model.")
+    }
+
+    func testSetModuleOverrideAndClearAll() throws {
+        let store = makeStore()
+        let copy = try XCTUnwrap(store.duplicate(.screenDefault, name: "Mine"))
+        store.setModuleOverride(id: copy.id, module: .webLookup, enabled: true)
+        store.setModuleOverride(id: copy.id, module: .speakAnswers, enabled: false)
+        store.setModuleOverride(id: copy.id, module: .cameraCapture, enabled: true)  // ineligible: no-op
+        let overrides = store.profile(id: copy.id).moduleOverrides
+        XCTAssertEqual(overrides.value(for: .webLookup), true)
+        XCTAssertEqual(overrides.value(for: .speakAnswers), false)
+        XCTAssertNil(overrides.value(for: .cameraCapture))
+
+        store.setModuleOverride(id: copy.id, module: .webLookup, enabled: nil)
+        XCTAssertNil(store.profile(id: copy.id).moduleOverrides.value(for: .webLookup), "nil clears one override.")
+
+        store.clearModuleOverrides(id: copy.id)
+        XCTAssertEqual(store.profile(id: copy.id).moduleOverrides, .none)
+    }
 }

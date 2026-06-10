@@ -77,6 +77,53 @@ public final class ProfileStore {
         ))
     }
 
+    /// Stores the instruction capped at the limit (the read path fully sanitizes — see
+    /// `ProfileInstruction.sanitized`); empty clears it.
+    public func setInstruction(id: String, _ text: String) {
+        guard let existing = catalog.profiles.first(where: { $0.id == id }) else { return }
+        let capped = text.isEmpty ? nil : String(text.prefix(ProfileInstruction.maxLength))
+        update(existing.with(
+            displayName: existing.displayName,
+            instruction: capped,
+            modelBinding: existing.modelBinding,
+            moduleOverrides: existing.moduleOverrides
+        ))
+    }
+
+    /// `nil` clears the binding (back to the global answer model).
+    public func setModelBinding(id: String, _ binding: ProfileModelBinding?) {
+        guard let existing = catalog.profiles.first(where: { $0.id == id }) else { return }
+        update(existing.with(
+            displayName: existing.displayName,
+            instruction: existing.instruction,
+            modelBinding: binding,
+            moduleOverrides: existing.moduleOverrides
+        ))
+    }
+
+    /// `nil` clears the override (inherit global). Ineligible modules no-op (see ``ModuleOverrides``).
+    public func setModuleOverride(id: String, module: ModuleID, enabled: Bool?) {
+        guard let existing = catalog.profiles.first(where: { $0.id == id }) else { return }
+        var overrides = existing.moduleOverrides
+        overrides.set(module, enabled)
+        update(existing.with(
+            displayName: existing.displayName,
+            instruction: existing.instruction,
+            modelBinding: existing.modelBinding,
+            moduleOverrides: overrides
+        ))
+    }
+
+    public func clearModuleOverrides(id: String) {
+        guard let existing = catalog.profiles.first(where: { $0.id == id }) else { return }
+        update(existing.with(
+            displayName: existing.displayName,
+            instruction: existing.instruction,
+            modelBinding: existing.modelBinding,
+            moduleOverrides: .none
+        ))
+    }
+
     /// Removes a user profile. Returns true when the deleted profile was the active one, so the
     /// caller can reset `activeProfileID` (the resolver's `screen.default` fallback is the net
     /// underneath either way). No-op (false) for built-ins and unknown ids.

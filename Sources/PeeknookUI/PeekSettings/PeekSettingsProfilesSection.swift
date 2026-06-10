@@ -14,6 +14,7 @@ struct PeekSettingsProfilesSection: View {
 
     @Environment(\.nookResolvedTheme) private var theme
     @State private var pendingDelete: GroundProfile?
+    @State private var expandedProfileID: String?
 
     private var store: ProfileStore? { orchestrator.profileStore }
 
@@ -30,6 +31,15 @@ struct PeekSettingsProfilesSection: View {
 
             ForEach(entries) { profile in
                 profileRow(profile)
+                if !profile.isBuiltIn, expandedProfileID == profile.id, let store {
+                    PeekProfileEditor(
+                        orchestrator: orchestrator,
+                        settings: settings,
+                        store: store,
+                        profileID: profile.id
+                    )
+                    .padding(.leading, PeekSettingsRowMetrics.iconWidth + 8)
+                }
             }
 
             if store != nil {
@@ -110,6 +120,19 @@ struct PeekSettingsProfilesSection: View {
             }
 
             if !profile.isBuiltIn {
+                Button {
+                    withAnimation(.spring(response: 0.30, dampingFraction: 0.86)) {
+                        expandedProfileID = expandedProfileID == profile.id ? nil : profile.id
+                    }
+                } label: {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(theme.tertiaryLabel)
+                        .rotationEffect(.degrees(expandedProfileID == profile.id ? 90 : 0))
+                }
+                .buttonStyle(.plain)
+                .peekAction(label: "Edit profile", hint: "Name, instruction, model, and overrides")
+
                 Button {
                     pendingDelete = profile
                 } label: {

@@ -161,6 +161,10 @@
       "comment": "Tier B localization",
       "extractionState": "manual"
     },
+    "Clear this profile's feature overrides": {
+      "comment": "Profile editor: clear-overrides subtitle.",
+      "extractionState": "manual"
+    },
     "Clear usage counters on this Mac": {
       "comment": "Tier B localization",
       "extractionState": "manual"
@@ -261,6 +265,10 @@
       "comment": "Settings: new-profile row subtitle.",
       "extractionState": "manual"
     },
+    "Edit profile": {
+      "comment": "A11y: profile edit chevron.",
+      "extractionState": "manual"
+    },
     "End this chat and return to the home screen": {
       "comment": "Command-bar help: Done button.",
       "extractionState": "manual"
@@ -275,6 +283,10 @@
     },
     "Export": {
       "comment": "Command-bar action: copy the whole conversation as Markdown.",
+      "extractionState": "manual"
+    },
+    "Feature overrides": {
+      "comment": "Profile editor: overrides group label.",
       "extractionState": "manual"
     },
     "Finish setup first": {
@@ -293,6 +305,10 @@
       "comment": "Command-bar action: ask a follow-up about the answer.",
       "extractionState": "manual"
     },
+    "Following the global setting": {
+      "comment": "Profile editor: no-override toggle detail.",
+      "extractionState": "manual"
+    },
     "Full thread sent to the model": {
       "comment": "Tier B localization",
       "extractionState": "manual"
@@ -303,6 +319,14 @@
     },
     "Get ready": {
       "comment": "Tier B localization",
+      "extractionState": "manual"
+    },
+    "Global": {
+      "comment": "Profile editor: unbound model pill.",
+      "extractionState": "manual"
+    },
+    "Global by default; bind one for this profile": {
+      "comment": "Profile editor: model row detail.",
       "extractionState": "manual"
     },
     "Hide this warning": {
@@ -331,6 +355,10 @@
     },
     "Instant capture from anywhere on your Mac": {
       "comment": "Command-bar help: Capture button.",
+      "extractionState": "manual"
+    },
+    "Instruction": {
+      "comment": "Profile editor: instruction field label.",
       "extractionState": "manual"
     },
     "Its instruction, model binding, and overrides are removed. Chats are not affected.": {
@@ -383,6 +411,14 @@
     },
     "Morning/Afternoon headline on the idle home screen": {
       "comment": "Tier B localization",
+      "extractionState": "manual"
+    },
+    "Name": {
+      "comment": "Profile editor: rename field.",
+      "extractionState": "manual"
+    },
+    "Name, instruction, model, and overrides": {
+      "comment": "A11y hint: profile edit chevron.",
       "extractionState": "manual"
     },
     "Needed": {
@@ -501,6 +537,10 @@
       "comment": "Tier B localization",
       "extractionState": "manual"
     },
+    "Overridden for this profile": {
+      "comment": "Profile editor: overridden toggle detail.",
+      "extractionState": "manual"
+    },
     "Past chats": {
       "comment": "Header for the conversation archive.",
       "extractionState": "manual"
@@ -531,6 +571,10 @@
     },
     "Privacy policy": {
       "comment": "Tier B localization",
+      "extractionState": "manual"
+    },
+    "Profile instruction": {
+      "comment": "A11y: instruction text editor.",
       "extractionState": "manual"
     },
     "Profiles": {
@@ -681,6 +725,10 @@
       "comment": "Tier B localization",
       "extractionState": "manual"
     },
+    "Standing guidance for every answer in this profile — e.g. “You are a patient chess coach.”": {
+      "comment": "Profile editor: instruction help.",
+      "extractionState": "manual"
+    },
     "Start a fresh chat to reset the context window": {
       "comment": "Tier B localization",
       "extractionState": "manual"
@@ -759,6 +807,14 @@
     },
     "Use": {
       "comment": "Settings: activate-profile pill.",
+      "extractionState": "manual"
+    },
+    "Use global defaults": {
+      "comment": "Profile editor: clear-overrides row.",
+      "extractionState": "manual"
+    },
+    "Use global model": {
+      "comment": "Profile editor: clear-binding menu row.",
       "extractionState": "manual"
     },
     "Use this": {
