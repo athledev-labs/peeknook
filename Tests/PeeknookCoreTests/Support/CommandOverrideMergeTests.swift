@@ -45,7 +45,8 @@ final class CommandOverrideMergeTests: XCTestCase {
         XCTAssertEqual(
             bar,
             ["result.history", "result.export", "result.followUp",
-             "result.retake", "result.addImage", "result.speak", "result.done", "result.newChat"]
+             "result.retake", "result.addImage", "result.speak", "result.done", "result.newChat",
+             "result.compositeCapture"]
         )
     }
 
@@ -84,7 +85,7 @@ final class CommandOverrideMergeTests: XCTestCase {
         XCTAssertEqual(
             Array(bar.dropFirst(2)),
             ["result.history", "result.export", "result.retake", "result.addImage",
-             "result.speak", "result.done", "result.newChat"]
+             "result.speak", "result.done", "result.newChat", "result.compositeCapture"]
         )
     }
 

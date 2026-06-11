@@ -25,6 +25,10 @@
       "comment": "Settings: active profile badge.",
       "extractionState": "manual"
     },
+    "Add a screen and camera photo to this chat as one question": {
+      "comment": "Command-bar help: result-bar composite capture.",
+      "extractionState": "manual"
+    },
     "Add anyway": {
       "comment": "Tier B localization",
       "extractionState": "manual"
@@ -155,6 +159,10 @@
     },
     "Capture target for the next capture": {
       "comment": "Command-bar help: scope dropdown.",
+      "extractionState": "manual"
+    },
+    "Capture your screen and a camera photo for one question": {
+      "comment": "Command-bar help: idle composite capture.",
       "extractionState": "manual"
     },
     "Change": {
@@ -815,6 +823,10 @@
     },
     "Save conversations": {
       "comment": "Tier B localization",
+      "extractionState": "manual"
+    },
+    "Screen + camera": {
+      "comment": "Command-bar action: capture screen and camera as one question.",
       "extractionState": "manual"
     },
     "Screenshots capture on-screen pixels. Avoid capturing windows that show passwords, tokens, or other sensitive content.": {

@@ -16,10 +16,12 @@ final class CommandLayoutTests: XCTestCase {
     // MARK: Migration anchor — exact per-placement order (reproduces today's three surfaces)
 
     func testIdleBarReproducesTodaysOrder() {
+        // `idle.compositeCapture` is gated on `.parallelScreen` (opt-in), so the renderer hides it by
+        // default; it still appears in the unfiltered layout, ordered last in the scroll.
         XCTAssertEqual(
             layout.forPlacement(.idle).map(\.id),
             ["idle.resume", "idle.brief", "idle.model", "idle.depth", "idle.scope",
-             "idle.importFile", "idle.capture"]
+             "idle.importFile", "idle.capture", "idle.compositeCapture"]
         )
     }
 
@@ -31,7 +33,8 @@ final class CommandLayoutTests: XCTestCase {
         XCTAssertEqual(
             layout.forPlacement(.result).map(\.id),
             ["result.history", "result.export", "result.brief", "result.followUp",
-             "result.retake", "result.addImage", "result.speak", "result.done", "result.newChat"]
+             "result.retake", "result.addImage", "result.speak", "result.done", "result.newChat",
+             "result.compositeCapture"]
         )
     }
 

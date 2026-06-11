@@ -62,6 +62,7 @@ public enum CommandAction: String, Codable, Sendable, CaseIterable {
     case capture, importFile, beginCameraCapture, shutter, cancel, confirmPreview
     case brief, resume, followUp, speak, done, newChat
     case history, export, retake, addImage
+    case compositeCapture   // screen + camera asked as one question (opt-in, gated on .parallelScreen)
     // case planAction   ← Phase 5 sidecar (agent control)
 }
 
@@ -341,6 +342,15 @@ public extension CommandLayout {
             placement: .idle, defaultOrder: 5
         ),
         CommandDescriptor(
+            id: "idle.compositeCapture", kind: .button, action: .compositeCapture,
+            titleKey: "Screen + camera", symbol: "photo.on.rectangle.angled",
+            helpKey: "Capture your screen and a camera photo for one question",
+            placement: .idle,
+            requiredModules: [.parallelScreen, .screenCapture],
+            requiredPermissions: [.screenRecording, .camera],
+            defaultOrder: 7
+        ),
+        CommandDescriptor(
             id: "idle.capture", kind: .button, action: .capture,
             titleKey: "Capture", symbol: "camera.viewfinder",
             helpKey: "Instant capture from anywhere on your Mac",
@@ -405,6 +415,15 @@ public extension CommandLayout {
             placement: .result,
             requiredModules: [.screenCapture], requiredPermissions: [.screenRecording],
             defaultOrder: 5
+        ),
+        CommandDescriptor(
+            id: "result.compositeCapture", kind: .button, action: .compositeCapture,
+            titleKey: "Screen + camera", symbol: "photo.on.rectangle.angled",
+            helpKey: "Add a screen and camera photo to this chat as one question",
+            placement: .result,
+            requiredModules: [.parallelScreen, .screenCapture],
+            requiredPermissions: [.screenRecording, .camera],
+            defaultOrder: 9
         ),
         CommandDescriptor(
             id: "result.speak", kind: .button, action: .speak,

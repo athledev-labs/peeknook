@@ -241,6 +241,7 @@ struct PeekIdleCommandBar: View {
         switch action {
         case .capture: onCapture()
         case .importFile: presentFileImport()
+        case .compositeCapture: orchestrator.beginComposite()
         case .resume:  onResume()
         case .brief:
             PeekSessionBriefStrip.toggleComposer(

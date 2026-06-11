@@ -101,6 +101,7 @@ extension SessionOrchestrator {
     /// thread) so the next answered chat is filed as a new entry.
     func resetConversation() {
         purgeSessionBlobs()
+        lifecycle.clearPendingComposite()
         conversation = []
         suggestedFollowUps = []
         isFetchingSuggestions = false

@@ -17,6 +17,14 @@ final class SessionLifecycleCoordinator {
     var pendingCapture: CaptureResult?
     var pendingIntent: SessionOrchestrator.CaptureIntent = .fresh
 
+    /// Composite (screen + camera) in flight: the screen leg is captured first and held here while
+    /// the live camera preview is up; the shutter then commits BOTH legs atomically. Non-nil only
+    /// between a composite's screen grab and its shutter. Cleared in `stopCameraPreview` (the single
+    /// camera-teardown choke point), so an abort/cancel/collapse leaves NO partial turn behind.
+    var pendingCompositeGroupID: UUID?
+    var pendingCompositeScreen: CaptureResult?
+    var pendingCompositeIntent: SessionOrchestrator.CaptureIntent = .fresh
+
     func snapshotCapture() -> Int { captureGeneration }
     func snapshotSession() -> Int { sessionGeneration }
 
@@ -50,5 +58,11 @@ final class SessionLifecycleCoordinator {
     func clearPendingCapture() {
         pendingPreview = nil
         pendingCapture = nil
+    }
+
+    func clearPendingComposite() {
+        pendingCompositeGroupID = nil
+        pendingCompositeScreen = nil
+        pendingCompositeIntent = .fresh
     }
 }

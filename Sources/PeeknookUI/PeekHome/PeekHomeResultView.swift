@@ -213,6 +213,7 @@ struct PeekHomeResultView: View {
             }
         case .retake:   orchestrator.retake()
         case .addImage: orchestrator.addImage()
+        case .compositeCapture: orchestrator.beginComposite()
         case .done:     onFinishChat()
         case .newChat:  onRequestNewChat()
         default:        break

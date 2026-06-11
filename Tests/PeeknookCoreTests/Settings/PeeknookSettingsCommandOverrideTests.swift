@@ -107,10 +107,12 @@ final class PeeknookSettingsCommandOverrideTests: XCTestCase {
         stack.settings.moveCommand("idle.scope", in: .idle, by: -1)
 
         let resolved = stack.orchestrator.resolvedCommandOverrides(for: .idle)
+        // The reorder ranks every customizable command (including the opt-in composite), so they form
+        // bucket 1; pinned Capture stays in bucket 2 and appends last.
         XCTAssertEqual(
             CommandLayout.screenDefault.forPlacement(.idle, applying: resolved).map(\.id),
             ["idle.resume", "idle.brief", "idle.model", "idle.scope", "idle.depth",
-             "idle.importFile", "idle.capture"]
+             "idle.importFile", "idle.compositeCapture", "idle.capture"]
         )
         // Pinned, non-customizable Capture never acquired an entry.
         XCTAssertFalse(resolved.contains { $0.id == "idle.capture" })
@@ -120,7 +122,7 @@ final class PeeknookSettingsCommandOverrideTests: XCTestCase {
     func testMoveAtTheEndsIsANoOp() {
         let stack = makeStack()
         stack.settings.moveCommand("idle.resume", in: .idle, by: -1)   // first up
-        stack.settings.moveCommand("result.newChat", in: .result, by: 1) // last down
+        stack.settings.moveCommand("result.compositeCapture", in: .result, by: 1) // last down
         XCTAssertTrue(
             stack.orchestrator.settings.commandOverrides(forScope: "global").isEmpty,
             "moving past an end must not write anything"
@@ -140,7 +142,7 @@ final class PeeknookSettingsCommandOverrideTests: XCTestCase {
         XCTAssertEqual(
             CommandLayout.screenDefault.forPlacement(.idle, applying: stack.orchestrator.resolvedCommandOverrides(for: .idle)).map(\.id),
             ["idle.resume", "idle.brief", "idle.model", "idle.scope", "idle.depth",
-             "idle.importFile", "idle.capture"]
+             "idle.importFile", "idle.compositeCapture", "idle.capture"]
         )
     }
 

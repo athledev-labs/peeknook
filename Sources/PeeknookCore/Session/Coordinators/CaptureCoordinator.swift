@@ -142,6 +142,96 @@ final class CaptureCoordinator {
         }
     }
 
+    // MARK: - Composite (screen + camera in one question)
+
+    /// Begin a composite turn: capture the SCREEN leg first (in `.capturing`), then open the live
+    /// camera for the CAMERA leg. The two legs are committed ATOMICALLY at the shutter
+    /// (``commitGroupAtShutter``) — nothing reaches the conversation until both are in hand, so an
+    /// abort mid-flight leaves no partial turn. Gated on the composite opt-in + both grounds' readiness.
+    func beginComposite() {
+        guard let session else { return }
+        switch session.phase {
+        case .idle, .result: break
+        default: return
+        }
+        guard session.moduleEnabled(.parallelScreen, for: session.resolvedActiveProfile),
+              session.captureRegistry.sessionController(for: .camera) != nil else { return }
+
+        session.setup?.refreshCapturePermission()
+        if let setup = session.setup, !setup.isReady {
+            _ = session.applyPhaseEvent(.setupNotReady) // screen side (Ollama / model / Screen Recording)
+            return
+        }
+        if let setup = session.setup, !setup.readiness(for: .cameraStudy) {
+            // Screen readiness passed, so Ollama + model are fine: the gap is Camera TCC. Enter and
+            // immediately fail the live phase for the typed Camera recovery (mirrors openCameraLive).
+            guard case .applied = session.applyPhaseEvent(.openCameraLive) else { return }
+            _ = session.applyPhaseEvent(.cameraLiveFailed(.permissionRequired(.camera)))
+            return
+        }
+
+        var intent: SessionOrchestrator.CaptureIntent = session.hasConversation ? .addToChat : .fresh
+        if intent == .addToChat, session.isContextBlocked {
+            guard case .idle = session.phase else { return } // from a full result thread: bail like beginCapture
+            session.emitNotice(.contextFull)
+            intent = .fresh
+        }
+
+        guard beginCapturePhase(intent: intent) else { return } // idle/result → capturing (screen leg)
+        let groupID = UUID()
+        let registry = session.captureRegistry
+        let ground = session.resolvedActiveProfile.primaryGround
+        let scope = session.settings.captureScope
+        let quick = session.settings.quickMode
+        let quality = session.settings.captureQuality
+        let generation = session.lifecycle.snapshotCapture()
+        session.lifecycle.inferenceTask = Task {
+            do {
+                let provider = try registry.resolve(ground)
+                let encoding = CaptureEncodingPolicy.resolve(scope: scope, quick: quick, quality: quality)
+                let screen = try await provider.capture(scope: scope, quick: quick, encoding: encoding)
+                guard session.lifecycle.isCurrentCapture(generation), !Task.isCancelled else { return }
+                // Open the camera (this aborts/teardowns first — which clears pending composite), THEN
+                // stash the screen leg so the shutter can find it.
+                session.openCameraLive()
+                session.lifecycle.pendingCompositeScreen = screen
+                session.lifecycle.pendingCompositeGroupID = groupID
+                session.lifecycle.pendingCompositeIntent = intent
+            } catch is CancellationError {
+                return
+            } catch let error as CaptureError {
+                guard session.lifecycle.isCurrentCapture(generation) else { return }
+                _ = session.applyPhaseEvent(.captureFailed(.from(captureError: error)))
+            } catch {
+                guard session.lifecycle.isCurrentCapture(generation) else { return }
+                _ = session.applyPhaseEvent(.captureFailed(.generic(message: error.localizedDescription)))
+            }
+        }
+    }
+
+    /// Commit a composite's two legs as one question and run a single turn. Screen leg first (lower
+    /// `id`), camera second — the order downstream folding relies on. Each leg's archive write gates
+    /// on its OWN ground inside `storedCapture`, preserving the per-ground rule. Runs the turn on the
+    /// camera capture (the new image), which the role router resolves to the vision model.
+    func commitGroupAtShutter(
+        screen: CaptureResult,
+        camera: CaptureResult,
+        groupID: UUID,
+        intent: SessionOrchestrator.CaptureIntent
+    ) {
+        guard let session else { return }
+        if intent == .fresh { session.resetConversation() }
+        session.turnCounter += 1
+        session.conversation.append(ChatTurn(
+            id: session.turnCounter, kind: .image(session.storedCapture(screen)), compositeGroupID: groupID
+        ))
+        session.turnCounter += 1
+        session.conversation.append(ChatTurn(
+            id: session.turnCounter, kind: .image(session.storedCapture(camera)), compositeGroupID: groupID
+        ))
+        session.lifecycle.inferenceTask = Task { await session.runTurn(capturedNow: camera) }
+    }
+
     // MARK: - Shared capture spine
 
     /// Common pre-capture state reset + phase transition for every ground. Returns false when the

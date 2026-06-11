@@ -64,7 +64,13 @@ final class CameraCoordinator {
     func shutter() {
         guard let session, case .cameraLive = session.phase,
               let cameraSession = session.activeCameraSession else { return }
-        let intent: SessionOrchestrator.CaptureIntent = session.hasConversation ? .addToChat : .fresh
+        // A composite turn carries a pending screen leg captured before the camera opened; read it
+        // (and its intent) into locals BEFORE teardown, since `stopCameraPreview` clears it.
+        let compositeGroupID = session.lifecycle.pendingCompositeGroupID
+        let compositeScreen = session.lifecycle.pendingCompositeScreen
+        let intent: SessionOrchestrator.CaptureIntent = compositeGroupID != nil
+            ? session.lifecycle.pendingCompositeIntent
+            : (session.hasConversation ? .addToChat : .fresh)
         session.lifecycle.pendingIntent = intent
         let generation = session.lifecycle.snapshotCapture()
         session.lifecycle.cameraTask = Task {
@@ -80,7 +86,13 @@ final class CameraCoordinator {
                 // task here is harmless and the commit below runs unconditionally.
                 self.stopCameraPreview()
                 guard case .applied = session.applyPhaseEvent(.shutter) else { return }
-                session.commitCapture(still, intent: intent)
+                if let compositeGroupID, let compositeScreen {
+                    session.commitGroupAtShutter(
+                        screen: compositeScreen, camera: still, groupID: compositeGroupID, intent: intent
+                    )
+                } else {
+                    session.commitCapture(still, intent: intent)
+                }
             } catch is CancellationError {
                 return
             } catch let error as CaptureError {
@@ -111,5 +123,8 @@ final class CameraCoordinator {
         session.lifecycle.cameraTask = nil
         session.activeCameraSession?.stopPreview()
         session.activeCameraSession = nil
+        // Drop any in-flight composite screen leg: every camera exit (shutter, cancel, failure,
+        // collapse, abort) funnels here, so a composite never strands its pending screen capture.
+        session.lifecycle.clearPendingComposite()
     }
 }

@@ -8,8 +8,10 @@ import XCTest
 final class SessionPhaseMachineCameraTests: XCTestCase {
     private let context = SessionTransitionContext()
 
-    func testOpenCameraLiveFromIdleResultAndFailed() {
-        for start in [SessionPhase.idle, .result("a"), .failed(.emptyAnswer)] {
+    func testOpenCameraLiveFromIdleResultFailedAndCapturing() {
+        // `.capturing` is included for the composite turn: its screen leg is captured first, then the
+        // camera opens for the second leg.
+        for start in [SessionPhase.idle, .result("a"), .failed(.emptyAnswer), .capturing] {
             var machine = SessionPhaseMachine(phase: start)
             XCTAssertEqual(machine.apply(.openCameraLive, context: context), .applied(.cameraLive))
         }
@@ -17,7 +19,7 @@ final class SessionPhaseMachineCameraTests: XCTestCase {
 
     func testOpenCameraLiveRejectedFromBusyPhases() {
         let preview = CapturePreview(excerpt: "", sourceLabel: "x")
-        for start in [SessionPhase.capturing, .previewing(preview), .cameraLive, .inferring] {
+        for start in [SessionPhase.previewing(preview), .cameraLive, .inferring] {
             var machine = SessionPhaseMachine(phase: start)
             XCTAssertEqual(machine.apply(.openCameraLive, context: context), .rejected)
         }

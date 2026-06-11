@@ -21,7 +21,9 @@ public enum SessionEvent: Sendable, Equatable {
     case retryCapture
     case openThreadRestored(answer: String)
     case deleteActiveThreadToIdle
-    /// idle/result/failed → `.cameraLive` (open the live camera preview).
+    /// idle/result/failed → `.cameraLive` (open the live camera preview). Also `.capturing` →
+    /// `.cameraLive` for a composite turn: its screen leg is captured first (in `.capturing`), then
+    /// the live camera opens for the second leg.
     case openCameraLive
     /// `.cameraLive` → `.capturing`: the still is taken; from there the capture path is the
     /// unchanged commit → runTurn → result pipeline.
@@ -164,10 +166,13 @@ public struct SessionPhaseMachine: Sendable {
 
     private mutating func applyOpenCameraLive() -> SessionTransitionResult {
         switch phase {
-        case .idle, .result, .failed:
+        // `.capturing` is the composite path: the screen leg was just captured, now open the camera
+        // for the second leg. (⌘⇧C mid-capture also lands here — opening the camera abandons the
+        // in-flight screen grab, a reasonable change of mind.)
+        case .idle, .result, .failed, .capturing:
             phase = .cameraLive
             return .applied(phase)
-        case .capturing, .previewing, .cameraLive, .inferring:
+        case .previewing, .cameraLive, .inferring:
             return .rejected
         }
     }
