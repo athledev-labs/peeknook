@@ -14,8 +14,15 @@ public enum ContextBudgetPolicy: Sendable {
             return Array(conversation.suffix(4))
         }
         var kept: [ChatTurn] = []
-        if let lastImage = conversation[..<lastAssistant].lastIndex(where: \.isImage) {
-            kept.append(conversation[lastImage])
+        if let lastImageIndex = conversation[..<lastAssistant].lastIndex(where: \.isImage) {
+            let lastImage = conversation[lastImageIndex]
+            if let group = lastImage.compositeGroupID {
+                // Keep the WHOLE composite group atomically: a composite question's prompt asserts two
+                // images, so dropping one leg would lie to the model about what it received.
+                kept.append(contentsOf: conversation[..<lastAssistant].filter { $0.compositeGroupID == group })
+            } else {
+                kept.append(lastImage)
+            }
         }
         kept.append(contentsOf: conversation[lastAssistant...])
         return kept.isEmpty ? Array(conversation.suffix(4)) : kept

@@ -136,8 +136,11 @@ final class InferenceCoordinator {
             session.conversation,
             pressure: session.contextPressure
         )
+        // Budget replay by payload UNIT: a composite group (screen + camera legs) counts as ONE unit,
+        // so the latest question replays whole — never half a composite (the group-atomic guard).
         let imageTurnIDs = budgeted.filter(\.isImage).map(\.id)
-        let replayImageIDs = Set(imageTurnIDs.suffix(inferencePolicy.maxImagePayloads))
+        let imageUnits = imagePayloadUnits(budgeted.filter(\.isImage))
+        let replayImageIDs = Set(imageUnits.suffix(inferencePolicy.maxImagePayloads).flatMap { $0.map(\.id) })
         var imageBase64ByTurnID = session.preloadImageBase64(for: budgeted, replayIDs: replayImageIDs)
         if let capture, let latestImageID = imageTurnIDs.last, let base64 = capture.screenshotBase64 {
             imageBase64ByTurnID[latestImageID] = base64
@@ -217,46 +220,102 @@ final class InferenceCoordinator {
         )
     }
 
-    /// Maps the display conversation to the model's message list: each image turn becomes a
-    /// grounded user message; only the latest `policy.maxImagePayloads` screenshots ride as
-    /// base64 payloads. Older images still get text grounding via `captureUserMessage`.
+    /// Groups image turns into replay units: a composite group's legs (consecutive turns sharing a
+    /// `compositeGroupID`) form ONE unit; standalone images are their own unit. Order preserved, so
+    /// `maxImagePayloads` budgets whole questions and never replays half a composite.
+    private func imagePayloadUnits(_ imageTurns: [ChatTurn]) -> [[ChatTurn]] {
+        var units: [[ChatTurn]] = []
+        var previousGroup: UUID?
+        for turn in imageTurns {
+            if let group = turn.compositeGroupID, group == previousGroup, !units.isEmpty {
+                units[units.count - 1].append(turn)
+            } else {
+                units.append([turn])
+            }
+            previousGroup = turn.compositeGroupID
+        }
+        return units
+    }
+
+    /// Maps the display conversation to the model's message list: each image unit becomes one
+    /// grounded user message. A composite unit (screen + camera) folds its two legs into a single
+    /// message carrying both images; standalone images are byte-identical to before. Only the latest
+    /// `policy.maxImagePayloads` units ride as base64 payloads; older ones keep text grounding.
     private func inferenceMessages(
         from conversation: [ChatTurn],
         webLookup: WebLookupSnapshot? = nil,
         policy: InferenceReplayPolicy = .inference,
         imageBase64ByTurnID: [Int: String] = [:]
     ) -> [InferenceMessage] {
-        let imageTurnIDs = conversation.filter(\.isImage).map(\.id)
-        let replayImageIDs = Set(imageTurnIDs.suffix(policy.maxImagePayloads))
-        let lastImageID = imageTurnIDs.last
-        return conversation.map { turn in
+        let units = imagePayloadUnits(conversation.filter(\.isImage))
+        let replayImageIDs = Set(units.suffix(policy.maxImagePayloads).flatMap { $0.map(\.id) })
+        let lastUnitIDs = Set(units.last?.map(\.id) ?? [])
+        // Per-leg unit position (0-based among image units) and the representative ("first") leg of
+        // each unit — the one we emit; the other legs of a composite were already folded into it.
+        var unitIndexByID: [Int: Int] = [:]
+        var firstLegIDs = Set<Int>()
+        for (index, unit) in units.enumerated() {
+            let ordered = unit.sorted { $0.id < $1.id }
+            if let first = ordered.first { firstLegIDs.insert(first.id) }
+            for leg in unit { unitIndexByID[leg.id] = index }
+        }
+
+        var messages: [InferenceMessage] = []
+        for turn in conversation {
             switch turn.kind {
             case .image(let capture):
-                let lookup = turn.id == lastImageID ? webLookup : nil
-                let imageIndex = imageTurnIDs.firstIndex(of: turn.id) ?? 0
-                let assembly = promptAssembly(continuingSession: imageIndex > 0)
-                let includeImage = replayImageIDs.contains(turn.id)
-                return InferenceMessage(
-                    role: .user,
-                    text: PromptBuilder.captureUserMessage(
-                        capture: capture,
-                        assembly: assembly,
-                        webLookup: lookup
-                    ),
-                    imageBase64: includeImage ? (imageBase64ByTurnID[turn.id] ?? capture.screenshotBase64) : nil
-                )
+                guard firstLegIDs.contains(turn.id) else { continue } // folded composite leg, already emitted
+                let unitIndex = unitIndexByID[turn.id] ?? 0
+                let assembly = promptAssembly(continuingSession: unitIndex > 0)
+                let lookup = lastUnitIDs.contains(turn.id) ? webLookup : nil
+                let unit = units[unitIndex].sorted { $0.id < $1.id }
+
+                if unit.count > 1 {
+                    // Composite: fold both legs into one message; replay is group-atomic, so the
+                    // images ride only when the whole unit is in the replay window.
+                    let captures = unit.compactMap { leg -> CaptureResult? in
+                        if case .image(let c) = leg.kind { return c }
+                        return nil
+                    }
+                    let screen = captures.first { $0.ground == .screen } ?? captures[0]
+                    let camera = captures.first { $0.ground == .camera } ?? captures[captures.count > 1 ? 1 : 0]
+                    let includeImages = unit.allSatisfy { replayImageIDs.contains($0.id) }
+                    let images: [String] = includeImages ? unit.compactMap { leg in
+                        guard case .image(let c) = leg.kind else { return nil }
+                        return imageBase64ByTurnID[leg.id] ?? c.screenshotBase64
+                    } : []
+                    messages.append(InferenceMessage(
+                        role: .user,
+                        text: PromptBuilder.compositeUserMessage(
+                            screen: screen, camera: camera, assembly: assembly, webLookup: lookup
+                        ),
+                        imagesBase64: images
+                    ))
+                } else {
+                    let includeImage = replayImageIDs.contains(turn.id)
+                    messages.append(InferenceMessage(
+                        role: .user,
+                        text: PromptBuilder.captureUserMessage(
+                            capture: capture,
+                            assembly: assembly,
+                            webLookup: lookup
+                        ),
+                        imageBase64: includeImage ? (imageBase64ByTurnID[turn.id] ?? capture.screenshotBase64) : nil
+                    ))
+                }
             case .user(let text):
-                return InferenceMessage(
+                messages.append(InferenceMessage(
                     role: .user,
                     text: PromptBuilder.followUpUserMessage(
                         question: text,
                         assembly: promptAssembly(continuingSession: false)
                     )
-                )
+                ))
             case .assistant(let text):
-                return InferenceMessage(role: .assistant, text: text)
+                messages.append(InferenceMessage(role: .assistant, text: text))
             }
         }
+        return messages
     }
 
     /// Generates the dynamic action pills for the answer just shown. Controlled by the

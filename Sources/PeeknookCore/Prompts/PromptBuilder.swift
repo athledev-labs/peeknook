@@ -92,6 +92,36 @@ enum PromptBuilder {
         return sections.joined(separator: "\n\n")
     }
 
+    /// One user message for a composite turn: a screenshot AND a camera photo asked as a single
+    /// question. The two images ride this message together (screen first, camera second); the text
+    /// names each so the model never confuses the display capture with the physical-world photo.
+    static func compositeUserMessage(
+        screen: CaptureResult,
+        camera: CaptureResult,
+        assembly: PromptAssembly,
+        webLookup: WebLookupSnapshot? = nil
+    ) -> String {
+        var sections: [String] = []
+
+        if let brief = assembly.trimmedBrief {
+            sections.append(sessionBriefSection(brief))
+        }
+
+        sections.append(compositeContextSection(screen: screen, camera: camera, webLookup: webLookup))
+        sections.append(depthSection(assembly.answerDepth))
+
+        if assembly.continuingSession {
+            sections.append("""
+            ## Session context
+            Continuing chat: this is a new capture in the same thread. Answer what matters **now** for the session brief; \
+            use prior turns only if they clarify the recommendation.
+            """)
+        }
+
+        sections.append("## Task\nAnswer the single question using BOTH the screenshot and the camera photo above, together.")
+        return sections.joined(separator: "\n\n")
+    }
+
     static func followUpUserMessage(question: String, assembly: PromptAssembly) -> String {
         let trimmed = question.trimmingCharacters(in: .whitespacesAndNewlines)
         var sections: [String] = []
@@ -161,6 +191,35 @@ enum PromptBuilder {
             """)
         } else {
             lines.append("No reliable extracted text — rely on the screenshot.")
+        }
+        if let webLookup, !webLookup.results.isEmpty {
+            lines.append(WebSearchClient.promptContext(from: webLookup))
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    private static func compositeContextSection(
+        screen: CaptureResult,
+        camera: CaptureResult,
+        webLookup: WebLookupSnapshot?
+    ) -> String {
+        var lines = [
+            "## Capture (two views, one question)",
+            "Two images are attached for ONE question, in this order:",
+            "Image 1 is a SCREENSHOT of the Mac display (source: \(screen.sourceLabel)).",
+        ]
+        if screen.appName != nil || screen.windowTitle != nil {
+            lines.append("Screenshot target: \(screen.targetLabel).")
+        }
+        lines.append("Image 2 is a CAMERA PHOTO from the Mac's camera (paper, whiteboard, book, or a physical object), NOT a screenshot of the display.")
+        lines.append("Use BOTH images together — they describe the same situation from two views.")
+        if let text = screen.text, !text.isEmpty {
+            lines.append("""
+            Supplementary extracted text from the screenshot (may be incomplete; prefer the images when they disagree):
+            ---
+            \(text)
+            ---
+            """)
         }
         if let webLookup, !webLookup.results.isEmpty {
             lines.append(WebSearchClient.promptContext(from: webLookup))
