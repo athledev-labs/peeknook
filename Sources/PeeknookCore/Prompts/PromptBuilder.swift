@@ -134,16 +134,23 @@ enum PromptBuilder {
         webLookup: WebLookupSnapshot?
     ) -> String {
         var lines = ["## Capture", "Source: \(capture.sourceLabel)."]
-        if capture.ground == .camera {
+        switch capture.ground {
+        case .camera:
             lines.append("Ground: camera — the attached image is a photo from the Mac's camera (paper, whiteboard, book, or a physical object), not a screenshot of the display.")
+        case .file:
+            lines.append("Ground: imported file — the attached image is a page or image from a file the user opened from disk (e.g. a PDF page or a saved image), not a live capture of the current screen.")
+        default:
+            break
         }
         if capture.appName != nil || capture.windowTitle != nil {
             lines.append("Target: \(capture.targetLabel).")
         }
         if capture.hasVision {
-            lines.append(capture.ground == .camera
-                ? "A camera photo is attached to this message (vision)."
-                : "A screenshot is attached to this message (vision).")
+            switch capture.ground {
+            case .camera: lines.append("A camera photo is attached to this message (vision).")
+            case .file:   lines.append("An image from the imported file is attached to this message (vision).")
+            default:      lines.append("A screenshot is attached to this message (vision).")
+            }
         }
         if let text = capture.text, !text.isEmpty {
             lines.append("""

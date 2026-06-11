@@ -11,6 +11,10 @@ public enum Ground: String, Codable, Sendable, CaseIterable, Hashable {
     case selectedText
     case voiceInput
     case agent
+    /// A PDF/image the user opens from disk. Event-scoped (a command, never an active profile — a
+    /// file-primary profile would dead-end ⌘⇧P the way a camera-primary one would). The open panel
+    /// grants file access, so it requires no TCC permission.
+    case file
 
     /// Permissions that must be granted before this ground can capture. Drives the per-profile
     /// readiness matrix. `selectedText` deliberately returns an empty set: Accessibility is a
@@ -24,6 +28,7 @@ public enum Ground: String, Codable, Sendable, CaseIterable, Hashable {
         case .voiceInput:   return [.microphone, .speechRecognition]
         case .selectedText: return []
         case .agent:        return []
+        case .file:         return []   // the open panel grants file access; no TCC gate
         }
     }
 }

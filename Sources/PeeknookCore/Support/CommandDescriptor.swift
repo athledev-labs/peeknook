@@ -59,7 +59,7 @@ public enum CommandKind: Codable, Sendable, Equatable {
 /// descriptors `Sendable` and persistable. `.valueDropdown` commands carry no action (the dimension
 /// drives their behaviour), so ``CommandDescriptor/action`` is optional.
 public enum CommandAction: String, Codable, Sendable, CaseIterable {
-    case capture, beginCameraCapture, shutter, cancel, confirmPreview
+    case capture, importFile, beginCameraCapture, shutter, cancel, confirmPreview
     case brief, resume, followUp, speak, done, newChat
     case history, export, retake, addImage
     // case planAction   ← Phase 5 sidecar (agent control)
@@ -335,13 +335,19 @@ public extension CommandLayout {
             placement: .idle, defaultOrder: 4
         ),
         CommandDescriptor(
+            id: "idle.importFile", kind: .button, action: .importFile,
+            titleKey: "Import file", symbol: "doc.badge.plus",
+            helpKey: "Open a PDF or image from disk to ask about",
+            placement: .idle, defaultOrder: 5
+        ),
+        CommandDescriptor(
             id: "idle.capture", kind: .button, action: .capture,
             titleKey: "Capture", symbol: "camera.viewfinder",
             helpKey: "Instant capture from anywhere on your Mac",
             hotkey: .settingsSlot(.capture),
             placement: .idle, pinnedTrailing: true, prominent: true,
             requiredModules: [.screenCapture], requiredPermissions: [.screenRecording],
-            defaultOrder: 5
+            defaultOrder: 6
         ),
 
         // ── Active controls (post-capture confirm) ────────────────────────────────────────────

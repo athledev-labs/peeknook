@@ -67,6 +67,8 @@ public struct PeeknookDependencies {
                 // Registered but dormant: no built-in profile resolves to .camera and no hotkey
                 // opens the live preview until the camera slices that wire them.
                 .camera: CameraCaptureProvider(),
+                // File import: resolved via the registry's FileImporting arm, never the capture path.
+                .file: FileImportCaptureProvider(),
             ]),
             inferenceRegistry: InferenceBackendRegistry([
                 .ollama: OllamaInferenceEngine(probeCache: probeCache),
@@ -108,6 +110,7 @@ public struct PeeknookDependencies {
         let preview = previewSpeechSynthesizer ?? answerSpeechSynthesizer
         var providers: [Ground: any CaptureProviding] = [.screen: capture]
         if let cameraSession { providers[.camera] = cameraSession }
+        providers[.file] = FileImportCaptureProvider()  // real, pure decoder — deterministic in tests
         var engines: [InferenceBackend: any InferenceEngine] = Dictionary(
             uniqueKeysWithValues: InferenceBackend.allCases.map { ($0, inference) }
         )

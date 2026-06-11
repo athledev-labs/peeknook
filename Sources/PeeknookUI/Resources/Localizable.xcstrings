@@ -173,6 +173,10 @@
       "comment": "Tier B localization",
       "extractionState": "manual"
     },
+    "Choose a PDF or image to ask about": {
+      "comment": "File-import open-panel message.",
+      "extractionState": "manual"
+    },
     "Choose model": {
       "comment": "Settings: OpenAI-compatible model pill placeholder.",
       "extractionState": "manual"
@@ -389,6 +393,14 @@
       "comment": "Tier B localization",
       "extractionState": "manual"
     },
+    "Import": {
+      "comment": "File-import open-panel confirm button.",
+      "extractionState": "manual"
+    },
+    "Import file": {
+      "comment": "Idle command: open a PDF/image from disk to ask about.",
+      "extractionState": "manual"
+    },
     "Inference server": {
       "comment": "Settings: OpenAI-compatible status row title.",
       "extractionState": "manual"
@@ -595,6 +607,10 @@
     },
     "Required for capture": {
       "comment": "Permission row subtitle when a capture permission is denied.",
+      "extractionState": "manual"
+    },
+    "Open a PDF or image from disk to ask about": {
+      "comment": "Idle command help: Import file.",
       "extractionState": "manual"
     },
     "Open Ollama": {

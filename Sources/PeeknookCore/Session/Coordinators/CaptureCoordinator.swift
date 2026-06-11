@@ -87,26 +87,88 @@ final class CaptureCoordinator {
             _ = session.applyPhaseEvent(.setupNotReady)
             return
         }
+        guard beginCapturePhase(intent: intent) else { return }
+        let registry = session.captureRegistry
+        let ground = session.resolvedActiveProfile.primaryGround
+        let scope = session.settings.captureScope
+        let quick = session.settings.quickMode
+        let quality = session.settings.captureQuality
+        runCapture(intent: intent) {
+            let provider = try registry.resolve(ground)
+            let encoding = CaptureEncodingPolicy.resolve(scope: scope, quick: quick, quality: quality)
+            return try await provider.capture(scope: scope, quick: quick, encoding: encoding)
+        }
+    }
+
+    // MARK: - File import (event-scoped, permission-free)
+
+    /// Open-panel entry: a user-picked PDF/image becomes a vision turn through the same
+    /// commit → runTurn pipeline as screen and camera. The UI shows the panel and passes the chosen
+    /// URL here (cancelling the panel never reaches this, so the phase stays idle). Adds to the current
+    /// chat when one exists, else starts fresh — mirroring ``beginCapture()``.
+    func beginFileImport(url: URL) {
+        guard let session else { return }
+        switch session.phase {
+        case .idle, .result:
+            let intent: SessionOrchestrator.CaptureIntent = session.hasConversation ? .addToChat : .fresh
+            if intent == .addToChat, session.isContextBlocked {
+                if case .idle = session.phase {
+                    session.emitNotice(.contextFull)
+                    startFileImport(url: url, intent: .fresh)
+                }
+                return
+            }
+            startFileImport(url: url, intent: intent)
+        default:
+            return
+        }
+    }
+
+    private func startFileImport(url: URL, intent: SessionOrchestrator.CaptureIntent) {
+        guard let session else { return }
+        // File import grants its own access via the open panel — no Screen Recording / Camera TCC
+        // gate — so it deliberately skips the active-profile readiness check the screen path runs.
+        guard let importer = session.captureRegistry.fileImporter(for: .file) else {
+            _ = session.applyPhaseEvent(.captureFailed(.generic(message: "File import is unavailable.")))
+            return
+        }
+        guard beginCapturePhase(intent: intent) else { return }
+        let scope = session.settings.captureScope
+        let quick = session.settings.quickMode
+        let quality = session.settings.captureQuality
+        runCapture(intent: intent) {
+            let encoding = CaptureEncodingPolicy.resolve(scope: scope, quick: quick, quality: quality)
+            return try await importer.captureResult(fromFileAt: url, encoding: encoding)
+        }
+    }
+
+    // MARK: - Shared capture spine
+
+    /// Common pre-capture state reset + phase transition for every ground. Returns false when the
+    /// phase machine rejects the transition (the caller must not start the capture task).
+    private func beginCapturePhase(intent: SessionOrchestrator.CaptureIntent) -> Bool {
+        guard let session else { return false }
         session.abortSessionWork()
         session.lifecycle.pendingIntent = intent
         session.streamedAnswer = ""
         session.stopSpeechOutput()
-        guard case .applied = session.applyPhaseEvent(.beginCapture) else { return }
-        let generation = session.lifecycle.snapshotCapture()
+        guard case .applied = session.applyPhaseEvent(.beginCapture) else { return false }
+        return true
+    }
 
+    /// Runs `produce` (the ground-specific "get a `CaptureResult`" step) on the inference task, then
+    /// routes the result into the shared preview-or-commit flow with generation-guarded failure paths.
+    /// Screen passes a `provider.capture(...)` body; file import passes an `importer.captureResult(...)`
+    /// body — everything after the result is identical.
+    private func runCapture(
+        intent: SessionOrchestrator.CaptureIntent,
+        produce: @escaping () async throws -> CaptureResult
+    ) {
+        guard let session else { return }
+        let generation = session.lifecycle.snapshotCapture()
         session.lifecycle.inferenceTask = Task {
             do {
-                let provider = try session.captureRegistry.resolve(session.resolvedActiveProfile.primaryGround)
-                let encoding = CaptureEncodingPolicy.resolve(
-                    scope: session.settings.captureScope,
-                    quick: session.settings.quickMode,
-                    quality: session.settings.captureQuality
-                )
-                let result = try await provider.capture(
-                    scope: session.settings.captureScope,
-                    quick: session.settings.quickMode,
-                    encoding: encoding
-                )
+                let result = try await produce()
                 guard session.lifecycle.isCurrentCapture(generation), !Task.isCancelled else { return }
                 session.lifecycle.pendingCapture = result
                 session.lifecycle.pendingPreview = CapturePreview(capture: result)

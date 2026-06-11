@@ -123,13 +123,14 @@ final class CommandBarResolutionTests: XCTestCase {
         let context = ctx(isReady: true, hasResumePreview: true, enabledModules: [.screenCapture])
         XCTAssertEqual(
             layout.visibleCommands(.idle, in: context).map(\.id),
-            ["idle.resume", "idle.brief", "idle.model", "idle.depth", "idle.scope", "idle.capture"]
+            ["idle.resume", "idle.brief", "idle.model", "idle.depth", "idle.scope",
+             "idle.importFile", "idle.capture"]
         )
         // Without a resume preview the bar drops Resume and keeps order.
         let noResume = ctx(enabledModules: [.screenCapture])
         XCTAssertEqual(
             layout.visibleCommands(.idle, in: noResume).map(\.id),
-            ["idle.brief", "idle.model", "idle.depth", "idle.scope", "idle.capture"]
+            ["idle.brief", "idle.model", "idle.depth", "idle.scope", "idle.importFile", "idle.capture"]
         )
     }
 

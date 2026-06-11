@@ -18,7 +18,8 @@ final class CommandLayoutTests: XCTestCase {
     func testIdleBarReproducesTodaysOrder() {
         XCTAssertEqual(
             layout.forPlacement(.idle).map(\.id),
-            ["idle.resume", "idle.brief", "idle.model", "idle.depth", "idle.scope", "idle.capture"]
+            ["idle.resume", "idle.brief", "idle.model", "idle.depth", "idle.scope",
+             "idle.importFile", "idle.capture"]
         )
     }
 

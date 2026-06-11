@@ -432,6 +432,12 @@ public final class SessionOrchestrator {
         captureCoordinator.beginCapture()
     }
 
+    /// Import a PDF/image the user picked from disk as a vision turn (the UI presents the open panel
+    /// and passes the chosen URL). Skips the screen/camera permission gate — see `Ground.file`.
+    public func beginFileImport(url: URL) {
+        captureCoordinator.beginFileImport(url: url)
+    }
+
     /// Capture a new screenshot to **replace** the current chat (answer a different screen).
     public func retake() {
         captureCoordinator.retake()

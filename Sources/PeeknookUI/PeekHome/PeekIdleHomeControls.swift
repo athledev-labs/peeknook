@@ -4,6 +4,7 @@ import AppKit
 import PeeknookDesign
 import PeeknookCore
 import SwiftUI
+import UniformTypeIdentifiers
 
 // MARK: - Idle home: greeting only. Thread actions live in the command bar.
 
@@ -239,6 +240,7 @@ struct PeekIdleCommandBar: View {
     private func dispatch(_ action: CommandAction) {
         switch action {
         case .capture: onCapture()
+        case .importFile: presentFileImport()
         case .resume:  onResume()
         case .brief:
             PeekSessionBriefStrip.toggleComposer(
@@ -249,6 +251,20 @@ struct PeekIdleCommandBar: View {
             )
         default: break
         }
+    }
+
+    /// Open panel for a PDF/image, then hand the URL to the orchestrator. Cancelling does nothing —
+    /// the session never leaves idle (the file ground's graceful "cancel" path, no failure card).
+    private func presentFileImport() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.allowedContentTypes = [.pdf, .image]
+        panel.prompt = PeekLocalized("Import")
+        panel.message = PeekLocalized("Choose a PDF or image to ask about")
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        orchestrator.beginFileImport(url: url)
     }
 
     /// Bespoke cells the generic renderer delegates back to the host: the preflight dropdowns bound to

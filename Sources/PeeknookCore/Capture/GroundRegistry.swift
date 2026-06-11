@@ -34,4 +34,10 @@ public struct GroundRegistry: Sendable {
     public func sessionController(for ground: Ground) -> (any CameraSessionControlling)? {
         providers[ground] as? any CameraSessionControlling
     }
+
+    /// The file-import arm for a ground, when its provider can turn a picked URL into a capture
+    /// (the `.file` ground). Other grounds return nil. Mirrors ``sessionController(for:)``.
+    public func fileImporter(for ground: Ground) -> (any FileImporting)? {
+        providers[ground] as? any FileImporting
+    }
 }
