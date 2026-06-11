@@ -133,13 +133,22 @@ public struct PeekHomeView: View {
                 appState.moduleBreadcrumb = nil
             }
         }
-        .task {
+        // Permission rows + capture-step copy are panel UI — the surface stays mounted (0×0) while the
+        // notch is collapsed, so gate these polls on visibility instead of letting them run forever.
+        .task(id: appState.isNookVisible) {
+            guard appState.isNookVisible else { return }
             while !Task.isCancelled {
                 setup.refreshCapturePermission()
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
             }
         }
-        .task {
+        // Readiness (the visible badge/CTA) and model warm-up both only matter while the panel is on
+        // screen, so pause them when the notch is collapsed. Ollama's keep_alive keeps the model
+        // resident for ~10 min after the last warm-up, so a ⌘⇧P capture shortly after collapsing is
+        // still warm; a longer idle lets the model unload (freeing its RAM) rather than re-warming for
+        // a panel nobody is looking at. Re-expanding refreshes and re-warms immediately.
+        .task(id: appState.isNookVisible) {
+            guard appState.isNookVisible else { return }
             while !Task.isCancelled {
                 await setup.refresh()
                 if setup.isReady {

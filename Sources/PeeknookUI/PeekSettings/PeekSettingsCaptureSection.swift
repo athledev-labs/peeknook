@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import PeeknookCore
+import PeeknookDesign
 import SwiftUI
 
 struct PeekSettingsCaptureSection: View {
@@ -10,6 +11,8 @@ struct PeekSettingsCaptureSection: View {
     var onCaptureHotkeyChange: ((CaptureHotkey) -> Void)?
     var onBriefHotkeyChange: ((CaptureHotkey) -> Void)?
     var onCameraHotkeyChange: ((CaptureHotkey) -> Void)?
+
+    @EnvironmentObject private var appState: AppState
 
     // Reading capture-permission TCC (CGPreflightScreenCaptureAccess et al.) is a syscall sweep, and
     // this section re-renders on every settings/probe change while the panel is open. Snapshot the
@@ -100,8 +103,8 @@ struct PeekSettingsCaptureSection: View {
                 isOn: persistConversationBinding
             )
         }
-        .task {
-            guard !setup.skipsLiveProbes else { return }
+        .task(id: appState.isNookVisible) {
+            guard !setup.skipsLiveProbes, appState.isNookVisible else { return }
             while !Task.isCancelled {
                 setup.refreshCapturePermission()
                 permissionRequirements = capturePermissionRequirements

@@ -151,11 +151,13 @@ public struct PeekSettingsView: View {
             }
             applyPendingFocusIfNeeded()
         }
-        .task {
-            guard !setup.skipsLiveProbes else { return }
+        .task(id: appState.isNookVisible) {
+            guard !setup.skipsLiveProbes, appState.isNookVisible else { return }
             // Light periodic refresh while the panel is open so a server dying, or coming back -
             // mid-session updates the badge without waiting on a URL/model edit. Silent (no
-            // "Checking" flicker) since it's a background poll, not a user-triggered check.
+            // "Checking" flicker) since it's a background poll, not a user-triggered check. Gated on
+            // visibility: the Settings surface stays mounted (0×0) while collapsed, so an un-gated
+            // loop would keep probing a panel nobody is looking at.
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 5_000_000_000)
                 if Task.isCancelled { break }
