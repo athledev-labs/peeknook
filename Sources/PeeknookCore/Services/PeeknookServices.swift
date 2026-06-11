@@ -22,7 +22,7 @@ public enum PeeknookServices {
     ) -> Stack {
         var settings = settings
         let profileStore = ProfileStore(defaults: defaults)
-        let setup = SetupCoordinator(settings: settings, defaults: defaults)
+        let setup = SetupCoordinator(settings: settings, defaults: defaults, probeCache: dependencies.probeCache)
         setup.profileStore = profileStore
         setup.applyRecommendedModelIfNeeded()
         settings = setup.settings

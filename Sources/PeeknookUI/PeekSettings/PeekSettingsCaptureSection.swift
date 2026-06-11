@@ -11,6 +11,12 @@ struct PeekSettingsCaptureSection: View {
     var onBriefHotkeyChange: ((CaptureHotkey) -> Void)?
     var onCameraHotkeyChange: ((CaptureHotkey) -> Void)?
 
+    // Reading capture-permission TCC (CGPreflightScreenCaptureAccess et al.) is a syscall sweep, and
+    // this section re-renders on every settings/probe change while the panel is open. Snapshot the
+    // rows into @State and refresh them only on the 2s poll below, keeping the syscalls off the
+    // render path so the open animation stays smooth.
+    @State private var permissionRequirements: [PermissionRequirement] = []
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             PeekSettingsFormField(
@@ -98,6 +104,7 @@ struct PeekSettingsCaptureSection: View {
             guard !setup.skipsLiveProbes else { return }
             while !Task.isCancelled {
                 setup.refreshCapturePermission()
+                permissionRequirements = capturePermissionRequirements
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
             }
         }
@@ -105,7 +112,7 @@ struct PeekSettingsCaptureSection: View {
 
     @ViewBuilder
     private var permissionRows: some View {
-        ForEach(capturePermissionRequirements) { requirement in
+        ForEach(permissionRequirements) { requirement in
             PeekSettingsCommandRow(
                 icon: permissionIcon(requirement.permission),
                 title: requirement.permission.displayName,

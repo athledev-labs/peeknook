@@ -14,6 +14,10 @@ public struct PeeknookDependencies {
     public var conversationArchive: ConversationArchiveStore?
     public var storageFootprint: any StorageFootprinting
     public var credentialStore: any CredentialStoring
+    /// Shared Ollama health-probe coalescer. Created here so the Ollama inference engine (built in this
+    /// bag) and the setup refresh (wired in `makeStack`) share ONE cache and their overlapping
+    /// `/api/version` + `/api/tags` probes on a Settings open collapse to a single request.
+    public var probeCache: OllamaProbeCache
 
     public init(
         captureRegistry: GroundRegistry,
@@ -25,7 +29,8 @@ public struct PeeknookDependencies {
         modelCatalog: ModelCatalogService,
         conversationArchive: ConversationArchiveStore? = nil,
         storageFootprint: (any StorageFootprinting)? = nil,
-        credentialStore: any CredentialStoring = InMemoryCredentialStore()
+        credentialStore: any CredentialStoring = InMemoryCredentialStore(),
+        probeCache: OllamaProbeCache = OllamaProbeCache()
     ) {
         self.captureRegistry = captureRegistry
         self.inferenceRegistry = inferenceRegistry
@@ -38,6 +43,7 @@ public struct PeeknookDependencies {
         self.storageFootprint = storageFootprint
             ?? StorageFootprintService(archive: conversationArchive)
         self.credentialStore = credentialStore
+        self.probeCache = probeCache
     }
 
     /// Production defaults: live capture, Ollama inference, on-device speech when available.
@@ -53,6 +59,8 @@ public struct PeeknookDependencies {
         let previewSpeechSynthesizer: any SpeechSynthesizing = StubSpeechSynthesizer()
         #endif
         let credentialStore = KeychainCredentialStore()
+        // One coalescer shared by the Ollama engine here and the setup refresh in `makeStack`.
+        let probeCache = OllamaProbeCache()
         return PeeknookDependencies(
             captureRegistry: GroundRegistry([
                 .screen: MacCaptureProvider(),
@@ -61,7 +69,7 @@ public struct PeeknookDependencies {
                 .camera: CameraCaptureProvider(),
             ]),
             inferenceRegistry: InferenceBackendRegistry([
-                .ollama: OllamaInferenceEngine(),
+                .ollama: OllamaInferenceEngine(probeCache: probeCache),
                 // The same store instance the deps expose — the engine reads the key per request,
                 // so the orchestrator never sees key material.
                 .openAICompatible: OpenAICompatibleInferenceEngine(
@@ -73,7 +81,8 @@ public struct PeeknookDependencies {
             answerSpeechSynthesizer: answerSpeechSynthesizer,
             previewSpeechSynthesizer: previewSpeechSynthesizer,
             modelCatalog: ModelCatalogService.makeDefault(),
-            credentialStore: credentialStore
+            credentialStore: credentialStore,
+            probeCache: probeCache
         )
     }
 

@@ -26,6 +26,9 @@ public struct PeekSettingsView: View {
     @State private var visionModelAdvancedExpanded = false
     @State private var pendingDownload: InferenceModelOption?
     @State private var scrollToSectionID: String?
+    // Physical RAM doesn't change while the panel is open; snapshot once instead of probing
+    // ProcessInfo on every body re-evaluation (the panel re-renders on each settings/probe change).
+    @State private var profile = SystemProfile.current()
 
     public init(
         orchestrator: SessionOrchestrator,
@@ -50,7 +53,6 @@ public struct PeekSettingsView: View {
     }
 
     public var body: some View {
-        let profile = SystemProfile.current()
         ScrollViewReader { proxy in
             PeekScrollView {
                 VStack(alignment: .leading, spacing: 16) {

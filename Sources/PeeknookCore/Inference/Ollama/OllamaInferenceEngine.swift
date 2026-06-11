@@ -5,10 +5,15 @@ import Foundation
 public struct OllamaInferenceEngine: InferenceEngine, Sendable {
     public var session: URLSession
     private let client: OllamaHTTPClient
+    /// Shared health-probe coalescer (nil = probe the network directly, the original behavior). Lets
+    /// `health`/`ensureModel` `/api/version` + `/api/tags` checks coalesce with the setup refresh that
+    /// fires alongside them on a Settings open.
+    private let probeCache: OllamaProbeCache?
 
-    public init(session: URLSession = .shared) {
+    public init(session: URLSession = .shared, probeCache: OllamaProbeCache? = nil) {
         self.session = session
         self.client = OllamaHTTPClient(session: session)
+        self.probeCache = probeCache
     }
 
     public func health(baseURL: String, model: String, acceptInsecureRemote: Bool) async -> InferenceHealth {
@@ -60,26 +65,38 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
     }
 
     private func fetchVersion(baseURL: URL) async throws {
-        let url = baseURL.appendingPathComponent("api/version")
-        var req = URLRequest(url: url)
-        req.httpMethod = "GET"
-        req.timeoutInterval = 4
-        let (_, response) = try await session.data(for: req)
-        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-            throw InferenceError.ollamaUnreachable(
-                "Start Ollama: run `ollama serve` in Terminal."
-            )
+        let session = self.session
+        _ = try await OllamaProbeCache.resolve(
+            probeCache, baseURL: baseURL, path: "api/version", ttl: OllamaProbeCache.healthTTL
+        ) {
+            let url = baseURL.appendingPathComponent("api/version")
+            var req = URLRequest(url: url)
+            req.httpMethod = "GET"
+            req.timeoutInterval = 4
+            let (data, response) = try await session.data(for: req)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+                throw InferenceError.ollamaUnreachable(
+                    "Start Ollama: run `ollama serve` in Terminal."
+                )
+            }
+            return data
         }
     }
 
     private func ensureModel(baseURL: URL, model: String) async throws {
-        let url = baseURL.appendingPathComponent("api/tags")
-        var req = URLRequest(url: url)
-        req.httpMethod = "GET"
-        req.timeoutInterval = 8
-        let (data, response) = try await session.data(for: req)
-        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-            throw InferenceError.ollamaUnreachable("Could not list Ollama models.")
+        let session = self.session
+        let data = try await OllamaProbeCache.resolve(
+            probeCache, baseURL: baseURL, path: "api/tags", ttl: OllamaProbeCache.healthTTL
+        ) {
+            let url = baseURL.appendingPathComponent("api/tags")
+            var req = URLRequest(url: url)
+            req.httpMethod = "GET"
+            req.timeoutInterval = 8
+            let (data, response) = try await session.data(for: req)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+                throw InferenceError.ollamaUnreachable("Could not list Ollama models.")
+            }
+            return data
         }
         let tags = try JSONDecoder().decode(OllamaTagsResponse.self, from: data)
         guard OllamaSetupClient.matchesModel(installedNames: tags.models.map(\.name), wanted: model) else {

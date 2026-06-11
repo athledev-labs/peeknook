@@ -30,7 +30,10 @@ public final class SetupCoordinator {
     /// When true, ``refresh()`` is a no-op and ``isReady`` does not require live TCC probes.
     public var skipsLiveProbes = false
     private let defaults: UserDefaults
-    private let ollama = OllamaSetupClient()
+    private let ollama: OllamaSetupClient
+    /// Shared health-probe coalescer (nil = no coalescing). Held so a completed pull can invalidate the
+    /// `/api/tags` cache before the post-pull refresh re-reads it.
+    private let probeCache: OllamaProbeCache?
     /// Live TCC status, injectable so readiness is testable without the real Privacy database.
     private let permissionStatusProvider: @MainActor () -> CapturePermissionStatus
     private var pullTask: Task<Void, Never>?
@@ -39,10 +42,13 @@ public final class SetupCoordinator {
     public init(
         settings: PeeknookSettings,
         defaults: UserDefaults,
+        probeCache: OllamaProbeCache? = nil,
         permissionStatus: @escaping @MainActor () -> CapturePermissionStatus = { CapturePermissionStatus.current() }
     ) {
         self.settings = settings
         self.defaults = defaults
+        self.probeCache = probeCache
+        self.ollama = OllamaSetupClient(probeCache: probeCache)
         self.permissionStatusProvider = permissionStatus
         if defaults.bool(forKey: Self.smokeTestKey) {
             smokeTestStep = .complete
@@ -160,10 +166,8 @@ public final class SetupCoordinator {
 
         if status.isReachable {
             ollamaStep = .complete
-            installedModelNames = await ollama.installedModelNames(
-                baseURL: settings.ollamaBaseURL,
-                acceptInsecureRemote: settings.acceptInsecureRemoteOllama
-            )
+            // The list comes back on the status probe itself now — no second `/api/tags` round trip.
+            installedModelNames = status.installedNames
         } else {
             ollamaStep = .failed(status.reachabilityMessage)
             modelStep = .pending
@@ -213,6 +217,9 @@ public final class SetupCoordinator {
                 }
             }
             isPullingModel = false
+            // The pull changed the installed-model set; drop the cached `/api/tags` so the refresh
+            // below (and any concurrent consumer) sees the newly installed tag, not a stale list.
+            await probeCache?.invalidate(baseURL: settings.ollamaBaseURL)
             await refresh()
         }
     }

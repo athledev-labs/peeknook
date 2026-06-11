@@ -6,6 +6,9 @@ public struct OllamaSetupStatus: Sendable, Equatable {
     public var isReachable: Bool
     public var reachabilityMessage: String
     public var isModelInstalled: Bool
+    /// Installed tags read off the SAME `/api/tags` fetch that decided `isModelInstalled`, so a
+    /// `setup.refresh()` doesn't fetch the list a second time. Empty when unreachable.
+    public var installedNames: [String] = []
 
     public var isInferenceReady: Bool { isReachable && isModelInstalled }
 }
@@ -19,10 +22,13 @@ public enum OllamaPullEvent: Sendable, Equatable {
 public struct OllamaSetupClient: Sendable {
     public var session: URLSession
     private let client: OllamaHTTPClient
+    /// Shared health-probe coalescer (nil = probe the network directly, the original behavior).
+    private let probeCache: OllamaProbeCache?
 
-    public init(session: URLSession = .shared) {
+    public init(session: URLSession = .shared, probeCache: OllamaProbeCache? = nil) {
         self.session = session
         self.client = OllamaHTTPClient(session: session)
+        self.probeCache = probeCache
     }
 
     public func installedModelNames(baseURL: String, acceptInsecureRemote: Bool = false) async -> [String] {
@@ -35,9 +41,7 @@ public struct OllamaSetupClient: Sendable {
         acceptInsecureRemote: Bool = false
     ) async throws -> [OllamaModelFootprint] {
         let base = try resolveBaseURL(baseURL, acceptInsecureRemote: acceptInsecureRemote)
-        let data = try await getJSON(baseURL: base, path: "api/tags", timeout: 8)
-        let tags = try JSONDecoder().decode(OllamaTagsResponse.self, from: data)
-        return tags.models.map { model in
+        return try await fetchTagModels(baseURL: base).map { model in
             OllamaModelFootprint(name: model.name, sizeBytes: model.size ?? 0)
         }
     }
@@ -59,11 +63,14 @@ public struct OllamaSetupClient: Sendable {
         do {
             let base = try resolveBaseURL(baseURL, acceptInsecureRemote: acceptInsecureRemote)
             try await ping(baseURL: base)
-            let installed = try await isModelInstalled(baseURL: base, model: model)
+            // One `/api/tags` fetch yields both "is this model installed" and the full installed list
+            // the caller needs, instead of probing tags here and again for the list.
+            let installedNames = try await fetchTagModels(baseURL: base).map(\.name)
             return OllamaSetupStatus(
                 isReachable: true,
                 reachabilityMessage: "Ollama is running.",
-                isModelInstalled: installed
+                isModelInstalled: Self.matchesModel(installedNames: installedNames, wanted: model),
+                installedNames: installedNames
             )
         } catch let error as InferenceError {
             return OllamaSetupStatus(
@@ -101,34 +108,46 @@ public struct OllamaSetupClient: Sendable {
     }
 
     private func ping(baseURL: URL) async throws {
-        let url = baseURL.appendingPathComponent("api/version")
-        var req = URLRequest(url: url)
-        req.httpMethod = "GET"
-        req.timeoutInterval = 4
-        let (_, response) = try await session.data(for: req)
-        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-            throw InferenceError.ollamaUnreachable(
-                "Ollama is not running. Install from ollama.com, then open the Ollama app or run `ollama serve`."
-            )
+        let session = self.session
+        _ = try await OllamaProbeCache.resolve(
+            probeCache, baseURL: baseURL, path: "api/version", ttl: OllamaProbeCache.healthTTL
+        ) {
+            let url = baseURL.appendingPathComponent("api/version")
+            var req = URLRequest(url: url)
+            req.httpMethod = "GET"
+            req.timeoutInterval = 4
+            let (data, response) = try await session.data(for: req)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+                throw InferenceError.ollamaUnreachable(
+                    "Ollama is not running. Install from ollama.com, then open the Ollama app or run `ollama serve`."
+                )
+            }
+            return data
         }
     }
 
-    private func isModelInstalled(baseURL: URL, model: String) async throws -> Bool {
-        let data = try await getJSON(baseURL: baseURL, path: "api/tags", timeout: 8)
-        let tags = try JSONDecoder().decode(OllamaTagsResponse.self, from: data)
-        return Self.matchesModel(installedNames: tags.models.map(\.name), wanted: model)
+    /// Installed tags from a single (cacheable) `/api/tags` fetch. Both the reachability/model check in
+    /// `status` and the footprint list derive from this so a refresh hits the endpoint once.
+    private func fetchTagModels(baseURL: URL) async throws -> [OllamaTagsResponse.Model] {
+        let data = try await getJSON(baseURL: baseURL, path: "api/tags", timeout: 8, ttl: OllamaProbeCache.healthTTL)
+        return try JSONDecoder().decode(OllamaTagsResponse.self, from: data).models
     }
 
-    private func getJSON(baseURL: URL, path: String, timeout: TimeInterval) async throws -> Data {
-        let url = baseURL.appendingPathComponent(path)
-        var req = URLRequest(url: url)
-        req.httpMethod = "GET"
-        req.timeoutInterval = timeout
-        let (data, response) = try await session.data(for: req)
-        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-            throw InferenceError.ollamaUnreachable("Could not reach Ollama at \(baseURL.absoluteString).")
+    /// `ttl > 0` routes the GET through the shared probe cache (when one is injected); `ttl == 0`
+    /// (the default, used for non-coalesced probes like `/api/ps`) always hits the network.
+    private func getJSON(baseURL: URL, path: String, timeout: TimeInterval, ttl: TimeInterval = 0) async throws -> Data {
+        let session = self.session
+        return try await OllamaProbeCache.resolve(probeCache, baseURL: baseURL, path: path, ttl: ttl) {
+            let url = baseURL.appendingPathComponent(path)
+            var req = URLRequest(url: url)
+            req.httpMethod = "GET"
+            req.timeoutInterval = timeout
+            let (data, response) = try await session.data(for: req)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+                throw InferenceError.ollamaUnreachable("Could not reach Ollama at \(baseURL.absoluteString).")
+            }
+            return data
         }
-        return data
     }
 
     /// Tag-aware match. Ollama implies `:latest` when a tag is omitted, so bare "gemma4"

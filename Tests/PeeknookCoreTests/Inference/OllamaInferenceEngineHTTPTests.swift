@@ -12,26 +12,38 @@ final class OllamaURLProtocolStub: URLProtocol {
     }
 
     static var responsesByPath: [String: [QueuedResponse]] = [:]
+    /// Number of requests that reached the network per path — lets dedup tests assert that
+    /// overlapping probes coalesced to a single round trip.
+    static var requestCountByPath: [String: Int] = [:]
     static var recordedBodies: [Data] = []
     /// One entry per request (nil = no Authorization header) — lets backend tests assert the
     /// bearer key is injected only when a credential resolves.
     static var recordedAuthorizationHeaders: [String?] = []
+    /// Guards the shared statics so concurrent probes (the coalescing tests fire requests in
+    /// parallel) don't race on the dictionaries.
+    static let lock = NSLock()
 
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     override func startLoading() {
         let path = request.url?.path ?? "/"
-        Self.recordedAuthorizationHeaders.append(request.value(forHTTPHeaderField: "Authorization"))
-        if request.httpMethod == "POST", let body = Self.requestBody(from: request) {
-            Self.recordedBodies.append(body)
-        }
-        guard var queue = Self.responsesByPath[path], !queue.isEmpty else {
+        let authorization = request.value(forHTTPHeaderField: "Authorization")
+        let postBody = request.httpMethod == "POST" ? Self.requestBody(from: request) : nil
+
+        Self.lock.lock()
+        Self.requestCountByPath[path, default: 0] += 1
+        Self.recordedAuthorizationHeaders.append(authorization)
+        if let postBody { Self.recordedBodies.append(postBody) }
+        var queue = Self.responsesByPath[path] ?? []
+        let response = queue.isEmpty ? nil : queue.removeFirst()
+        Self.responsesByPath[path] = queue.isEmpty ? nil : queue
+        Self.lock.unlock()
+
+        guard let response else {
             client?.urlProtocol(self, didFailWithError: URLError(.badServerResponse))
             return
         }
-        let response = queue.removeFirst()
-        Self.responsesByPath[path] = queue.isEmpty ? nil : queue
         let http = HTTPURLResponse(
             url: request.url!,
             statusCode: response.statusCode,
