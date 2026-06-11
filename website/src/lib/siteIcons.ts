@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 import {
   CircleAlert,
+  CircleHelp,
   FileText,
+  History,
   LayoutGrid,
   Scale,
+  ScrollText,
   ShieldCheck,
   Tag,
 } from "lucide-static";
@@ -11,10 +14,13 @@ import {
 export type SiteIconName =
   | "features"
   | "docs"
+  | "faq"
+  | "changelog"
   | "releases"
   | "github"
   | "privacy"
   | "licenses"
+  | "terms"
   | "issues";
 
 /** Strip Lucide defaults so CSS controls size; keep stroke styling. */
@@ -32,9 +38,12 @@ const githubMark = `<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="tr
 export const siteIconSvg: Record<SiteIconName, string> = {
   features: normalizeLucideSvg(LayoutGrid),
   docs: normalizeLucideSvg(FileText),
+  faq: normalizeLucideSvg(CircleHelp),
+  changelog: normalizeLucideSvg(History),
   releases: normalizeLucideSvg(Tag),
   github: githubMark,
   privacy: normalizeLucideSvg(ShieldCheck),
   licenses: normalizeLucideSvg(Scale),
+  terms: normalizeLucideSvg(ScrollText),
   issues: normalizeLucideSvg(CircleAlert),
 };

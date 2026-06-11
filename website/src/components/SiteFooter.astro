@@ -1,41 +1,48 @@
 ---
 // SPDX-License-Identifier: Apache-2.0
 import ChromeLink from "./ChromeLink.astro";
+import { sitePath, type SiteCurrent } from "../lib/sitePages";
 
 interface Props {
   base: string;
   version: string;
-  current?: "home" | "privacy" | "licenses" | "docs" | "features";
+  current?: SiteCurrent;
 }
 
 const { base, version, current } = Astro.props;
+
+const links = [
+  { href: sitePath(base, "docs/"), icon: "docs" as const, label: "Docs", page: "docs" },
+  { href: sitePath(base, "faq/"), icon: "faq" as const, label: "FAQ", page: "faq" },
+  { href: sitePath(base, "changelog/"), icon: "changelog" as const, label: "Changelog", page: "changelog" },
+  { href: sitePath(base, "privacy/"), icon: "privacy" as const, label: "Privacy", page: "privacy" },
+  { href: sitePath(base, "terms/"), icon: "terms" as const, label: "Terms", page: "terms" },
+  { href: sitePath(base, "licenses/"), icon: "licenses" as const, label: "Licenses", page: "licenses" },
+  {
+    href: "https://github.com/glendonC/peeknook/issues",
+    icon: "issues" as const,
+    label: "Issues",
+    external: true,
+  },
+] as const;
 ---
 
 <footer class="footbar">
   <div class="page-grid page-grid--chrome">
     <span class="footbar-version">v{version}</span>
     <div class="footbar-links">
-      <ChromeLink
-        href={`${base}privacy/`}
-        icon="privacy"
-        current={current === "privacy"}
-      >
-        Privacy
-      </ChromeLink>
-      <ChromeLink
-        href={`${base}licenses/`}
-        icon="licenses"
-        current={current === "licenses"}
-      >
-        Licenses
-      </ChromeLink>
-      <ChromeLink
-        href="https://github.com/glendonC/peeknook/issues"
-        icon="issues"
-        external
-      >
-        Issues
-      </ChromeLink>
+      {
+        links.map((link) => (
+          <ChromeLink
+            href={link.href}
+            icon={link.icon}
+            current={"page" in link && current === link.page}
+            external={"external" in link && link.external}
+          >
+            {link.label}
+          </ChromeLink>
+        ))
+      }
     </div>
   </div>
 </footer>

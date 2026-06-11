@@ -1,5 +1,6 @@
 ---
 // SPDX-License-Identifier: Apache-2.0
+import { sitePath } from "../lib/sitePages";
 
 export interface Feature {
   title: string;
@@ -49,5 +50,5 @@ const base = import.meta.env.BASE_URL;
 
 <p class="feature-footnote">
   Optional features are off until you turn them on. See
-  <a href={`${base}privacy/`}>Privacy</a> for what can leave your Mac.
+  <a href={sitePath(base, "privacy/")}>Privacy</a> for what can leave your Mac.
 </p>

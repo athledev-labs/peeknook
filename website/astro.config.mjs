@@ -5,5 +5,10 @@ import { defineConfig } from "astro/config";
 export default defineConfig({
   site: "https://glendonc.github.io",
   base: "/peeknook",
-  trailingSlash: "always",
+  trailingSlash: "ignore",
+  redirects: {
+    "/download/": "/docs/",
+    "/refunds/": "/faq/",
+    "/support/": "/faq/",
+  },
 });

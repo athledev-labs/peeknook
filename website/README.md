@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
-Static marketing site for Peeknook (home, install guide, privacy, licenses).
+Static marketing site for Peeknook.
 
 ## Develop
 
@@ -18,16 +18,33 @@ Open http://localhost:4321/peeknook/ (base path matches GitHub Pages).
 npm run build
 ```
 
-Output goes to `website/dist/`. Privacy and licenses pages render `PRIVACY.md` and `NOTICE` from the repo root at build time.
+Markdown pages render from the repo root at build time:
 
-## Deploy (GitHub Pages)
+| Site path | Source |
+|-----------|--------|
+| `/docs/` | `INSTALL.md` |
+| `/privacy/` | `PRIVACY.md` |
+| `/licenses/` | `NOTICE` |
+| `/terms/` | `TERMS.md` |
+| `/faq/` | `FAQ.md` |
 
-Push to `main` with the `website/` folder present. The workflow in `.github/workflows/pages.yml` builds and publishes to:
+Changelog and download metadata fetch [GitHub Releases](https://github.com/glendonC/peeknook/releases) at build time.
 
-https://glendonc.github.io/peeknook/
+## Deploy
 
-Release download URLs are pinned in `src/data/release.ts` (v0.1.0 today). Update that file on each ship, or automate with the GitHub Releases API later.
+Push to `main` — `.github/workflows/pages.yml` publishes to https://glendonc.github.io/peeknook/
 
-## Custom domain (later)
+## Site standards
 
-Set `site` and `base` in `astro.config.mjs`, then point DNS at GitHub Pages or Cloudflare.
+Static site — pages are pre-rendered HTML. No app-style loading spinners.
+
+| Concern | Approach |
+|---------|----------|
+| **404** | `src/pages/404.astro` → `404.html` (GitHub Pages serves this for bad paths) |
+| **Loading** | System fonts only — no webfont fetch, no flash |
+| **Motion** | `prefers-reduced-motion` disables animations |
+| **Focus** | Visible `:focus-visible` rings; skip link to `#main-content` |
+| **SEO errors** | 404 uses `noindex` |
+| **Release data** | Fetched at **build** time (CI), not in the browser |
+
+When you add payments or client-side features later, revisit loading/error UI then — not before.

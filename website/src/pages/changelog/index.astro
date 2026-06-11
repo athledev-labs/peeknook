@@ -1,0 +1,117 @@
+---
+// SPDX-License-Identifier: Apache-2.0
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import {
+  formatReleaseDate,
+  getChangelog,
+} from "../../lib/changelog";
+import { getRelease } from "../../lib/release";
+import { sitePath } from "../../lib/sitePages";
+
+const release = await getRelease();
+const entries = await getChangelog();
+const base = import.meta.env.BASE_URL;
+---
+
+<BaseLayout
+  title="Changelog"
+  description="Peeknook release notes — version history and highlights."
+  current="changelog"
+>
+  <section class="home-hero">
+    <div class="home-hero-copy">
+      <h1>Changelog</h1>
+      <p class="home-hero-tagline">
+        Release history for the signed macOS app. Newest first.
+      </p>
+    </div>
+
+    <div class="doc-guide changelog-list">
+      {
+        entries.map((entry) => (
+          <article class="changelog-entry">
+            <header class="changelog-header">
+              <h2 class="changelog-version">
+                <a href={entry.url}>{entry.version}</a>
+              </h2>
+              <time
+                class="changelog-date"
+                datetime={entry.publishedAt}
+              >
+                {formatReleaseDate(entry.publishedAt)}
+              </time>
+            </header>
+            <div class="prose changelog-body" set:html={entry.bodyHtml} />
+          </article>
+        ))
+      }
+    </div>
+
+    <p class="doc-note changelog-foot">
+      All builds: <a href={release.latestReleasesURL}>GitHub Releases</a>
+      · Install: <a href={sitePath(base, "docs/")}>Docs</a>
+    </p>
+  </section>
+</BaseLayout>
+
+<style>
+  .changelog-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .changelog-entry {
+    padding: 1.75rem 0;
+    border-top: 0.5px solid var(--line-soft);
+  }
+
+  .changelog-entry:first-child {
+    border-top: 0;
+    padding-top: 0;
+  }
+
+  .changelog-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+    margin-bottom: 0.85rem;
+  }
+
+  .changelog-version {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(1.05rem, 2vw, 1.2rem);
+    font-weight: var(--weight-regular);
+    letter-spacing: -0.02em;
+  }
+
+  .changelog-version a {
+    color: inherit;
+    border-bottom: 0.5px solid var(--line);
+  }
+
+  .changelog-version a:hover {
+    border-color: rgba(0, 0, 0, 0.32);
+  }
+
+  .changelog-date {
+    font-size: 0.75rem;
+    font-weight: var(--weight-light);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+
+  .changelog-body :global(p:first-child) {
+    margin-top: 0;
+  }
+
+  .changelog-foot {
+    margin-top: 1.5rem;
+    font-size: 0.8125rem;
+    color: var(--text-faint);
+  }
+</style>

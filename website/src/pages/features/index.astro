@@ -3,9 +3,6 @@
 import ArticlePage from "../../components/ArticlePage.astro";
 import FeatureList from "../../components/FeatureList.astro";
 import type { Feature } from "../../components/FeatureList.astro";
-import { getRelease } from "../../lib/release";
-
-const release = await getRelease();
 
 const features: Feature[] = [
   {
@@ -103,7 +100,6 @@ const features: Feature[] = [
   tagline="Private intelligence for everything on your screen."
   description="Ask about what's on your screen with private AI on your Mac."
   current="features"
-  downloadURL={release.dmgURL}
 >
   <FeatureList features={features} />
 </ArticlePage>

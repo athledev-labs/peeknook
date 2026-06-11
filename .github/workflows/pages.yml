@@ -7,6 +7,9 @@ on:
       - "website/**"
       - "PRIVACY.md"
       - "NOTICE"
+      - "INSTALL.md"
+      - "TERMS.md"
+      - "FAQ.md"
       - ".github/workflows/pages.yml"
   release:
     types: [published]

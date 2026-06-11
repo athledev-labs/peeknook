@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+User-agent: *
+Allow: /peeknook/
+
+Sitemap: https://glendonc.github.io/peeknook/sitemap.xml

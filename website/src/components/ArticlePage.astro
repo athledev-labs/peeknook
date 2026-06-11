@@ -1,26 +1,21 @@
 ---
 // SPDX-License-Identifier: Apache-2.0
 import BaseLayout from "../layouts/BaseLayout.astro";
+import type { SiteCurrent } from "../lib/sitePages";
 
 interface Props {
   title: string;
   tagline?: string;
   description?: string;
-  current: "privacy" | "licenses" | "docs" | "features";
-  downloadURL?: string;
+  current: SiteCurrent;
 }
 
-const { title, tagline, description, current, downloadURL } = Astro.props;
+const { title, tagline, description, current } = Astro.props;
 const meta = description ?? tagline;
 const hasActions = Astro.slots.has("actions");
 ---
 
-<BaseLayout
-  title={title}
-  description={meta}
-  current={current}
-  fixedDownloadURL={downloadURL}
->
+<BaseLayout title={title} description={meta} current={current}>
   <section class="home-hero">
     <div class="home-hero-copy">
       <h1>{title}</h1>

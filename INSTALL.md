@@ -116,7 +116,7 @@ Rebind capture and brief shortcuts in **Settings → Capture**.
 
 ## Verify your download (optional)
 
-On the [Download](https://glendonc.github.io/peeknook/download/) page, compare the published **SHA-256** checksum with your `.dmg` file:
+On [GitHub Releases](https://github.com/glendonC/peeknook/releases/latest) or in [Docs → Advanced](https://glendonc.github.io/peeknook/docs/#verify-checksum), compare the published **SHA-256** checksum with your `.dmg` file:
 
 ```sh
 shasum -a 256 ~/Downloads/Peeknook*.dmg
@@ -132,7 +132,8 @@ By default, inference stays on this Mac and capture runs only when you press **�
 
 ## Getting help
 
-Open a [GitHub Issue](https://github.com/glendonC/peeknook/issues) and include: macOS version, Peeknook version, Ollama running (yes/no), model tag, Screen Recording granted (yes/no), and steps to reproduce.
+- [FAQ](https://glendonc.github.io/peeknook/faq/) — Ollama, permissions, common fixes
+- [GitHub Issues](https://github.com/glendonC/peeknook/issues) — bug reports
 
 ---
 

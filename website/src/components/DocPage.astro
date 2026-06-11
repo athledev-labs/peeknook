@@ -2,15 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { renderRepoMarkdown } from "../lib/markdown";
+import type { SiteCurrent } from "../lib/sitePages";
 
 interface Props {
   title: string;
   description?: string;
   source: string;
-  current: "privacy" | "licenses";
+  current: SiteCurrent;
+  tagline?: string;
 }
 
-const { title, description, source, current } = Astro.props;
+const { title, description, source, current, tagline } = Astro.props;
 const { html } = renderRepoMarkdown(source, { stripLeadingH1: true });
 ---
 
@@ -18,8 +20,8 @@ const { html } = renderRepoMarkdown(source, { stripLeadingH1: true });
   <section class="home-hero">
     <div class="home-hero-copy">
       <h1>{title}</h1>
-      {description && <p class="home-hero-tagline">{description}</p>}
+      {tagline && <p class="home-hero-tagline">{tagline}</p>}
     </div>
-    <article class="prose" set:html={html} />
+    <article class="prose doc-guide" set:html={html} />
   </section>
 </BaseLayout>

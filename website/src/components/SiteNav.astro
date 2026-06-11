@@ -1,18 +1,20 @@
 ---
 // SPDX-License-Identifier: Apache-2.0
 import ChromeLink from "./ChromeLink.astro";
+import { sitePath, type SiteCurrent } from "../lib/sitePages";
 
 interface Props {
   base: string;
-  current?: "home" | "privacy" | "licenses" | "docs" | "features";
+  current?: SiteCurrent;
   releasesURL: string;
 }
 
 const { base, current, releasesURL } = Astro.props;
 
 const links = [
-  { href: `${base}features/`, icon: "features" as const, label: "Features", page: "features" },
-  { href: `${base}docs/`, icon: "docs" as const, label: "Docs", page: "docs" },
+  { href: sitePath(base, "features/"), icon: "features" as const, label: "Features", page: "features" },
+  { href: sitePath(base, "docs/"), icon: "docs" as const, label: "Docs", page: "docs" },
+  { href: sitePath(base, "faq/"), icon: "faq" as const, label: "FAQ", page: "faq" },
   { href: releasesURL, icon: "releases" as const, label: "Releases", external: true },
   { href: "https://github.com/glendonC/peeknook", icon: "github" as const, label: "GitHub", external: true },
 ] as const;

@@ -13,13 +13,35 @@ const { html } = renderRepoMarkdown("INSTALL.md", { stripLeadingH1: true });
   tagline="Install Peeknook and start capturing — no Terminal required."
   description="Install Peeknook on macOS, set up Ollama.app, grant permissions, and capture."
   current="docs"
-  downloadURL={release.dmgURL}
 >
   <article class="prose doc-guide" set:html={html} />
 
-  <details class="doc-advanced">
-    <summary>Advanced: Terminal commands</summary>
+  <details class="doc-advanced" id="verify-checksum">
+    <summary>Advanced: verify download &amp; Terminal commands</summary>
     <div class="doc-advanced-body">
+      {
+        release.dmgSHA256 && (
+          <>
+            <p>
+              Latest release (<strong>{release.version}</strong>) DMG SHA-256:
+            </p>
+            <pre class="doc-code doc-code--checksum"><code>{release.dmgSHA256}</code></pre>
+          </>
+        )
+      }
+      <p>Compare after download:</p>
+      <pre class="doc-code"><code>shasum -a 256 ~/Downloads/Peeknook*.dmg</code></pre>
+      <p>
+        Also on <a href={release.latestReleasesURL}>GitHub Releases</a>
+        {
+          release.zipURL && (
+            <>
+              {" "}
+              · <a href={release.zipURL}>Peeknook.zip</a>
+            </>
+          )
+        }
+      </p>
       <p>
         Prefer Homebrew? Use the official <strong>cask</strong>, not the formula:
       </p>
@@ -28,10 +50,6 @@ const { html } = renderRepoMarkdown("INSTALL.md", { stripLeadingH1: true });
         Pull a model manually (Peeknook can download from Get ready instead):
       </p>
       <pre class="doc-code"><code>ollama pull gemma4:e4b</code></pre>
-      <p>
-        Verify a downloaded DMG checksum:
-      </p>
-      <pre class="doc-code"><code>shasum -a 256 ~/Downloads/Peeknook*.dmg</code></pre>
     </div>
   </details>
 </DocsPage>
@@ -72,5 +90,10 @@ const { html } = renderRepoMarkdown("INSTALL.md", { stripLeadingH1: true });
     background: var(--surface-muted);
     font-size: 0.8125rem;
     overflow-x: auto;
+  }
+
+  .doc-code--checksum code {
+    word-break: break-all;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   }
 </style>

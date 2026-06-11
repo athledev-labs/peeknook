@@ -18,10 +18,9 @@
   --glass-inset: inset 0 0.5px 0 rgba(255, 255, 255, 0.95);
   --radius: 18px;
   --radius-sm: 12px;
-  --font: "Inter", "SF Pro Text", -apple-system, BlinkMacSystemFont, system-ui,
+  --font: "SF Pro Text", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-display: "SF Pro Display", -apple-system, BlinkMacSystemFont, system-ui,
     sans-serif;
-  --font-display: "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont,
-    system-ui, sans-serif;
   --weight-light: 300;
   --weight-regular: 400;
   --weight-medium: 500;
@@ -67,6 +66,33 @@ a:focus-visible,
 button:focus-visible {
   outline: 1.5px solid rgba(0, 0, 0, 0.45);
   outline-offset: 3px;
+}
+
+.skip-link {
+  position: absolute;
+  left: var(--page-pad);
+  top: 0.65rem;
+  z-index: 50;
+  padding: 0.45rem 0.75rem;
+  border-radius: 8px;
+  background: var(--glass);
+  border: 0.5px solid var(--line-soft);
+  box-shadow: var(--glass-shadow);
+  font-size: 0.75rem;
+  font-weight: var(--weight-medium);
+  color: var(--text);
+  transform: translateY(-200%);
+  transition: transform 0.2s var(--ease);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skip-link {
+    transition: none;
+  }
 }
 
 /* ── Shell ─────────────────────────────────────────────── */
@@ -371,10 +397,6 @@ body.menu-open {
   overflow: hidden;
 }
 
-body.menu-open .download-dock {
-  display: none;
-}
-
 .page-main {
   flex: 1 0 auto;
   padding: 0 0 2.5rem;
@@ -382,7 +404,9 @@ body.menu-open .download-dock {
 
 .page-main--center {
   display: flex;
+  flex: 1;
   align-items: center;
+  padding-top: 0;
 }
 
 .page-main--center .page-grid {
@@ -397,49 +421,6 @@ body.menu-open .download-dock {
 
 .page-main--doc {
   padding-top: clamp(2.5rem, 10vh, 5rem);
-}
-
-.page-main--dock {
-  padding-bottom: 1rem;
-}
-
-body.has-download-dock .footbar {
-  padding-bottom: calc(4.75rem + max(1.25rem, env(safe-area-inset-bottom, 0px)));
-}
-
-.download-dock {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 30;
-  display: flex;
-  justify-content: center;
-  padding: 0.65rem var(--page-pad) calc(0.75rem + env(safe-area-inset-bottom, 0px));
-  pointer-events: none;
-}
-
-.download-dock::before {
-  content: "";
-  position: absolute;
-  inset: -2rem 0 0;
-  background: linear-gradient(
-    180deg,
-    transparent 0%,
-    rgba(232, 232, 238, 0.72) 42%,
-    rgba(232, 232, 238, 0.94) 100%
-  );
-  pointer-events: none;
-}
-
-.download-dock .btn-download {
-  position: relative;
-  z-index: 1;
-  pointer-events: auto;
-  box-shadow:
-    inset 0 0.5px 0 rgba(255, 255, 255, 0.1),
-    0 1px 2px rgba(0, 0, 0, 0.14),
-    0 10px 28px rgba(0, 0, 0, 0.16);
 }
 
 .page-grid--home {
@@ -465,7 +446,7 @@ body.has-download-dock .footbar {
 
 .footbar-links {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   justify-content: flex-end;
   align-items: center;
   gap: 0.15rem;
@@ -927,10 +908,6 @@ body.has-download-dock .footbar {
   width: 100%;
   max-width: 42rem;
   animation: rise 0.85s var(--ease) 0.04s both;
-}
-
-body.has-download-dock .doc-guide {
-  padding-bottom: 2.5rem;
 }
 
 .doc-section {

@@ -102,7 +102,7 @@ You control the following opt-in or configuration-dependent features:
 
 ## Contact
 
-Report privacy questions or issues on GitHub: https://github.com/glendonC/peeknook/issues
+[GitHub Issues](https://github.com/glendonC/peeknook/issues) — privacy questions and bug reports.
 
 ## Changes
 

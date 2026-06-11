@@ -1,19 +1,20 @@
 ---
 // SPDX-License-Identifier: Apache-2.0
 import "../styles/global.css";
-import FixedDownloadDock from "../components/FixedDownloadDock.astro";
 import SiteFooter from "../components/SiteFooter.astro";
 import SiteNav from "../components/SiteNav.astro";
 import { getRelease } from "../lib/release";
+import { SITE_ORIGIN, sitePath, type SiteCurrent } from "../lib/sitePages";
 
 const release = await getRelease();
+const base = import.meta.env.BASE_URL;
 
 interface Props {
   title: string;
   description?: string;
-  current?: "home" | "privacy" | "licenses" | "docs" | "features";
+  current?: SiteCurrent;
   centerMain?: boolean;
-  fixedDownloadURL?: string;
+  noIndex?: boolean;
 }
 
 const {
@@ -21,11 +22,15 @@ const {
   description = "Complete AI for Mac. Every surface. Private AI you customize.",
   current,
   centerMain = false,
-  fixedDownloadURL,
+  noIndex = false,
 } = Astro.props;
 
-const base = import.meta.env.BASE_URL;
 const isHome = current === "home";
+const pageTitle = `${title} · Peeknook`;
+const canonicalPath =
+  current === "home" || !current ? sitePath(base) : sitePath(base, `${current}/`);
+const canonicalURL = new URL(canonicalPath, SITE_ORIGIN).href;
+const ogImage = new URL(sitePath(base, "logo-mark.svg"), SITE_ORIGIN).href;
 ---
 
 <!doctype html>
@@ -34,30 +39,37 @@ const isHome = current === "home";
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
+    {noIndex && <meta name="robots" content="noindex" />}
     <meta name="color-scheme" content="light" />
     <meta name="theme-color" content="#e8e8ee" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500&display=swap"
-      rel="stylesheet"
-    />
-    <title>{title} · Peeknook</title>
+    <link rel="canonical" href={canonicalURL} />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Peeknook" />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalURL} />
+    <meta property="og:image" content={ogImage} />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={description} />
+    <title>{pageTitle}</title>
     <link
       rel="icon"
-      href={`${import.meta.env.BASE_URL}favicon.svg`}
+      href={sitePath(base, "favicon.svg")}
       type="image/svg+xml"
     />
+    <link rel="apple-touch-icon" href={sitePath(base, "logo-mark.svg")} />
   </head>
-  <body class:list={fixedDownloadURL && "has-download-dock"}>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
     <div class="theme-backdrop" aria-hidden="true"></div>
     <div class="shell">
       <header class="topbar">
         <div class="page-grid page-grid--chrome">
-          <a class="brand" href={import.meta.env.BASE_URL}>
+          <a class="brand" href={sitePath(base)}>
             <img
               class="brand-mark"
-              src={`${import.meta.env.BASE_URL}logo-mark.svg`}
+              src={sitePath(base, "logo-mark.svg")}
               alt=""
               width="18"
               height="18"
@@ -74,12 +86,13 @@ const isHome = current === "home";
       </header>
 
       <main
+        id="main-content"
+        tabindex="-1"
         class:list={[
           "page-main",
           centerMain && "page-main--center",
           isHome && "page-main--home",
           !isHome && "page-main--doc",
-          fixedDownloadURL && "page-main--dock",
         ]}
       >
         <div class="page-grid page-grid--home">
@@ -89,6 +102,5 @@ const isHome = current === "home";
 
       <SiteFooter base={base} version={release.version} current={current} />
     </div>
-    {fixedDownloadURL && <FixedDownloadDock href={fixedDownloadURL} />}
   </body>
 </html>
