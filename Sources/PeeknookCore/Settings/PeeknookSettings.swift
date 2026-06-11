@@ -82,6 +82,10 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     public var textOnlyBackend: InferenceBackend
     /// The model tag answered with on a routed text-only follow-up. Empty == feature off.
     public var textOnlyModelTag: String
+    /// Opt-in: enable the composite capture command (screen + camera asked as one question). Off by
+    /// default — when off the command is hidden and behavior is byte-identical. Flips the reserved
+    /// ``ModuleID/parallelScreen`` module.
+    public var compositeCaptureEnabled: Bool
 
     public init(
         mode: PracticeMode = .general,
@@ -115,7 +119,8 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         acceptInsecureRemoteOpenAICompatible: Bool = false,
         fastTextFollowUps: Bool = false,
         textOnlyBackend: InferenceBackend = .ollama,
-        textOnlyModelTag: String = ""
+        textOnlyModelTag: String = "",
+        compositeCaptureEnabled: Bool = false
     ) {
         self.mode = mode
         self.previewBeforeInfer = previewBeforeInfer
@@ -149,6 +154,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.fastTextFollowUps = fastTextFollowUps
         self.textOnlyBackend = textOnlyBackend
         self.textOnlyModelTag = textOnlyModelTag
+        self.compositeCaptureEnabled = compositeCaptureEnabled
     }
 
     /// True when inference is configured to a host other than the default local Ollama loopback.
@@ -184,7 +190,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, customModels, commandOverrides, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, highlightSpeechWhileReading, speechVoiceIdentifier, briefHotkey, inferenceImageReplay, captureQuality, acceptInsecureRemoteOllama, activeProfileID, cameraHotkey, answerBackend, openAICompatibleBaseURL, openAICompatibleModelTag, acceptInsecureRemoteOpenAICompatible, fastTextFollowUps, textOnlyBackend, textOnlyModelTag
+        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, customModels, commandOverrides, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, highlightSpeechWhileReading, speechVoiceIdentifier, briefHotkey, inferenceImageReplay, captureQuality, acceptInsecureRemoteOllama, activeProfileID, cameraHotkey, answerBackend, openAICompatibleBaseURL, openAICompatibleModelTag, acceptInsecureRemoteOpenAICompatible, fastTextFollowUps, textOnlyBackend, textOnlyModelTag, compositeCaptureEnabled
     }
 
     // Tolerant decode, a saved blob missing a newer key keeps the rest of the user's
@@ -232,6 +238,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         let textOnlyBackendRaw = try c.decodeIfPresent(String.self, forKey: .textOnlyBackend)
         self.textOnlyBackend = textOnlyBackendRaw.flatMap(InferenceBackend.init(rawValue:)) ?? .ollama
         self.textOnlyModelTag = try c.decodeIfPresent(String.self, forKey: .textOnlyModelTag) ?? ""
+        self.compositeCaptureEnabled = try c.decodeIfPresent(Bool.self, forKey: .compositeCaptureEnabled) ?? false
     }
 
     public static let `default` = PeeknookSettings(

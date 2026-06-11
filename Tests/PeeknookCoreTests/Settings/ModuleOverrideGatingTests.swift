@@ -71,6 +71,7 @@ final class ModuleOverrideGatingTests: XCTestCase {
             settings.speakAnswersEnabled = flag
             settings.persistConversation = flag
             settings.suggestFollowUps = flag
+            settings.compositeCaptureEnabled = flag
             for profile in [GroundProfile.screenDefault, .cameraStudy] {
                 XCTAssertEqual(Module.isEnabled(.webLookup, in: settings, profile: profile), flag)
                 XCTAssertEqual(Module.isEnabled(.voiceInput, in: settings, profile: profile), flag)
@@ -85,7 +86,7 @@ final class ModuleOverrideGatingTests: XCTestCase {
                     Module.isEnabled(.cameraCapture, in: settings, profile: profile),
                     profile.activeGrounds.contains(.camera)
                 )
-                XCTAssertFalse(Module.isEnabled(.parallelScreen, in: settings, profile: profile))
+                XCTAssertEqual(Module.isEnabled(.parallelScreen, in: settings, profile: profile), flag)
                 XCTAssertFalse(Module.isEnabled(.agentActions, in: settings, profile: profile))
             }
         }

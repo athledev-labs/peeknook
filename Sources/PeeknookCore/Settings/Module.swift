@@ -38,7 +38,8 @@ public enum Module {
         case .selectedText:     return profile.activeGrounds.contains(.selectedText)
         case .screenCapture:    return profile.activeGrounds.contains(.screen)
         case .cameraCapture:    return profile.activeGrounds.contains(.camera)
-        case .parallelScreen, .agentActions: return false   // reserved, not shipped
+        case .parallelScreen:   return settings.compositeCaptureEnabled   // composite (screen + camera)
+        case .agentActions:     return false                              // reserved, not shipped
         }
     }
 }

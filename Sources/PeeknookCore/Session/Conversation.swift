@@ -19,11 +19,18 @@ public struct ChatTurn: Identifiable, Equatable, Sendable, Codable {
     /// Telemetry for this turn's inference (assistant answers). `promptTokens` is the full
     /// prompt Ollama evaluated, the whole thread so far, not an isolated message slice.
     public var turnUsage: TurnUsage?
+    /// Non-nil when this `.image` turn is one leg of a composite question (screen + camera asked as
+    /// one turn). Two `.image` turns sharing this id are the legs, ordered screen-then-camera by
+    /// `id`. Additive `Optional` → synthesized Codable decode-if-present/encode-if-present: legacy
+    /// turns and old readers see `nil` and treat each leg as a standalone image — never throws,
+    /// never writes a key for non-composite turns (so the archive stays byte-identical by default).
+    public var compositeGroupID: UUID?
 
-    public init(id: Int, kind: Kind, turnUsage: TurnUsage? = nil) {
+    public init(id: Int, kind: Kind, turnUsage: TurnUsage? = nil, compositeGroupID: UUID? = nil) {
         self.id = id
         self.kind = kind
         self.turnUsage = turnUsage
+        self.compositeGroupID = compositeGroupID
     }
 
     public var isAssistant: Bool {

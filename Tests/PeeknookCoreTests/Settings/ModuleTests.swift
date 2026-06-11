@@ -28,10 +28,17 @@ final class ModuleTests: XCTestCase {
         XCTAssertFalse(Module.isEnabled(.cameraCapture, in: settings, profile: screen))
     }
 
-    func testReservedModulesAreNeverEnabled() {
+    func testAgentActionsModuleIsNeverEnabled() {
         let settings = PeeknookSettings()
         let profile = GroundProfile.screenDefault
-        XCTAssertFalse(Module.isEnabled(.parallelScreen, in: settings, profile: profile))
         XCTAssertFalse(Module.isEnabled(.agentActions, in: settings, profile: profile))
+    }
+
+    func testParallelScreenFollowsCompositeCaptureSetting() {
+        var settings = PeeknookSettings()
+        let profile = GroundProfile.screenDefault
+        XCTAssertFalse(Module.isEnabled(.parallelScreen, in: settings, profile: profile), "off by default")
+        settings.compositeCaptureEnabled = true
+        XCTAssertTrue(Module.isEnabled(.parallelScreen, in: settings, profile: profile), "on when the user opts in")
     }
 }
