@@ -63,7 +63,15 @@ final class ArchiveCoordinator {
         guard let session, session.settings.persistConversation,
               let archive = session.conversationArchive else { return }
         let generation = session.lifecycle.snapshotSession()
-        guard let thread = await archive.load(id: id), !thread.turns.isEmpty else { return }
+        guard let thread = await archive.load(id: id), !thread.turns.isEmpty else {
+            // The row is listed in the index but its thread file is missing, corrupt, or refused
+            // (tamper / downgrade). Don't no-op silently: prune the dead index entry so the row stops
+            // dangling, and surface a one-shot notice instead of an unexplained dead tap.
+            guard session.lifecycle.isCurrentSession(generation) else { return }
+            enqueueArchiveIO { await $0.delete(id: id) }
+            session.emitNotice(.threadUnavailable)
+            return
+        }
         guard session.lifecycle.isCurrentSession(generation) else { return }
         session.abortSessionWork()
         session.suggestedFollowUps = []

@@ -63,12 +63,14 @@ struct PeekSessionNoticeBanner: View {
     private var symbol: String {
         switch notice {
         case .contextFull: "sparkles"
+        case .threadUnavailable: "exclamationmark.triangle"
         }
     }
 
     private var title: String {
         switch notice {
         case .contextFull: "Started a new chat"
+        case .threadUnavailable: "Couldn't open that chat"
         }
     }
 
@@ -78,6 +80,8 @@ struct PeekSessionNoticeBanner: View {
             conversationArchived
                 ? "The previous chat's context window was full, so this began a fresh chat. Your earlier chat is saved in History."
                 : "The previous chat's context window was full, so this began a fresh chat."
+        case .threadUnavailable:
+            "That saved chat is missing or unreadable, so it was removed from your history."
         }
     }
 }

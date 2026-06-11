@@ -72,6 +72,42 @@ final class ConversationArchiveFlowTests: XCTestCase {
         XCTAssertEqual(orchestrator.conversation.count, 2)
     }
 
+    func testOpenThreadWithMissingFilePrunesEntryAndNotifies() async throws {
+        let (store, dir) = tempArchive()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let saved = ConversationThread(
+            turns: [
+                ChatTurn(id: 1, kind: .user("question")),
+                ChatTurn(id: 2, kind: .assistant("archived answer")),
+            ],
+            turnCounter: 2
+        )
+        let saveResult = await store.save(saved)
+        XCTAssertTrue(saveResult.isSuccess)
+
+        // The "listed but unreadable" state the store tolerates (load → nil) and the UI must too:
+        // remove the thread file, keep its index summary.
+        try FileManager.default.removeItem(at: dir.appendingPathComponent("\(saved.id.uuidString).json"))
+        let listedBefore = await store.summaries()
+        XCTAssertEqual(listedBefore.count, 1, "the stale summary is still listed")
+
+        let orchestrator = SessionOrchestrator(
+            settings: PeeknookSettings(textModel: "gemma4:e4b", persistConversation: true),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "x")]),
+            inference: MockInferenceEngine(tokens: ["y"])
+        )
+        orchestrator.conversationArchive = store
+
+        await orchestrator.openThread(id: saved.id)
+
+        XCTAssertEqual(orchestrator.lastNotice, .threadUnavailable, "a dead row must notify, not no-op")
+        XCTAssertEqual(orchestrator.phase, .idle, "an unreadable thread leaves the phase untouched")
+
+        let remaining = await store.waitForSummaries(count: 0)
+        XCTAssertTrue(remaining.isEmpty, "the missing thread's index entry should be pruned")
+    }
+
     func testDeleteActiveThreadReturnsToIdle() async throws {
         let (store, dir) = tempArchive()
         defer { try? FileManager.default.removeItem(at: dir) }
