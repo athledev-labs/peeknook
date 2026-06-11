@@ -149,6 +149,11 @@ struct PeekSettingsLayoutSection: View {
         .buttonStyle(.plain)
         .disabled(!enabled)
         .peekAction(label: label, hint: command.titleKey)
+        // peekAction's `children: .ignore` collapses the button and drops the disabled state that
+        // `.disabled` would otherwise expose, so an end-of-list reorder button still reads as
+        // actionable. Re-assert non-interactivity on the collapsed element so VoiceOver stops
+        // offering it as a usable control.
+        .accessibilityRespondsToUserInteraction(enabled)
     }
 
     // MARK: Derived state

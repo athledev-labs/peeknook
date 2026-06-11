@@ -8,8 +8,8 @@ import SwiftUI
 /// no phase of its own). Mirrors the chrome of the other home banners; the host auto-clears it after
 /// a few seconds and also exposes a manual dismiss.
 ///
-/// Copy here is intentionally un-localized for now, matching the sibling banners — the later
-/// localization pass (Tier B) migrates these strings through `Text(peek:)` / `Resources/Localizable.xcstrings`.
+/// Copy routes through `Text(peek:)` / `Resources/Localizable.xcstrings`; the combined VoiceOver
+/// label localizes each piece via `PeekLocalized` so it stays in sync with the visible text.
 struct PeekSessionNoticeBanner: View {
     @Environment(\.nookResolvedTheme) private var theme
     let notice: SessionNotice
@@ -26,18 +26,18 @@ struct PeekSessionNoticeBanner: View {
                     .frame(width: 16)
                     .peekDecorative()
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(title)
+                    Text(peek: title)
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(theme.primaryLabel)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text(message)
+                    Text(peek: message)
                         .font(.system(size: 10))
                         .foregroundStyle(theme.secondaryLabel)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .accessibilityElement(children: .combine)
                 .accessibilityAddTraits(.isStaticText)
-                .accessibilityLabel(Text(verbatim: "\(title). \(message)"))
+                .accessibilityLabel(Text(verbatim: "\(PeekLocalized(.init(title))). \(PeekLocalized(.init(message)))"))
                 Spacer(minLength: 0)
             }
             HStack(spacing: 4) {

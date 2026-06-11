@@ -249,6 +249,10 @@
       "comment": "Brief confirmation after copying thread Markdown to the pasteboard.",
       "extractionState": "manual"
     },
+    "Couldn't open that chat": {
+      "comment": "Notice banner title: a saved chat could not be reopened.",
+      "extractionState": "manual"
+    },
     "Couldn't read the screen": {
       "comment": "Tier B localization",
       "extractionState": "manual"
@@ -295,6 +299,10 @@
     },
     "Dismiss": {
       "comment": "Tier B localization",
+      "extractionState": "manual"
+    },
+    "Dismiss this note": {
+      "comment": "Notice banner: a11y hint for the Got it dismiss button.",
       "extractionState": "manual"
     },
     "Display name": {
@@ -395,6 +403,10 @@
     },
     "Global by default; bind one for this profile": {
       "comment": "Profile editor: model row detail.",
+      "extractionState": "manual"
+    },
+    "Got it": {
+      "comment": "Notice banner: dismiss button title.",
       "extractionState": "manual"
     },
     "Hide this warning": {
@@ -889,6 +901,10 @@
       "comment": "Tier B localization",
       "extractionState": "manual"
     },
+    "Started a new chat": {
+      "comment": "Notice banner title: a full context window started a fresh chat.",
+      "extractionState": "manual"
+    },
     "Stop": {
       "comment": "Command-bar action: stop reading the answer aloud.",
       "extractionState": "manual"
@@ -929,12 +945,24 @@
       "comment": "Tier B localization",
       "extractionState": "manual"
     },
+    "That saved chat is missing or unreadable, so it was removed from your history.": {
+      "comment": "Notice banner message: a saved chat could not be reopened and was pruned.",
+      "extractionState": "manual"
+    },
     "The Ollama server address in Settings looks invalid. Check it, then try again.": {
       "comment": "Tier B localization",
       "extractionState": "manual"
     },
     "The model finished without producing any text. Try again, or switch to a different model.": {
       "comment": "Tier B localization",
+      "extractionState": "manual"
+    },
+    "The previous chat's context window was full, so this began a fresh chat.": {
+      "comment": "Notice banner message: a full context window started a fresh chat (chat not archived).",
+      "extractionState": "manual"
+    },
+    "The previous chat's context window was full, so this began a fresh chat. Your earlier chat is saved in History.": {
+      "comment": "Notice banner message: a full context window started a fresh chat; the prior chat is archived in History.",
       "extractionState": "manual"
     },
     "Token Mix": {

@@ -141,5 +141,8 @@ struct PeekSurfaceFilterPill: View {
         .fixedSize(horizontal: true, vertical: false)
         .peekHoverFeedback($isHovered, motion: isSelected ? .link : nil)
         .peekAction(label: title, hint: hint)
+        // peekAction adds only `.isButton`; surface the picker's current selection too so VoiceOver
+        // announces which bar/segment/date filter is active.
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 }
