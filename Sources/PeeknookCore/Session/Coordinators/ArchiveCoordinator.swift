@@ -210,6 +210,21 @@ final class ArchiveCoordinator {
         return loaded
     }
 
+    /// Off-main variant for History row thumbnails. The cache lookup/update stays on the main actor,
+    /// but the blob disk read + decode run on a background task so scrolling History doesn't stutter
+    /// the main thread per row. `CaptureBlobStore` is `Sendable` (lock-guarded), so the read is safe
+    /// off the main actor.
+    func loadArchiveThumbnailBase64(blobID: UUID?) async -> String? {
+        guard let id = blobID else { return nil }
+        if let cached = screenshotCache[id] { return cached }
+        guard let store = captureBlobStore else { return nil }
+        let loaded = await Task.detached(priority: .utility) {
+            try? store.loadBase64(id: id)
+        }.value
+        if let loaded { screenshotCache[id] = loaded }
+        return loaded
+    }
+
     func storedCapture(_ capture: CaptureResult) -> CaptureResult {
         // The same per-profile write gate as the thread save, keyed by THIS capture's ground —
         // a blob must never be written for a turn whose thread save is gated off (orphan).

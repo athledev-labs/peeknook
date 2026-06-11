@@ -304,7 +304,7 @@ private struct ArchiveRowThumbnail: View {
     @MainActor
     private func loadThumbnail() async {
         guard let blobID = summary.thumbnailBlobID,
-              let base64 = orchestrator.archiveThumbnailBase64(blobID: blobID),
+              let base64 = await orchestrator.archiveThumbnailBase64(blobID: blobID),
               let image = CapturePreviewImage.nsImage(from: base64) else {
             thumbnail = nil
             return

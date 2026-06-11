@@ -382,9 +382,11 @@ public final class SessionOrchestrator {
         archiveCoordinator.screenshotBase64(for: capture)
     }
 
-    /// Lazy blob load for History row thumbnails (cache-backed).
-    public func archiveThumbnailBase64(blobID: UUID?) -> String? {
-        archiveCoordinator.archiveThumbnailBase64(blobID: blobID)
+    /// Off-main blob load for History row thumbnails (cache-backed). The disk read runs on a background
+    /// task; only the cache check/update and the return hop on the main actor, so scrolling History
+    /// doesn't block the main thread per row.
+    public func archiveThumbnailBase64(blobID: UUID?) async -> String? {
+        await archiveCoordinator.loadArchiveThumbnailBase64(blobID: blobID)
     }
 
     func storedCapture(_ capture: CaptureResult) -> CaptureResult {
