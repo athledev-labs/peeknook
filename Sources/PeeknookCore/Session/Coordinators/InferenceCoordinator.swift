@@ -119,8 +119,18 @@ final class InferenceCoordinator {
 
         guard session.lifecycle.isCurrentSession(sessionGen), !Task.isCancelled else { return }
 
+        // Route by role: a pure text follow-up (capture == nil) the user opted into answers with the
+        // text-only model. Resolved once here; model, endpoint, and engine all read from `route`, so
+        // they can never disagree (the seam-2 fix). A `.primaryVision` turn resolves the identity pair,
+        // byte-identical to pre-router behavior.
+        let role = session.turnRole(forFollowUp: capture == nil)
+        let route = session.routing(for: role)
+
+        // The `.textOnly` route forces replay to 0 so the non-vision model PROVABLY receives no
+        // screenshot — zeroing the budget empties `replayImageIDs`, the preload, and the per-message
+        // include below in one stroke (the user's explicit fast-follow-up trade: answer from text).
         let inferencePolicy = InferenceReplayPolicy(
-            maxImagePayloads: session.settings.inferenceImageReplay.maxImagePayloads
+            maxImagePayloads: role == .textOnly ? 0 : session.settings.inferenceImageReplay.maxImagePayloads
         )
         let budgeted = ContextBudgetPolicy.trimmedConversation(
             session.conversation,
@@ -141,11 +151,11 @@ final class InferenceCoordinator {
                 policy: inferencePolicy,
                 imageBase64ByTurnID: imageBase64ByTurnID
             ),
-            model: session.activeAnswerModel.tag,
-            endpoint: session.activeInferenceEndpoint,
+            model: route.model.tag,
+            endpoint: route.endpoint,
             quickMode: session.settings.quickMode
         )
-        let stream = session.inference.stream(request: request)
+        let stream = session.inference(for: route.endpoint).stream(request: request)
 
         do {
             var finalStats: InferenceStats?
@@ -174,9 +184,9 @@ final class InferenceCoordinator {
                 return
             }
             if let capture {
-                session.usage?.record(capture: capture, inference: finalStats, modelTag: session.activeAnswerModel.tag)
+                session.usage?.record(capture: capture, inference: finalStats, modelTag: route.model.tag)
             } else {
-                session.usage?.recordFollowUp(inference: finalStats, modelTag: session.activeAnswerModel.tag)
+                session.usage?.recordFollowUp(inference: finalStats, modelTag: route.model.tag)
             }
             if let prompt = finalStats?.promptTokens, prompt > 0 { session.lastPromptTokens = prompt }
             session.turnCounter += 1
@@ -193,7 +203,7 @@ final class InferenceCoordinator {
         } catch {
             if !Task.isCancelled, session.lifecycle.isCurrentSession(sessionGen) {
                 _ = session.applyPhaseEvent(
-                    .inferenceFailed(.from(error: error, backend: session.activeAnswerModel.backend))
+                    .inferenceFailed(.from(error: error, backend: route.model.backend))
                 )
             }
         }

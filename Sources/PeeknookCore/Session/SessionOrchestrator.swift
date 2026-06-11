@@ -71,10 +71,20 @@ public final class SessionOrchestrator {
     /// `openCameraLive()`, cleared by `stopCameraPreview()` (the single teardown choke point).
     public internal(set) var activeCameraSession: (any CameraSessionControlling)?
     let inferenceRegistry: InferenceBackendRegistry
-    /// The engine for the active answer model's backend (profile binding, else global), resolved
-    /// per call so a backend switch or profile switch takes effect on the next turn.
+    /// The engine for the primary vision model's backend (profile binding, else global), resolved
+    /// per call so a backend switch or profile switch takes effect on the next turn. Pinned to
+    /// ``activeAnswerModel`` — prewarm, suggestions, residency, and context-window look-ups use this.
+    /// A per-role turn must instead route through ``inference(for:)`` so the engine follows the
+    /// routed endpoint, never `activeAnswerModel`.
     var inference: any InferenceEngine {
         inferenceRegistry.engine(for: activeAnswerModel.backend)
+    }
+
+    /// The engine that serves a routed ``InferenceEndpoint``, so a turn's model, endpoint, and engine
+    /// can never disagree (e.g. a text-only follow-up bound to a different backend). The seam Live's
+    /// `fastVision` reuses to stream from a cheaper backend with no further plumbing.
+    func inference(for endpoint: InferenceEndpoint) -> any InferenceEngine {
+        inferenceRegistry.engine(for: endpoint)
     }
 
     /// The active profile resolved against built-ins + the user catalog (unknown/deleted id →

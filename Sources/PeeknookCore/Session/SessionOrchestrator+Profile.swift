@@ -24,6 +24,24 @@ extension SessionOrchestrator {
         settings.endpoint(for: resolvedActiveProfile)
     }
 
+    /// The model role this turn routes to. A pure text follow-up (no new capture) takes the
+    /// `.textOnly` role ONLY when the user opted in (`fastTextFollowUps`) AND a text model is
+    /// configured; otherwise — and for every capture / Add-image turn — the `.primaryVision` role.
+    /// Keyed off the opt-in, never off whether an image payload happens to be present, so an
+    /// unreadable or pruned blob can never silently route a follow-up to a blind text model.
+    func turnRole(forFollowUp isFollowUp: Bool) -> ModelRole {
+        (isFollowUp && settings.fastTextFollowUps && settings.hasUsableTextOnlyModel)
+            ? .textOnly : .primaryVision
+    }
+
+    /// The model + endpoint for a role, resolved against the active profile — matching how
+    /// ``activeAnswerModel`` / ``activeInferenceEndpoint`` resolve, so the `.primaryVision` route is
+    /// byte-identical to pre-router behavior (including for camera turns, which resolve their model
+    /// off the active profile today, not the camera-gating literal).
+    func routing(for role: ModelRole) -> RoleResolution {
+        settings.resolved(role: role, for: resolvedActiveProfile)
+    }
+
     /// Module read-through for a gating profile (per-profile override layer + global fallback).
     func moduleEnabled(_ id: ModuleID, for profile: GroundProfile) -> Bool {
         Module.isEnabled(id, in: settings, profile: profile)

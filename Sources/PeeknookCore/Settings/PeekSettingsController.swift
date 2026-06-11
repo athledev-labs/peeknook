@@ -14,6 +14,8 @@ public final class PeekSettingsController {
     private let inferenceRegistry: InferenceBackendRegistry
     private let credentialStore: any CredentialStoring
     /// The engine for the active backend, resolved per call (matches the orchestrator's shim).
+    /// primaryVision-only — health/warm checks here never stream a routed text-only turn; per-role
+    /// turn streaming lives in ``SessionOrchestrator/inference(for:)``.
     private var inference: any InferenceEngine {
         inferenceRegistry.engine(for: settings.answerModel.backend)
     }
@@ -246,6 +248,29 @@ public final class PeekSettingsController {
     public func setAcceptInsecureRemoteOpenAICompatible(_ enabled: Bool) {
         guard settings.acceptInsecureRemoteOpenAICompatible != enabled else { return }
         update { $0.acceptInsecureRemoteOpenAICompatible = enabled }
+    }
+
+    // MARK: - Text-only follow-up routing (model roles)
+
+    /// Opt in to routing a pure text follow-up to the cheaper ``PeeknookSettings/textOnlyModelTag``
+    /// instead of the vision model. Off by default; with no text model chosen this stays inert.
+    public func setFastTextFollowUps(_ enabled: Bool) {
+        guard settings.fastTextFollowUps != enabled else { return }
+        update { $0.fastTextFollowUps = enabled }
+    }
+
+    /// Which backend hosts the text-only follow-up model.
+    public func setTextOnlyBackend(_ backend: InferenceBackend) {
+        guard settings.textOnlyBackend != backend else { return }
+        update { $0.textOnlyBackend = backend }
+    }
+
+    /// Sets the text-only follow-up model tag (no download path — the user picks an already-available
+    /// local/served model). Empty clears it (feature off, byte-identical default restored).
+    public func setTextOnlyModelTag(_ tag: String) {
+        let trimmed = tag.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard settings.textOnlyModelTag != trimmed else { return }
+        update { $0.textOnlyModelTag = trimmed }
     }
 
     /// Validates and persists the OpenAI-compatible server URL through the same HTTPS gate as

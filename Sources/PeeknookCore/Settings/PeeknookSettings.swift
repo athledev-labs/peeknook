@@ -72,6 +72,16 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     public var openAICompatibleModelTag: String
     /// Opt-in: allow plain HTTP to a non-loopback OpenAI-compatible host (screenshots in cleartext).
     public var acceptInsecureRemoteOpenAICompatible: Bool
+    /// Opt-in: route a pure text follow-up (no new capture) to ``textOnlyModelTag`` instead of the
+    /// vision model, dropping the replayed screenshot for a faster, cheaper answer. Off by default;
+    /// when off — or when no text model is chosen — every turn resolves the primary vision model, so
+    /// behavior is byte-identical. See ``ModelRole`` and ``resolved(role:for:)``.
+    public var fastTextFollowUps: Bool
+    /// Which backend hosts the text-only follow-up model. Mirrors ``answerBackend`` and reuses the
+    /// same global server fields, so the HTTPS gate applies unchanged. See ``textOnlyEndpoint``.
+    public var textOnlyBackend: InferenceBackend
+    /// The model tag answered with on a routed text-only follow-up. Empty == feature off.
+    public var textOnlyModelTag: String
 
     public init(
         mode: PracticeMode = .general,
@@ -102,7 +112,10 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         answerBackend: InferenceBackend = .ollama,
         openAICompatibleBaseURL: String = "",
         openAICompatibleModelTag: String = "",
-        acceptInsecureRemoteOpenAICompatible: Bool = false
+        acceptInsecureRemoteOpenAICompatible: Bool = false,
+        fastTextFollowUps: Bool = false,
+        textOnlyBackend: InferenceBackend = .ollama,
+        textOnlyModelTag: String = ""
     ) {
         self.mode = mode
         self.previewBeforeInfer = previewBeforeInfer
@@ -133,6 +146,9 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.openAICompatibleBaseURL = openAICompatibleBaseURL
         self.openAICompatibleModelTag = openAICompatibleModelTag
         self.acceptInsecureRemoteOpenAICompatible = acceptInsecureRemoteOpenAICompatible
+        self.fastTextFollowUps = fastTextFollowUps
+        self.textOnlyBackend = textOnlyBackend
+        self.textOnlyModelTag = textOnlyModelTag
     }
 
     /// True when inference is configured to a host other than the default local Ollama loopback.
@@ -168,7 +184,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, customModels, commandOverrides, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, highlightSpeechWhileReading, speechVoiceIdentifier, briefHotkey, inferenceImageReplay, captureQuality, acceptInsecureRemoteOllama, activeProfileID, cameraHotkey, answerBackend, openAICompatibleBaseURL, openAICompatibleModelTag, acceptInsecureRemoteOpenAICompatible
+        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, customModels, commandOverrides, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, highlightSpeechWhileReading, speechVoiceIdentifier, briefHotkey, inferenceImageReplay, captureQuality, acceptInsecureRemoteOllama, activeProfileID, cameraHotkey, answerBackend, openAICompatibleBaseURL, openAICompatibleModelTag, acceptInsecureRemoteOpenAICompatible, fastTextFollowUps, textOnlyBackend, textOnlyModelTag
     }
 
     // Tolerant decode, a saved blob missing a newer key keeps the rest of the user's
@@ -210,6 +226,12 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.openAICompatibleBaseURL = try c.decodeIfPresent(String.self, forKey: .openAICompatibleBaseURL) ?? ""
         self.openAICompatibleModelTag = try c.decodeIfPresent(String.self, forKey: .openAICompatibleModelTag) ?? ""
         self.acceptInsecureRemoteOpenAICompatible = try c.decodeIfPresent(Bool.self, forKey: .acceptInsecureRemoteOpenAICompatible) ?? false
+        self.fastTextFollowUps = try c.decodeIfPresent(Bool.self, forKey: .fastTextFollowUps) ?? false
+        // Raw-String decode (mirrors answerBackend) so an unknown future backend degrades to Ollama
+        // instead of throwing and resetting every setting.
+        let textOnlyBackendRaw = try c.decodeIfPresent(String.self, forKey: .textOnlyBackend)
+        self.textOnlyBackend = textOnlyBackendRaw.flatMap(InferenceBackend.init(rawValue:)) ?? .ollama
+        self.textOnlyModelTag = try c.decodeIfPresent(String.self, forKey: .textOnlyModelTag) ?? ""
     }
 
     public static let `default` = PeeknookSettings(

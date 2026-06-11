@@ -55,4 +55,24 @@ public extension PeeknookSettings {
             )
         }
     }
+
+    /// The endpoint a routed text-only follow-up answers from, derived from ``textOnlyBackend``.
+    /// Reuses the SAME global server fields as ``activeEndpoint`` (base URL, credential ref, insecure
+    /// flag) so ``EndpointURLPolicy`` — the HTTPS gate — applies identically; a routed turn can never
+    /// bypass it.
+    var textOnlyEndpoint: InferenceEndpoint {
+        switch textOnlyBackend {
+        case .ollama:
+            .ollama(
+                baseURL: ollamaBaseURL,
+                acceptInsecureRemote: acceptInsecureRemoteOllama
+            )
+        case .openAICompatible:
+            .openAICompatible(
+                baseURL: openAICompatibleBaseURL,
+                apiKeyRef: .openAICompatiblePrimary,
+                acceptInsecureRemote: acceptInsecureRemoteOpenAICompatible
+            )
+        }
+    }
 }

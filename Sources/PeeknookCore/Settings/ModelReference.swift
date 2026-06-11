@@ -79,4 +79,16 @@ public extension PeeknookSettings {
             ModelReference(backend: .openAICompatible, tag: openAICompatibleModelTag)
         }
     }
+
+    /// Whether a text-only follow-up model is configured (non-blank tag). When false the router
+    /// resolves the primary vision model for every role, so behavior is byte-identical.
+    var hasUsableTextOnlyModel: Bool {
+        !textOnlyModelTag.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    /// The text-only follow-up model as a backend-qualified reference, or nil when unset.
+    var textOnlyModel: ModelReference? {
+        guard hasUsableTextOnlyModel else { return nil }
+        return ModelReference(backend: textOnlyBackend, tag: textOnlyModelTag)
+    }
 }
