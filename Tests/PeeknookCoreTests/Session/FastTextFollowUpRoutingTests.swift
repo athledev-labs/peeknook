@@ -27,7 +27,7 @@ final class FastTextFollowUpRoutingTests: XCTestCase {
     }
 
     private func anyImage(in request: InferenceRequest?) -> Bool {
-        (request?.messages ?? []).contains { $0.imageBase64 != nil }
+        (request?.messages ?? []).contains { !$0.imagesBase64.isEmpty }
     }
 
     // MARK: turnRole gate (all three conjuncts)

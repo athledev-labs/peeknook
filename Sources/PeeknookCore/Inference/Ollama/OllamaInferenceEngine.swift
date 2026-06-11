@@ -118,10 +118,10 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
             OllamaChatMessage(role: "system", content: PromptBuilder.systemPrompt(agentAppendix: request.agentSystemAppendix), images: nil)
         ]
         for turn in request.messages {
-            messages.append(OllamaChatMessage(role: turn.role.rawValue, content: turn.text, images: turn.imageBase64.map { [$0] }))
+            messages.append(OllamaChatMessage(role: turn.role.rawValue, content: turn.text, images: turn.imagesBase64.isEmpty ? nil : turn.imagesBase64))
         }
         #if DEBUG
-        let imageCount = request.messages.filter { $0.imageBase64 != nil }.count
+        let imageCount = request.messages.reduce(0) { $0 + $1.imagesBase64.count }
         InferenceDebugLog.recordImagePayloadCount(imageCount, model: request.model)
         #endif
 
@@ -170,7 +170,7 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
                 OllamaChatMessage(role: "system", content: PromptBuilder.followUpSystemPrompt)
             ]
             for turn in request.messages {
-                messages.append(OllamaChatMessage(role: turn.role.rawValue, content: turn.text, images: turn.imageBase64.map { [$0] }))
+                messages.append(OllamaChatMessage(role: turn.role.rawValue, content: turn.text, images: turn.imagesBase64.isEmpty ? nil : turn.imagesBase64))
             }
             messages.append(OllamaChatMessage(role: "user", content: PromptBuilder.followUpUserPrompt))
 

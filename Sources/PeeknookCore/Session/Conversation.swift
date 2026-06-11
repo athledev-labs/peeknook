@@ -161,11 +161,19 @@ public struct InferenceMessage: Sendable, Equatable {
 
     public var role: Role
     public var text: String
-    public var imageBase64: String?
+    /// The image payload(s) this message carries. Usually 0 or 1; a composite question (screen +
+    /// camera) rides as a single user message with two images, ordered screen-then-camera. In-memory
+    /// only (``InferenceMessage`` is not Codable), so widening this never touched the archive.
+    public var imagesBase64: [String]
 
-    public init(role: Role, text: String, imageBase64: String? = nil) {
+    public init(role: Role, text: String, imagesBase64: [String] = []) {
         self.role = role
         self.text = text
-        self.imageBase64 = imageBase64
+        self.imagesBase64 = imagesBase64
+    }
+
+    /// Back-compat single-image init for the many call sites that carry at most one screenshot.
+    public init(role: Role, text: String, imageBase64: String?) {
+        self.init(role: role, text: text, imagesBase64: imageBase64.map { [$0] } ?? [])
     }
 }

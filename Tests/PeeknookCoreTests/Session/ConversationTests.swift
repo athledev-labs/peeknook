@@ -127,7 +127,7 @@ final class ConversationTests: XCTestCase {
         let msgs = engine.requests.last?.messages ?? []
         XCTAssertEqual(msgs.count, 3)
         XCTAssertEqual(msgs[0].role, .user)
-        XCTAssertNotNil(msgs[0].imageBase64, "the sole screenshot still rides as base64")
+        XCTAssertFalse(msgs[0].imagesBase64.isEmpty, "the sole screenshot still rides as base64")
         XCTAssertEqual(msgs[1], InferenceMessage(role: .assistant, text: "first answer"))
         XCTAssertEqual(msgs[2].role, .user)
         XCTAssertTrue(msgs[2].text.contains("why?"))
@@ -154,10 +154,10 @@ final class ConversationTests: XCTestCase {
         let msgs = engine.requests.last?.messages ?? []
         XCTAssertEqual(msgs.count, 3)
         XCTAssertEqual(msgs[0].role, .user)
-        XCTAssertNil(msgs[0].imageBase64, "older screenshot is text-only")
+        XCTAssertTrue(msgs[0].imagesBase64.isEmpty, "older screenshot is text-only")
         XCTAssertEqual(msgs[1], InferenceMessage(role: .assistant, text: "first answer"))
         XCTAssertEqual(msgs[2].role, .user)
-        XCTAssertNotNil(msgs[2].imageBase64, "latest screenshot still rides as base64")
+        XCTAssertFalse(msgs[2].imagesBase64.isEmpty, "latest screenshot still rides as base64")
     }
 
     func testRetakeReplacesChat() async {
@@ -417,9 +417,9 @@ final class ConversationTests: XCTestCase {
         let msgs = engine.requests.last?.messages ?? []
         let imageMsgs = msgs.filter { $0.role == .user && $0.text.contains("## Task") }
         XCTAssertEqual(imageMsgs.count, 3, "all three screenshots still ground via text")
-        XCTAssertNil(imageMsgs[0].imageBase64)
-        XCTAssertNil(imageMsgs[1].imageBase64)
-        XCTAssertNotNil(imageMsgs[2].imageBase64)
+        XCTAssertTrue(imageMsgs[0].imagesBase64.isEmpty)
+        XCTAssertTrue(imageMsgs[1].imagesBase64.isEmpty)
+        XCTAssertFalse(imageMsgs[2].imagesBase64.isEmpty)
     }
 
     func testInferenceReplayRespectsLastTwoSetting() async {
@@ -439,9 +439,9 @@ final class ConversationTests: XCTestCase {
 
         let msgs = engine.requests.last?.messages ?? []
         let imageMsgs = msgs.filter { $0.role == .user && $0.text.contains("## Task") }
-        XCTAssertNil(imageMsgs[0].imageBase64)
-        XCTAssertNotNil(imageMsgs[1].imageBase64)
-        XCTAssertNotNil(imageMsgs[2].imageBase64)
+        XCTAssertTrue(imageMsgs[0].imagesBase64.isEmpty)
+        XCTAssertFalse(imageMsgs[1].imagesBase64.isEmpty)
+        XCTAssertFalse(imageMsgs[2].imagesBase64.isEmpty)
     }
 
     func testSuggestionsOmitImagePayloads() async {
@@ -456,7 +456,7 @@ final class ConversationTests: XCTestCase {
 
         let suggestionMsgs = engine.suggestionRequests.last?.messages ?? []
         XCTAssertFalse(suggestionMsgs.isEmpty)
-        XCTAssertTrue(suggestionMsgs.allSatisfy { $0.imageBase64 == nil })
+        XCTAssertTrue(suggestionMsgs.allSatisfy { $0.imagesBase64.isEmpty })
     }
 
     func testCriticalContextBlocksFollowUpAndAddImage() async {

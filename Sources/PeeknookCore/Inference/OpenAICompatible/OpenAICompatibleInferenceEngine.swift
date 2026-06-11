@@ -75,7 +75,7 @@ public struct OpenAICompatibleInferenceEngine: InferenceEngine, Sendable {
             systemPrompt: PromptBuilder.systemPrompt(agentAppendix: request.agentSystemAppendix)
         )
         #if DEBUG
-        let imageCount = request.messages.filter { $0.imageBase64 != nil }.count
+        let imageCount = request.messages.reduce(0) { $0 + $1.imagesBase64.count }
         InferenceDebugLog.recordImagePayloadCount(imageCount, model: request.model)
         #endif
 
@@ -244,7 +244,7 @@ public struct OpenAICompatibleInferenceEngine: InferenceEngine, Sendable {
             messages.append(OpenAIChatMessage(
                 role: turn.role.rawValue,
                 text: turn.text,
-                imagesBase64: turn.imageBase64.map { [$0] } ?? []
+                imagesBase64: turn.imagesBase64
             ))
         }
         return messages
