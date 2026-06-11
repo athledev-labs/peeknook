@@ -124,4 +124,15 @@ public extension CommandLayout {
     func visibleCommands(_ placement: CommandPlacement, in context: CommandBarContext) -> [CommandDescriptor] {
         forPlacement(placement).filter { $0.isVisible(in: context) }
     }
+
+    /// As ``visibleCommands(_:in:)`` but with the user's layout overrides applied (reorder/hide)
+    /// BEFORE the visibility filter, so a saved layout composes with the transient context gates. The
+    /// no-override path is identical to ``visibleCommands(_:in:)`` (the empty-override fast path).
+    func visibleCommands(
+        _ placement: CommandPlacement,
+        in context: CommandBarContext,
+        applying overrides: [CommandOverride]
+    ) -> [CommandDescriptor] {
+        forPlacement(placement, applying: overrides).filter { $0.isVisible(in: context) }
+    }
 }

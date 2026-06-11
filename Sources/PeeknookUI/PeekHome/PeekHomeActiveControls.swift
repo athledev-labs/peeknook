@@ -17,6 +17,7 @@ struct PeekHomeActiveControls: View {
         } else {
             PeekCommandBar(
                 placement: .active,
+                overrides: orchestrator.resolvedCommandOverrides(for: .active),
                 context: CommandBarContext(isPreviewing: isPreviewing, isReady: setup.isReady),
                 spacing: 4,
                 dispatch: dispatch(_:)

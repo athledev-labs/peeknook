@@ -29,6 +29,17 @@ extension SessionOrchestrator {
         Module.isEnabled(id, in: settings, profile: profile)
     }
 
+    /// The command-bar layout overrides the render seam applies for a placement — the SINGLE
+    /// resolution choke point all four bars route through (so call sites that hold only the
+    /// orchestrator never reach into settings). v1 returns the global bucket for every placement:
+    /// layout is global by construction (no profile→layout mapping exists yet). The per-profile
+    /// upgrade plugs in HERE — key by `resolvedActiveProfile.id`, merge per-id over the global base —
+    /// with zero call-site change, because the apply seam already takes one resolved `[CommandOverride]`.
+    public func resolvedCommandOverrides(for placement: CommandPlacement) -> [CommandOverride] {
+        _ = placement  // reserved: per-profile / per-placement resolution keys off this later.
+        return settings.commandOverrides(forScope: PeeknookSettings.globalCommandScope)
+    }
+
     /// The profile a turn's module gates evaluate against: camera-ground turns use the
     /// `cameraStudy` literal (the single profile-source rule — a screen profile's overrides must
     /// never leak into a camera-shutter turn), everything else the resolved active profile.

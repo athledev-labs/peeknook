@@ -82,6 +82,13 @@ public struct PeekSettingsView: View {
                         )
                     }
 
+                    section(PeekSettingsSectionTitle.layout) {
+                        PeekSettingsLayoutSection(
+                            orchestrator: orchestrator,
+                            settings: settings
+                        )
+                    }
+
                     section(PeekSettingsSectionTitle.interaction) {
                         PeekSettingsInteractionSection(
                             orchestrator: orchestrator,

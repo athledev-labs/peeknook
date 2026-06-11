@@ -19,6 +19,9 @@ import SwiftUI
 struct PeekCommandBar: View {
     let placement: CommandPlacement
     var layout: CommandLayout = .screenDefault
+    /// The user's Settings → Layout reorder/hide deltas. Default `[]` keeps the bar byte-identical to
+    /// the shipped layout (and any un-migrated caller unchanged).
+    var overrides: [CommandOverride] = []
     let context: CommandBarContext
     var spacing: CGFloat = 8
     /// Maps a descriptor's hotkey slot to the live ``CaptureHotkey`` (an unbacked slot returns nil).
@@ -31,7 +34,7 @@ struct PeekCommandBar: View {
     var special: (CommandDescriptor) -> AnyView? = { _ in nil }
 
     var body: some View {
-        let visible = layout.visibleCommands(placement, in: context)
+        let visible = layout.visibleCommands(placement, in: context, applying: overrides)
         let scrolling = visible.filter { !$0.pinnedTrailing }
         let pinned = visible.filter(\.pinnedTrailing)
         HStack(alignment: .center, spacing: spacing) {

@@ -45,6 +45,18 @@
       "comment": "Tier B localization",
       "extractionState": "manual"
     },
+    "Answer": {
+      "comment": "Settings → Layout: name of the result (answer) command bar.",
+      "extractionState": "manual"
+    },
+    "Always shown — required": {
+      "comment": "Settings → Layout: a11y hint for a protected command's toggle.",
+      "extractionState": "manual"
+    },
+    "Always shown": {
+      "comment": "Settings → Layout: caption on a command that can't be hidden.",
+      "extractionState": "manual"
+    },
     "Answer depth": {
       "comment": "Tier B localization",
       "extractionState": "manual"
@@ -293,12 +305,20 @@
       "comment": "A11y: profile edit chevron.",
       "extractionState": "manual"
     },
+    "Edit this bar": {
+      "comment": "Settings → Layout: a11y hint for a bar-picker pill.",
+      "extractionState": "manual"
+    },
     "End this chat and return to the home screen": {
       "comment": "Command-bar help: Done button.",
       "extractionState": "manual"
     },
     "Enter your server address below": {
       "comment": "Tier B localization",
+      "extractionState": "manual"
+    },
+    "Every bar returns to its shipped order and visibility.": {
+      "comment": "Settings → Layout: reset confirmation message.",
       "extractionState": "manual"
     },
     "Expand section": {
@@ -361,6 +381,10 @@
       "comment": "Tier B localization",
       "extractionState": "manual"
     },
+    "Home": {
+      "comment": "Settings → Layout: name of the idle (home) command bar.",
+      "extractionState": "manual"
+    },
     "Images sent to model": {
       "comment": "Tier B localization",
       "extractionState": "manual"
@@ -387,6 +411,10 @@
     },
     "Its instruction, model binding, and overrides are removed. Chats are not affected.": {
       "comment": "Profile delete confirm message.",
+      "extractionState": "manual"
+    },
+    "Layout": {
+      "comment": "Settings section title: command bar layout editor.",
       "extractionState": "manual"
     },
     "Licenses": {
@@ -435,6 +463,14 @@
     },
     "Morning/Afternoon headline on the idle home screen": {
       "comment": "Tier B localization",
+      "extractionState": "manual"
+    },
+    "Move up": {
+      "comment": "Settings → Layout: a11y label to move a command earlier in its bar.",
+      "extractionState": "manual"
+    },
+    "Move down": {
+      "comment": "Settings → Layout: a11y label to move a command later in its bar.",
       "extractionState": "manual"
     },
     "Name": {
@@ -677,6 +713,10 @@
       "comment": "Tier B localization",
       "extractionState": "manual"
     },
+    "Reorder or hide the commands in the notch bars. Capture, Done, and Cancel stay put. Your layout applies everywhere.": {
+      "comment": "Settings → Layout section intro.",
+      "extractionState": "manual"
+    },
     "Report an issue": {
       "comment": "Tier B localization",
       "extractionState": "manual"
@@ -685,8 +725,16 @@
       "comment": "Tier B localization",
       "extractionState": "manual"
     },
+    "Reset command layout?": {
+      "comment": "Settings → Layout: reset confirmation title.",
+      "extractionState": "manual"
+    },
     "Reset stats": {
       "comment": "Tier B localization",
+      "extractionState": "manual"
+    },
+    "Reset to default": {
+      "comment": "Settings → Layout: reset row title.",
       "extractionState": "manual"
     },
     "Reset usage stats?": {
@@ -703,6 +751,10 @@
     },
     "Rename this chat": {
       "comment": "History archive: rename button help.",
+      "extractionState": "manual"
+    },
+    "Restore the shipped order and visibility for every bar": {
+      "comment": "Settings → Layout: reset row subtitle.",
       "extractionState": "manual"
     },
     "Resume": {
@@ -1051,6 +1103,10 @@
     },
     "Lifetime curve · per-answer detail fills in from your next capture": {
       "comment": "Hint below the synthesis trend chart.",
+      "extractionState": "manual"
+    },
+    "Show or hide this command": {
+      "comment": "Settings → Layout: a11y hint for a command's show/hide toggle.",
       "extractionState": "manual"
     },
     "Showing your active model against all lifetime usage. Per-model split tracks from your next capture.": {

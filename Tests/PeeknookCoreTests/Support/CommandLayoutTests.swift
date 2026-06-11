@@ -39,6 +39,29 @@ final class CommandLayoutTests: XCTestCase {
         XCTAssertTrue(layout.forPlacement(.cameraLive).isEmpty)
     }
 
+    // MARK: Override seam preserves the anchor — no override must equal the shipped bars
+
+    func testEmptyOverridesReproduceShippedBarsByteIdentical() {
+        for placement in CommandPlacement.allCases {
+            XCTAssertEqual(
+                layout.forPlacement(placement, applying: []),
+                layout.forPlacement(placement),
+                "\(placement) is not byte-identical under empty overrides"
+            )
+        }
+    }
+
+    func testUnknownOverrideIdLeavesEveryBarIdentical() {
+        let ghost = [CommandOverride(id: "idle.ghost", order: 0, hidden: true)]
+        for placement in CommandPlacement.allCases {
+            XCTAssertEqual(
+                layout.forPlacement(placement, applying: ghost),
+                layout.forPlacement(placement),
+                "an unknown override id perturbed \(placement)"
+            )
+        }
+    }
+
     func testRetakeAndAddImageCarryCaptureGates() {
         XCTAssertEqual(descriptor("result.retake").requiredModules, [.screenCapture])
         XCTAssertEqual(descriptor("result.retake").requiredPermissions, [.screenRecording])

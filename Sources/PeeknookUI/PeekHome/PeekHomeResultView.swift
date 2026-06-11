@@ -146,6 +146,7 @@ struct PeekHomeResultView: View {
     private var resultCommandBar: some View {
         PeekCommandBar(
             placement: .result,
+            overrides: orchestrator.resolvedCommandOverrides(for: .result),
             context: commandContext,
             spacing: 4,
             resolveHotkey: hotkey(for:),

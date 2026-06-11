@@ -177,6 +177,46 @@ public struct CommandDescriptor: Codable, Sendable, Equatable, Identifiable {
     }
 }
 
+public extension CommandDescriptor {
+    /// Whether Settings → Layout may reorder or hide this command. False for the structural commands
+    /// a bar must always keep reachable: pinned-trailing (Capture, Done, Shutter) and every
+    /// exit/confirm (``CommandAction/cancel`` / ``CommandAction/confirmPreview``). Derived from
+    /// existing descriptor fields — never an id allowlist — so it is rename-proof and auto-covers any
+    /// future pinned or exit command. Enforced at BOTH the apply seam (a non-customizable command
+    /// ignores any override, so a hand-edited settings blob marking `cameraLive.cancel` hidden is a
+    /// no-op) and the editor (its toggle/buttons disable; the controller drops such ids before persist).
+    var isCustomizable: Bool {
+        if pinnedTrailing { return false }
+        if action == .cancel || action == .confirmPreview { return false }
+        return true
+    }
+}
+
+/// A user-authored delta to one command's place in a bar — reorder and/or hide — keyed by the
+/// command's stable ``CommandDescriptor/id``. Persisted under `peeknook.*` as SPARSE entries (only
+/// commands the user actually moved or hid).
+///
+/// Deliberately PRIMITIVES ONLY (`String` / `Int?` / `Bool`): it carries no `Command*`
+/// associated-value enum, so its auto-synthesised `Codable` can never throw on an unknown raw value
+/// and so can never trip ``PeeknookSettings``' full-reset-on-decode-throw (invariant #3). A stale id
+/// (a command removed in a later release) decodes fine as a String and is simply dropped at apply
+/// time — never at decode. `CommandOverrideTests` asserts the no-enum-on-disk shape so a future
+/// rebind feature cannot silently re-arm that trap.
+public struct CommandOverride: Codable, Sendable, Equatable, Identifiable {
+    public let id: String
+    /// The user's explicit rank within the placement, or `nil` for a hidden-only (un-reordered)
+    /// entry. Reordered commands sort ahead of un-reordered ones — see
+    /// ``CommandLayout/forPlacement(_:applying:)``.
+    public let order: Int?
+    public let hidden: Bool
+
+    public init(id: String, order: Int? = nil, hidden: Bool = false) {
+        self.id = id
+        self.order = order
+        self.hidden = hidden
+    }
+}
+
 /// An ordered set of commands across every placement. Code-defined in Phase 1.5.
 public struct CommandLayout: Codable, Sendable, Equatable {
     public let commands: [CommandDescriptor]
@@ -185,11 +225,72 @@ public struct CommandLayout: Codable, Sendable, Equatable {
         self.commands = commands
     }
 
-    /// The commands for one bar, in render order. (A future override array would be applied here.)
+    /// The commands for one bar, in render order, with the user's layout ``CommandOverride`` deltas
+    /// applied. Empty overrides return the exact filter+sort the bar shipped with — the byte-identical
+    /// migration anchor (``CommandLayout/screenDefault``).
+    ///
+    /// TWO-BUCKET merge, deliberately NOT a single shared integer axis: commands the user reordered (a
+    /// customizable command carrying a non-nil ``CommandOverride/order``) emit first in that order;
+    /// every other command — including any command added in a future release with no override entry —
+    /// appends afterward in ``CommandDescriptor/defaultOrder``. So a newly shipped command keeps its
+    /// authored slot among the un-reordered commands and can never collide with a saved user rank,
+    /// vanish, or land non-deterministically. (A reorder writes dense ranks for the placement's
+    /// customizable commands — see `PeekSettingsController.moveCommand` — which is collision-free here
+    /// precisely because new commands fall to bucket 2.)
+    ///
+    /// Non-customizable commands ignore overrides entirely (never hidden, never reordered), so neither
+    /// the editor nor a hand-edited settings blob can strip a bar's Capture trigger or a surface's exit.
+    public func forPlacement(_ placement: CommandPlacement, applying overrides: [CommandOverride]) -> [CommandDescriptor] {
+        merged(placement, applying: overrides, includeHidden: false)
+    }
+
+    /// The commands for one bar, in render order. The no-override anchor (delegates with no overrides),
+    /// kept byte-identical to the shipped bars so ``CommandLayoutTests`` stays the structural floor.
     public func forPlacement(_ placement: CommandPlacement) -> [CommandDescriptor] {
-        commands
+        forPlacement(placement, applying: [])
+    }
+
+    /// Editor-facing ordering: the placement in the user's current order but KEEPING hidden commands
+    /// (so Settings → Layout can show a hidden command's toggle to bring it back) and KEEPING
+    /// non-customizable commands (rendered with disabled controls). Same two-bucket order as the bar.
+    public func orderedForEditing(_ placement: CommandPlacement, applying overrides: [CommandOverride]) -> [CommandDescriptor] {
+        merged(placement, applying: overrides, includeHidden: true)
+    }
+
+    private func merged(
+        _ placement: CommandPlacement,
+        applying overrides: [CommandOverride],
+        includeHidden: Bool
+    ) -> [CommandDescriptor] {
+        let base = commands
             .filter { $0.placement == placement }
             .sorted { $0.defaultOrder < $1.defaultOrder }
+        guard !overrides.isEmpty else { return base }
+
+        let byID = Dictionary(overrides.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+
+        // Hide drops only customizable commands; a non-customizable command ignores any hidden flag.
+        let survivors = includeHidden
+            ? base
+            : base.filter { !($0.isCustomizable && byID[$0.id]?.hidden == true) }
+
+        // Bucket 1: user-reordered (customizable + explicit order), by that order. Bucket 2: everything
+        // else, by defaultOrder. A future command with no entry is always in bucket 2 — never collides.
+        var reordered: [CommandDescriptor] = []
+        var rest: [CommandDescriptor] = []
+        for command in survivors {
+            if command.isCustomizable, byID[command.id]?.order != nil {
+                reordered.append(command)
+            } else {
+                rest.append(command)
+            }
+        }
+        reordered.sort { lhs, rhs in
+            let lo = byID[lhs.id]?.order ?? lhs.defaultOrder
+            let ro = byID[rhs.id]?.order ?? rhs.defaultOrder
+            return lo != ro ? lo < ro : lhs.defaultOrder < rhs.defaultOrder
+        }
+        return reordered + rest
     }
 }
 

@@ -113,6 +113,7 @@ struct PeekCameraLiveControls: View {
         PeekCommandBar(
             placement: .cameraLive,
             layout: .cameraStudy,
+            overrides: orchestrator.resolvedCommandOverrides(for: .cameraLive),
             context: commandContext,
             dispatch: { action in
                 switch action {

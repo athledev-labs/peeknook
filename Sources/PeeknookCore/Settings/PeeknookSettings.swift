@@ -5,6 +5,9 @@ import Foundation
 /// Product preferences under the `peeknook.*` namespace (never `opennook.*`).
 public struct PeeknookSettings: Codable, Equatable, Sendable {
     public static let defaultsKey = "peeknook.settings.v1"
+    /// Reserved scope key for the single global command-bar layout (v1 reads/writes only this bucket).
+    /// Per-profile buckets key by profile id later; this stays the shared base. See ``commandOverrides``.
+    public static let globalCommandScope = "global"
 
     public var mode: PracticeMode
     public var previewBeforeInfer: Bool
@@ -26,6 +29,11 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     public var webLookupEnabled: Bool
     /// User-added models (any Ollama tag) shown alongside the curated catalog in the picker.
     public var customModels: [CustomModelEntry]
+    /// User reorder/hide deltas for the notch command bars, keyed by a scope token. v1 only ever reads
+    /// or writes the reserved ``globalCommandScope`` bucket; the map shape (not a bare array) is the
+    /// zero-migration seam to per-profile layouts later. Sparse — only moved/hidden commands are
+    /// stored. See ``CommandOverride`` and `SessionOrchestrator.resolvedCommandOverrides(for:)`.
+    public var commandOverrides: [String: [CommandOverride]]
     /// Optional nickname for the idle greeting. Empty falls back to the macOS account first name.
     public var displayName: String
     /// When false, the idle home headline is hidden.
@@ -77,6 +85,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         persistConversation: Bool = false,
         webLookupEnabled: Bool = false,
         customModels: [CustomModelEntry] = [],
+        commandOverrides: [String: [CommandOverride]] = [:],
         displayName: String = "",
         showGreeting: Bool = true,
         renderAnswerMarkdown: Bool = true,
@@ -106,6 +115,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.persistConversation = persistConversation
         self.webLookupEnabled = webLookupEnabled
         self.customModels = customModels
+        self.commandOverrides = commandOverrides
         self.displayName = displayName
         self.showGreeting = showGreeting
         self.renderAnswerMarkdown = renderAnswerMarkdown
@@ -151,8 +161,14 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         return scheme == "http" && !acceptInsecureRemoteOpenAICompatible
     }
 
+    /// The command-bar override deltas for a scope (defaults to the global bucket). Empty when none
+    /// are stored. The single read path the orchestrator's resolution choke point routes through.
+    public func commandOverrides(forScope scope: String = Self.globalCommandScope) -> [CommandOverride] {
+        commandOverrides[scope] ?? []
+    }
+
     private enum CodingKeys: String, CodingKey {
-        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, customModels, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, highlightSpeechWhileReading, speechVoiceIdentifier, briefHotkey, inferenceImageReplay, captureQuality, acceptInsecureRemoteOllama, activeProfileID, cameraHotkey, answerBackend, openAICompatibleBaseURL, openAICompatibleModelTag, acceptInsecureRemoteOpenAICompatible
+        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, customModels, commandOverrides, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, highlightSpeechWhileReading, speechVoiceIdentifier, briefHotkey, inferenceImageReplay, captureQuality, acceptInsecureRemoteOllama, activeProfileID, cameraHotkey, answerBackend, openAICompatibleBaseURL, openAICompatibleModelTag, acceptInsecureRemoteOpenAICompatible
     }
 
     // Tolerant decode, a saved blob missing a newer key keeps the rest of the user's
@@ -171,6 +187,9 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.persistConversation = try c.decodeIfPresent(Bool.self, forKey: .persistConversation) ?? false
         self.webLookupEnabled = try c.decodeIfPresent(Bool.self, forKey: .webLookupEnabled) ?? false
         self.customModels = try c.decodeIfPresent([CustomModelEntry].self, forKey: .customModels) ?? []
+        // Primitives-only ``CommandOverride`` (String/Int?/Bool) cannot throw on an unknown raw value,
+        // so this decode can never trip the full-reset bomb; a stale command id is dropped at apply time.
+        self.commandOverrides = try c.decodeIfPresent([String: [CommandOverride]].self, forKey: .commandOverrides) ?? [:]
         self.displayName = try c.decodeIfPresent(String.self, forKey: .displayName) ?? ""
         self.showGreeting = try c.decodeIfPresent(Bool.self, forKey: .showGreeting) ?? true
         self.renderAnswerMarkdown = try c.decodeIfPresent(Bool.self, forKey: .renderAnswerMarkdown) ?? true

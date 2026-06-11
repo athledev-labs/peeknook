@@ -191,6 +191,7 @@ struct PeekIdleCommandBar: View {
             }
             PeekCommandBar(
                 placement: .idle,
+                overrides: orchestrator.resolvedCommandOverrides(for: .idle),
                 context: commandContext,
                 spacing: 8,
                 resolveHotkey: hotkey(for:),
