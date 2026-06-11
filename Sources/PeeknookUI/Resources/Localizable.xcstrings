@@ -41,6 +41,10 @@
       "comment": "Tier B localization",
       "extractionState": "manual"
     },
+    "Adds a command that captures your screen and a camera photo, then asks about both as one question. Needs Camera access.": {
+      "comment": "Settings: Screen + camera capture toggle detail.",
+      "extractionState": "manual"
+    },
     "Advanced": {
       "comment": "Tier B localization",
       "extractionState": "manual"
@@ -827,6 +831,10 @@
     },
     "Screen + camera": {
       "comment": "Command-bar action: capture screen and camera as one question.",
+      "extractionState": "manual"
+    },
+    "Screen + camera capture": {
+      "comment": "Settings: Screen + camera capture opt-in toggle title.",
       "extractionState": "manual"
     },
     "Screenshots capture on-screen pixels. Avoid capturing windows that show passwords, tokens, or other sensitive content.": {

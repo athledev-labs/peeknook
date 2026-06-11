@@ -102,6 +102,13 @@ struct PeekSettingsCaptureSection: View {
                 detail: "Archive past chats and screenshots on this Mac (up to 25 chats / ~250 MB). Done keeps a chat; New chat deletes it. Turning this off deletes the whole archive.",
                 isOn: persistConversationBinding
             )
+
+            PeekSettingsToggleRow(
+                icon: orchestrator.settings.compositeCaptureEnabled ? "photo.on.rectangle.angled" : "rectangle.on.rectangle",
+                title: "Screen + camera capture",
+                detail: "Adds a command that captures your screen and a camera photo, then asks about both as one question. Needs Camera access.",
+                isOn: compositeCaptureBinding
+            )
         }
         .task(id: appState.isNookVisible) {
             guard !setup.skipsLiveProbes, appState.isNookVisible else { return }
@@ -277,6 +284,13 @@ struct PeekSettingsCaptureSection: View {
         Binding(
             get: { orchestrator.settings.previewBeforeInfer },
             set: { settings.setPreviewBeforeInfer($0) }
+        )
+    }
+
+    private var compositeCaptureBinding: Binding<Bool> {
+        Binding(
+            get: { orchestrator.settings.compositeCaptureEnabled },
+            set: { settings.setCompositeCaptureEnabled($0) }
         )
     }
 

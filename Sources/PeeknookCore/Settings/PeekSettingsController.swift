@@ -102,6 +102,12 @@ public final class PeekSettingsController {
         update { $0.webLookupEnabled = enabled }
     }
 
+    /// Opt in to the "Screen + camera" capture command (screen + camera asked as one question).
+    public func setCompositeCaptureEnabled(_ enabled: Bool) {
+        guard settings.compositeCaptureEnabled != enabled else { return }
+        update { $0.compositeCaptureEnabled = enabled }
+    }
+
     public func setInferenceImageReplay(_ replay: InferenceImageReplay) {
         guard settings.inferenceImageReplay != replay else { return }
         update { $0.inferenceImageReplay = replay }
