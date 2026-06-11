@@ -5,6 +5,10 @@
       "comment": "Settings: Profiles section intro.",
       "extractionState": "manual"
     },
+    "A smaller model for text-only follow-ups": {
+      "comment": "Settings: fast follow-up model picker subtitle.",
+      "extractionState": "manual"
+    },
     "API key (optional)": {
       "comment": "Tier B localization",
       "extractionState": "manual"
@@ -71,6 +75,10 @@
     },
     "Answer model for the next capture": {
       "comment": "Command-bar help: model dropdown.",
+      "extractionState": "manual"
+    },
+    "Answer text-only follow-ups with a smaller, faster model — without re-sending the screenshot. New captures always use your vision model.": {
+      "comment": "Settings: fast follow-ups toggle detail.",
       "extractionState": "manual"
     },
     "Archive past chats and screenshots on this Mac (up to 25 chats / ~250 MB). Done keeps a chat; New chat deletes it. Turning this off deletes the whole archive.": {
@@ -175,6 +183,10 @@
     },
     "Choose a PDF or image to ask about": {
       "comment": "File-import open-panel message.",
+      "extractionState": "manual"
+    },
+    "Choose a follow-up model to turn this on.": {
+      "comment": "Settings: fast follow-ups hint when no model is chosen.",
       "extractionState": "manual"
     },
     "Choose model": {
@@ -333,6 +345,10 @@
       "comment": "Command-bar action: copy the whole conversation as Markdown.",
       "extractionState": "manual"
     },
+    "Fast follow-ups": {
+      "comment": "Settings: text-only follow-up routing toggle title.",
+      "extractionState": "manual"
+    },
     "Feature overrides": {
       "comment": "Profile editor: overrides group label.",
       "extractionState": "manual"
@@ -351,6 +367,10 @@
     },
     "Follow up": {
       "comment": "Command-bar action: ask a follow-up about the answer.",
+      "extractionState": "manual"
+    },
+    "Follow-up model": {
+      "comment": "Settings: fast follow-ups model picker title.",
       "extractionState": "manual"
     },
     "Following the global setting": {

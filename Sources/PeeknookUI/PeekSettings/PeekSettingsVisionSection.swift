@@ -37,6 +37,8 @@ struct PeekSettingsVisionSection: View {
             } else {
                 ollamaContent
             }
+
+            fastFollowUpsBlock
         }
         .task(id: visionCheckKey) {
             visionSupport = await settings.currentModelSupportsVision()
@@ -50,6 +52,88 @@ struct PeekSettingsVisionSection: View {
             }
             servedModels = await settings.openAICompatibleServedModels()
         }
+    }
+
+    // MARK: - Fast follow-ups (text-only routing)
+
+    /// Opt-in routing of pure text follow-ups to a smaller model on the active backend. The new
+    /// capture path is untouched — only follow-ups that carry no new screenshot are affected, and the
+    /// screenshot is dropped for those (the explicit speed trade, stated in the toggle copy).
+    @ViewBuilder
+    private var fastFollowUpsBlock: some View {
+        Divider().padding(.vertical, 2)
+
+        PeekSettingsToggleRow(
+            icon: "hare",
+            title: "Fast follow-ups",
+            detail: "Answer text-only follow-ups with a smaller, faster model — without re-sending the screenshot. New captures always use your vision model.",
+            isOn: fastTextFollowUpsBinding
+        )
+
+        if orchestrator.settings.fastTextFollowUps {
+            followUpModelPickerRow
+            if !orchestrator.settings.hasUsableTextOnlyModel {
+                PeekSettingsNote(text: "Choose a follow-up model to turn this on.")
+            }
+        }
+    }
+
+    private var followUpModelPickerRow: some View {
+        HStack(alignment: .center, spacing: PeekSettingsRowMetrics.rowSpacing) {
+            Image(systemName: "hare")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(theme.headerInactiveIcon)
+                .frame(width: PeekSettingsRowMetrics.iconWidth)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(peek: "Follow-up model")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(theme.primaryLabel.opacity(0.95))
+                Text(peek: "A smaller model for text-only follow-ups")
+                    .font(.system(size: 9, weight: .regular))
+                    .foregroundStyle(theme.tertiaryLabel)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 8)
+
+            ValueDropdownPill(
+                symbol: "hare",
+                title: orchestrator.settings.textOnlyModelTag.isEmpty
+                    ? PeekLocalized("Choose model")
+                    : orchestrator.settings.textOnlyModelTag,
+                help: "Follow-up model"
+            ) { close in
+                PeekPreflightMenuContent.visionModelHomeMenu(
+                    models: followUpModelOptions,
+                    isInstalled: { isOpenAICompatible ? true : setup.isModelInstalled($0) },
+                    isSelected: { modelCatalog.isSameModel($0.tag, orchestrator.settings.textOnlyModelTag) },
+                    onSelect: { selectFollowUpModel($0) },
+                    onBrowseModels: nil,
+                    close: close
+                )
+            }
+        }
+        .padding(.vertical, PeekSettingsRowMetrics.rowVerticalPadding)
+    }
+
+    /// Models for the follow-up picker come from the active backend (Ollama catalog or the server's
+    /// served list), so the chosen tag always rides the configured endpoint — no empty-server route.
+    private var followUpModelOptions: [InferenceModelOption] {
+        settings.pickerModels(servedOpenAIModels: servedModels)
+    }
+
+    /// Bind the follow-up model to the backend it was picked from, so model and endpoint always agree.
+    private func selectFollowUpModel(_ option: InferenceModelOption) {
+        settings.setTextOnlyBackend(orchestrator.settings.answerBackend)
+        settings.setTextOnlyModelTag(option.tag)
+    }
+
+    private var fastTextFollowUpsBinding: Binding<Bool> {
+        Binding(
+            get: { orchestrator.settings.fastTextFollowUps },
+            set: { settings.setFastTextFollowUps($0) }
+        )
     }
 
     // MARK: - Backend picker
