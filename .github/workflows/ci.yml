@@ -24,6 +24,13 @@ jobs:
           ref: v0.3.0
           path: opennook
 
+      # OpenNook's Liquid Glass surface style references the macOS 26 SDK
+      # (Glass / .glassEffect); the runner's default Xcode lacks it, so select
+      # latest-stable, which carries the SDK.
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
       - name: Swift test
         working-directory: peeknook
         run: swift test
