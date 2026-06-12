@@ -15,12 +15,13 @@ jobs:
           path: peeknook
 
       # Sibling checkout satisfies Package.swift ../opennook path pin.
-      # Pin to main: Peeknook uses OpenNook APIs (e.g. moduleBreadcrumb) not in v0.2.0.
+      # Pinned to the v0.3.0 tag: it is the first release with the OpenNook APIs
+      # Peeknook uses (moduleBreadcrumb, NookContentInsets, the accent controls).
       - name: Checkout OpenNook
         uses: actions/checkout@v4
         with:
           repository: glendonC/opennook
-          ref: main
+          ref: v0.3.0
           path: opennook
 
       - name: Swift test
