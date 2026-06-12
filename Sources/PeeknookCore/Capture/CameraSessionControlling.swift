@@ -28,6 +28,9 @@ public final class StubCameraSession: CameraSessionControlling, CaptureProviding
     public private(set) var startPreviewCount = 0
     public private(set) var stopPreviewCount = 0
     public private(set) var captureStillCount = 0
+    /// Increments when `captureStill` RESOLVES (returns OR throws). Lets a cancellation-race test wait
+    /// deterministically for an in-flight capture to settle instead of sleeping a fixed interval.
+    public private(set) var captureStillFinishedCount = 0
     public private(set) var isPreviewing = false
     /// When set, `startPreview()` throws it (permission-denied / device-missing simulation).
     public var startPreviewError: Error?
@@ -56,6 +59,7 @@ public final class StubCameraSession: CameraSessionControlling, CaptureProviding
     public func captureStill(encoding: CaptureEncodingParams) async throws -> CaptureResult {
         _ = encoding
         captureStillCount += 1
+        defer { captureStillFinishedCount += 1 }
         if let captureStillError { throw captureStillError }
         if let captureDelayNanoseconds {
             try await Task.sleep(nanoseconds: captureDelayNanoseconds)

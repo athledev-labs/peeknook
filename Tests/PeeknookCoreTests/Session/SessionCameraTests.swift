@@ -200,10 +200,15 @@ final class SessionOrchestratorCameraTests: XCTestCase {
         _ = await orchestrator.waitUntil { session.isPreviewing }
 
         orchestrator.shutter()
+        // Wait until the capture provably starts, so the cancel lands DURING it (the race we test).
+        _ = await orchestrator.waitUntil { session.captureStillCount == 1 }
         orchestrator.cancelCameraLive()
 
         XCTAssertEqual(orchestrator.phase, .idle)
-        try? await Task.sleep(nanoseconds: 300_000_000)
+        // Deterministically wait for the cancelled capture to resolve (it drops, never commits) rather
+        // than sleeping a fixed interval and hoping the window was long enough.
+        let resolved = await orchestrator.waitUntil { session.captureStillFinishedCount == 1 }
+        XCTAssertTrue(resolved, "the in-flight capture resolved")
         XCTAssertTrue(orchestrator.conversation.isEmpty, "A cancelled shutter must not commit a turn")
         XCTAssertEqual(orchestrator.phase, .idle)
     }

@@ -104,6 +104,39 @@ final class ConversationPersistenceTests: XCTestCase {
         XCTAssertTrue(afterDiscard.isEmpty, "Discarding the active chat should remove it from the archive")
     }
 
+    func testDiscardRacingTheSaveDoesNotResurrectTheThreadFile() async throws {
+        let (store, dir) = tempArchive()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let orchestrator = SessionOrchestrator(
+            settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b", persistConversation: true),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "hello")]),
+            inference: MockInferenceEngine(tokens: ["hi"])
+        )
+        orchestrator.conversationArchive = store
+        orchestrator.beginCapture()
+        _ = await orchestrator.waitForResult("hi")
+        // Discard WITHOUT first waiting for the save to settle: the answer completion synchronously mints
+        // the thread id and enqueues the save, so this delete is enqueued while the save is still in flight.
+        // The observable contract: the discarded thread must leave NO summary and NO file behind. Today two
+        // things uphold it — the archive `save` is a single synchronous actor hop (so save-then-delete is
+        // atomic in creation order) AND `enqueueArchiveIO` chains the delete behind the save's completion.
+        // The chain is the load-bearing guarantee if `save` ever gains a suspension point (e.g. async blob
+        // writes), where actor reentrancy could otherwise let an unchained delete run mid-save and a late
+        // write resurrect the file. This test pins the contract; it is not a race-forcing regression.
+        orchestrator.startNewChat()
+
+        // Both ops bump the archive revision; >= 2 means the save AND the delete have both run.
+        let settled = await orchestrator.waitUntil { orchestrator.archiveRevision >= 2 }
+        XCTAssertTrue(settled, "the save and the delete both completed")
+
+        let summaries = await store.summaries()
+        XCTAssertTrue(summaries.isEmpty, "a discard racing the save leaves no summary in the index")
+        let threadFiles = ((try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? [])
+            .filter { $0.hasSuffix(".json") && $0 != "index.v2.json" }
+        XCTAssertTrue(threadFiles.isEmpty, "no thread file may survive a discard that raced the save")
+    }
+
     func testArchiveRevisionIncrementsAfterSave() async throws {
         let (store, dir) = tempArchive()
         defer { try? FileManager.default.removeItem(at: dir) }

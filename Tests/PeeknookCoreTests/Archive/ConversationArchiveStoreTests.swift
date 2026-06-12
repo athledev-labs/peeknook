@@ -134,6 +134,49 @@ final class ConversationArchiveStoreTests: XCTestCase {
         XCTAssertTrue(remaining.contains(ids[4]), "Newest should survive")
     }
 
+    func testRetentionPrunesOldestOverByteCap() async {
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        // High thread cap so ONLY the byte cap can prune. ~50 KB per thread; the 120 KB cap fits ~2.
+        let payload = String(repeating: "x", count: 50_000)
+        let store = ConversationArchiveTestSupport.makeStore(directory: dir, maxThreads: 100, maxBytes: 120_000)
+
+        var ids: [UUID] = []
+        for i in 0..<4 {
+            let t = thread("\(payload) \(i)", updatedAt: Date(timeIntervalSinceNow: Double(i)))
+            ids.append(t.id)
+            let save = await store.save(t)
+            XCTAssertTrue(save.isSuccess)
+        }
+
+        let summaries = await store.summaries()
+        let remaining = summaries.map(\.id)
+        XCTAssertGreaterThanOrEqual(remaining.count, 1, "the byte cap never prunes to empty")
+        XCTAssertLessThan(remaining.count, 4, "the byte cap pruned older threads")
+        XCTAssertTrue(remaining.contains(ids[3]), "the newest thread always survives")
+        XCTAssertFalse(remaining.contains(ids[0]), "the oldest thread is pruned first")
+        // A pruned thread's file is removed from disk, not just dropped from the index.
+        XCTAssertFalse(
+            FileManager.default.fileExists(atPath: dir.appendingPathComponent("\(ids[0].uuidString).json").path),
+            "the pruned thread's file is deleted"
+        )
+        // The retention invariant holds: the kept threads fit under the byte cap.
+        let keptBytes = summaries.reduce(0) { $0 + ($1.fileBytes ?? 0) }
+        XCTAssertLessThanOrEqual(keptBytes, 120_000, "kept threads fit under the byte cap")
+    }
+
+    func testByteCapKeepsASingleOversizedThread() async {
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        // A lone thread larger than the whole cap must still be kept — the cap never empties the archive.
+        let store = ConversationArchiveTestSupport.makeStore(directory: dir, maxThreads: 100, maxBytes: 1_000)
+        let big = thread(String(repeating: "x", count: 50_000))
+        let saved = await store.save(big)
+        XCTAssertTrue(saved.isSuccess)
+        let summaries = await store.summaries()
+        XCTAssertEqual(summaries.map(\.id), [big.id], "a single oversized thread is retained, not pruned to empty")
+    }
+
     func testMigratesLegacySingleFile() async throws {
         let dir = tempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
