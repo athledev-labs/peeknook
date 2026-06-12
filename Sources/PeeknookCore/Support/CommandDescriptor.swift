@@ -64,6 +64,7 @@ public enum CommandAction: String, Codable, Sendable, CaseIterable {
     case history, export, retake, addImage
     case compositeCapture   // screen + camera asked as one question (opt-in, gated on .parallelScreen)
     case toggleLive         // arm a live session from an answered thread (opt-in, gated on .liveSession)
+    case refreshLive        // capture the latest screen into the armed live chat's pending context (no infer)
     case stopLive           // disarm the live session — the single, never-hideable exit
     // case planAction   ← Phase 5 sidecar (agent control)
 }
@@ -447,10 +448,18 @@ public extension CommandLayout {
             defaultOrder: 10
         ),
         CommandDescriptor(
+            id: "result.refreshLive", kind: .button, action: .refreshLive,
+            titleKey: "Refresh", symbol: "arrow.clockwise",
+            helpKey: "Capture the latest screen into this live chat",
+            placement: .result, visibility: .liveArmed,
+            requiredModules: [.screenCapture], requiredPermissions: [.screenRecording],
+            defaultOrder: 11
+        ),
+        CommandDescriptor(
             id: "result.stopLive", kind: .button, action: .stopLive,
             titleKey: "Stop", symbol: "stop.circle",
             helpKey: "Stop the live session",
-            placement: .result, visibility: .liveArmed, defaultOrder: 11
+            placement: .result, visibility: .liveArmed, defaultOrder: 12
         ),
         CommandDescriptor(
             id: "result.done", kind: .button, action: .done,

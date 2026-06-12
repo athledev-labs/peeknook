@@ -458,6 +458,12 @@ public final class SessionOrchestrator {
         liveCoordinator.stop()
     }
 
+    /// Manual "Refresh" while armed: capture the latest screen into pending context without inferring
+    /// or starting a new turn (see ``LiveCoordinator/refresh()``).
+    public func refreshLive() {
+        liveCoordinator.refresh()
+    }
+
     // MARK: - Capture (delegates to CaptureCoordinator)
 
     /// Hotkey / compact affordance entry: capture → preview → infer. Starts a fresh chat only when

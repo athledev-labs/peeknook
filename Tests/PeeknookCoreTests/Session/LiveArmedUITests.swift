@@ -251,4 +251,113 @@ final class LiveArmedUITests: XCTestCase {
         XCTAssertEqual(old.textModel, "gemma4:e4b")
         XCTAssertTrue(old.webLookupEnabled)
     }
+
+    // MARK: Slice 3 — manual refresh-only (stash the latest frame, no inference)
+
+    func testRefreshLiveStashesPendingFrameWithoutInferring() async {
+        let o = await makeArmed()
+        let turnsBefore = o.conversation.count
+        o.refreshLive()
+        let got = await o.waitUntil { o.lifecycle.pendingLiveCapture != nil }
+        XCTAssertTrue(got, "refresh captures the latest screen into pending context")
+        XCTAssertNotNil(o.lastLiveRefreshAt, "refresh stamps the last-refresh time for the chip")
+        XCTAssertNotNil(o.lifecycle.pendingLiveCaptureAt)
+        XCTAssertEqual(o.conversation.count, turnsBefore, "refresh adds no turn — no inference yet")
+        XCTAssertTrue(o.isLiveArmed, "still armed after a refresh")
+        if case .result = o.phase {} else { XCTFail("refresh stays in .result, got \(o.phase)") }
+    }
+
+    func testRefreshLiveNoOpWhenNotArmed() async {
+        let o = makeOrchestrator()
+        await driveToResult(o)   // answered, but NOT armed
+        o.refreshLive()
+        let leaked = await o.waitUntil(timeout: 0.4) { o.lifecycle.pendingLiveCapture != nil }
+        XCTAssertFalse(leaked, "refresh is a no-op when not armed")
+        XCTAssertNil(o.lastLiveRefreshAt)
+    }
+
+    func testStopLiveCancelsRefreshAndClearsPendingFrame() async {
+        let o = await makeArmed()
+        o.refreshLive()
+        _ = await o.waitUntil { o.lifecycle.pendingLiveCapture != nil }
+        o.stopLive()
+        XCTAssertNil(o.livePolicy)
+        XCTAssertNil(o.lifecycle.pendingLiveCapture, "disarm clears the pending live frame")
+        XCTAssertNil(o.lastLiveRefreshAt)
+    }
+
+    func testRefreshedFrameSurvivesAbortSessionWork() async {
+        // The pending live frame and the refresh task are owned by LiveCoordinator, NOT lifecycle — a
+        // Retake's abortSessionWork must not sweep them; Live keeps its latest frame across in-thread work.
+        let o = await makeArmed()
+        o.refreshLive()
+        _ = await o.waitUntil { o.lifecycle.pendingLiveCapture != nil }
+        o.abortSessionWork()
+        XCTAssertNotNil(o.lifecycle.pendingLiveCapture, "abortSessionWork must not drop the pending live frame")
+        XCTAssertTrue(o.isLiveArmed)
+    }
+
+    func testRefreshFailureEmitsNoticeAndStaysArmed() async {
+        let o = SessionOrchestrator(
+            settings: PeeknookSettings(textModel: "x"),
+            captureRegistry: GroundRegistry([.screen: FailAfterFirstCaptureProvider()]),
+            inference: MockInferenceEngine(tokens: ["a"])
+        )
+        o.beginCapture()
+        _ = await o.waitForResult("a")   // first capture succeeds → result
+        o.armLive()
+        XCTAssertTrue(o.isLiveArmed)
+
+        o.refreshLive()                  // second capture throws
+        let noticed = await o.waitUntil { o.lastNotice == .liveRefreshFailed }
+        XCTAssertTrue(noticed, "a failed refresh surfaces a transient notice")
+        XCTAssertNil(o.lifecycle.pendingLiveCapture, "a failed refresh leaves no pending frame")
+        XCTAssertTrue(o.isLiveArmed, "a failed refresh keeps the session armed (no .failed card)")
+        if case .result = o.phase {} else { XCTFail("failed refresh stays in .result, got \(o.phase)") }
+    }
+
+    func testRefreshCommandVisibleOnlyWhenArmedAndBeforeStop() {
+        let modules: Set<ModuleID> = [.screenCapture, .speakAnswers, .parallelScreen, .liveSession]
+        let refresh = CommandLayout.screenDefault.commands.first { $0.id == "result.refreshLive" }
+        XCTAssertEqual(refresh?.action, .refreshLive)
+        XCTAssertEqual(refresh?.requiredModules, [.screenCapture])
+        XCTAssertEqual(refresh?.requiredPermissions, [.screenRecording])
+        XCTAssertEqual(refresh?.isCustomizable, true, "Refresh is a normal (hideable) action, unlike Stop")
+
+        let notArmed = CommandBarContext(isReady: true, isLiveArmed: false, enabledModules: modules)
+        XCTAssertFalse(
+            CommandLayout.screenDefault.visibleCommands(.result, in: notArmed).map(\.id).contains("result.refreshLive"),
+            "Refresh is hidden while not armed"
+        )
+        let armed = CommandBarContext(isReady: true, isLiveArmed: true, enabledModules: modules)
+        let visible = CommandLayout.screenDefault.visibleCommands(.result, in: armed).map(\.id)
+        XCTAssertTrue(visible.contains("result.refreshLive"), "armed: Refresh shows")
+        let ri = try? XCTUnwrap(visible.firstIndex(of: "result.refreshLive"))
+        let si = try? XCTUnwrap(visible.firstIndex(of: "result.stopLive"))
+        XCTAssertLessThan(ri ?? .max, si ?? .min, "Refresh (action) appears before Stop (exit)")
+    }
+
+    func testRefreshDisabledUntilScreenRecordingGranted() {
+        let refresh = CommandLayout.screenDefault.commands.first { $0.id == "result.refreshLive" }!
+        XCTAssertTrue(refresh.isDisabled(in: CommandBarContext(isReady: false, isLiveArmed: true, enabledModules: [.screenCapture])))
+        XCTAssertFalse(refresh.isDisabled(in: CommandBarContext(isReady: true, isLiveArmed: true, enabledModules: [.screenCapture])))
+    }
+}
+
+/// A capture provider that succeeds once (so a test can reach `.result`) then fails — exercising the
+/// live-refresh failure path (transient notice, stay armed) without a real screen grab.
+private struct LiveRefreshTestError: Error {}
+
+private final class FailAfterFirstCaptureProvider: CaptureProviding, @unchecked Sendable {
+    private let lock = NSLock()
+    private var calls = 0
+
+    func capture(scope: CaptureScope, quick: Bool, encoding: CaptureEncodingParams) async throws -> CaptureResult {
+        lock.lock(); calls += 1; let n = calls; lock.unlock()
+        guard n == 1 else { throw LiveRefreshTestError() }
+        return CaptureResult(
+            text: "s", sourceLabel: "s",
+            screenshotBase64: StubCaptureProvider.defaultScreenshotBase64, ground: .screen
+        )
+    }
 }

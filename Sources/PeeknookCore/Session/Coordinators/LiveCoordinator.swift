@@ -15,8 +15,10 @@ import Foundation
 final class LiveCoordinator {
     private weak var session: SessionOrchestrator?
 
-    // Slice 6 lands `private var liveTimerTask: Task<Void, Never>?` here. It is deliberately owned by
-    // this coordinator — never by `SessionLifecycleCoordinator` — so it survives `abortSessionWork`.
+    /// The in-flight manual-refresh capture. Owned HERE — never by `SessionLifecycleCoordinator` — so
+    /// `abortSessionWork` (a Retake / Add image) does NOT cancel it; only ``stopLiveSession()`` via
+    /// ``cancelLiveWork()`` does. Slice 6 adds the recurring timer task beside it under the same rule.
+    private var refreshTask: Task<Void, Never>?
 
     init(session: SessionOrchestrator) {
         self.session = session
@@ -37,5 +39,46 @@ final class LiveCoordinator {
     /// Disarm via the orchestrator's single teardown choke point (idempotent, no-op when not armed).
     func stop() {
         session?.stopLiveSession()
+    }
+
+    /// Manual "Refresh": grab the latest primary-vision frame into the armed chat's PENDING context.
+    /// It does NOT append a turn, run inference, or change phase — the frame waits in
+    /// `lifecycle.pendingLiveCapture` for "Update & ask" / auto-respond (later slices) to promote it.
+    /// A new refresh supersedes any in-flight one. A capture failure keeps the session armed and
+    /// surfaces a transient notice rather than the `.failed` recovery card (which would leave armed).
+    func refresh() {
+        guard let session, case .result = session.phase, session.isLiveArmed else { return }
+        session.setup?.refreshCapturePermission()
+        if let setup = session.setup, !setup.isReady { return }   // disabled button already guards; defensive
+        let ground = session.resolvedActiveProfile.primaryGround
+        guard let provider = session.captureRegistry.provider(for: ground) else { return }
+        let scope = session.settings.captureScope
+        let quick = session.settings.quickMode
+        let quality = session.settings.captureQuality
+        refreshTask?.cancel()
+        refreshTask = Task {
+            do {
+                let encoding = CaptureEncodingPolicy.resolve(scope: scope, quick: quick, quality: quality)
+                let capture = try await provider.capture(scope: scope, quick: quick, encoding: encoding)
+                // Disarm cancels this task and clears the slot — drop a late frame rather than restash it.
+                guard !Task.isCancelled, session.isLiveArmed else { return }
+                session.lifecycle.pendingLiveCapture = capture
+                session.lifecycle.pendingLiveCaptureAt = Date()
+                session.lastLiveRefreshAt = Date()
+            } catch is CancellationError {
+                return
+            } catch {
+                guard !Task.isCancelled, session.isLiveArmed else { return }
+                session.emitNotice(.liveRefreshFailed)
+            }
+        }
+    }
+
+    /// Cancel the live-session's own in-flight work. Called ONLY from ``stopLiveSession()`` (the disarm
+    /// choke point) — never from `abortSessionWork`, so in-thread work (Retake / Add image) leaves Live
+    /// running. Idempotent. Slice 6 also cancels the timer task here.
+    func cancelLiveWork() {
+        refreshTask?.cancel()
+        refreshTask = nil
     }
 }

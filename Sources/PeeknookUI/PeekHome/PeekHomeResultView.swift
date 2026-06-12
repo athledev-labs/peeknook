@@ -269,6 +269,7 @@ struct PeekHomeResultView: View {
         case .compositeCapture: orchestrator.beginComposite()
         case .toggleLive: withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) { orchestrator.armLive() }
         case .stopLive:   withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) { orchestrator.stopLive() }
+        case .refreshLive: orchestrator.refreshLive()
         case .done:     onFinishChat()
         case .newChat:  onRequestNewChat()
         default:        break

@@ -97,6 +97,7 @@ extension SessionOrchestrator {
         guard isLiveArmed || lifecycle.pendingLiveCapture != nil else { return }
         livePolicy = nil
         lastLiveRefreshAt = nil
+        liveCoordinator.cancelLiveWork()   // cancel any in-flight refresh (and, later, the timer)
         lifecycle.clearPendingLive()
     }
 

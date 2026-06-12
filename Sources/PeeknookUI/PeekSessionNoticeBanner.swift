@@ -64,6 +64,7 @@ struct PeekSessionNoticeBanner: View {
         switch notice {
         case .contextFull: "sparkles"
         case .threadUnavailable: "exclamationmark.triangle"
+        case .liveRefreshFailed: "arrow.clockwise"
         }
     }
 
@@ -71,6 +72,7 @@ struct PeekSessionNoticeBanner: View {
         switch notice {
         case .contextFull: "Started a new chat"
         case .threadUnavailable: "Couldn't open that chat"
+        case .liveRefreshFailed: "Couldn't refresh"
         }
     }
 
@@ -82,6 +84,8 @@ struct PeekSessionNoticeBanner: View {
                 : "The previous chat's context window was full, so this began a fresh chat."
         case .threadUnavailable:
             "That saved chat is missing or unreadable, so it was removed from your history."
+        case .liveRefreshFailed:
+            "Peeknook couldn't capture the latest screen. The live chat is still on, so you can try Refresh again."
         }
     }
 }

@@ -12,4 +12,7 @@ public enum SessionNotice: Equatable, Sendable {
     /// A History row was opened but its thread file is missing, corrupt, or refused (tamper/downgrade).
     /// The stale index entry is pruned and the user is told, instead of a silent no-op.
     case threadUnavailable
+    /// A manual live-session refresh failed to capture the screen. The session stays armed (no
+    /// `.failed` recovery card, which would drop the armed state) and the user is told to retry.
+    case liveRefreshFailed
 }

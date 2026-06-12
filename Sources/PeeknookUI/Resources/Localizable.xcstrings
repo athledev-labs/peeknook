@@ -177,6 +177,10 @@
       "comment": "Command-bar help: scope dropdown.",
       "extractionState": "manual"
     },
+    "Capture the latest screen into this live chat": {
+      "comment": "Command-bar help: live-session refresh.",
+      "extractionState": "manual"
+    },
     "Capture your screen and a camera photo for one question": {
       "comment": "Command-bar help: idle composite capture.",
       "extractionState": "manual"
@@ -279,6 +283,10 @@
     },
     "Couldn't read the screen": {
       "comment": "Tier B localization",
+      "extractionState": "manual"
+    },
+    "Couldn't refresh": {
+      "comment": "Notice title: a live-session refresh failed.",
       "extractionState": "manual"
     },
     "Couldn't save chat": {
@@ -679,6 +687,14 @@
     },
     "Open System Settings to allow this permission": {
       "comment": "Accessibility hint for a denied capture permission row.",
+      "extractionState": "manual"
+    },
+    "Peeknook couldn't capture the latest screen. The live chat is still on, so you can try Refresh again.": {
+      "comment": "Notice message: a live-session refresh failed.",
+      "extractionState": "manual"
+    },
+    "Refresh": {
+      "comment": "Command-bar action: capture the latest screen into the live chat.",
       "extractionState": "manual"
     },
     "Required for screen capture": {
