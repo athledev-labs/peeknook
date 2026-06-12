@@ -286,13 +286,16 @@ final class CaptureCoordinator {
     }
 
     /// Appends the confirmed screenshot as an image turn (resetting first for a fresh chat) and
-    /// runs the answer. Shared by the screen pipeline and the camera shutter.
-    func commitCapture(_ capture: CaptureResult, intent: SessionOrchestrator.CaptureIntent) {
+    /// runs the answer. Shared by the screen pipeline and the camera shutter. `question` is non-nil
+    /// only on the live-promotion path (Answer now / Update & ask / a follow-up that consumed a pending
+    /// frame): it folds the user's note into the image turn so both ride one grounded message. Every
+    /// other caller passes `nil` (default), keeping the committed turn byte-identical.
+    func commitCapture(_ capture: CaptureResult, intent: SessionOrchestrator.CaptureIntent, question: String? = nil) {
         guard let session else { return }
         if intent == .fresh { session.resetConversation() }
         session.turnCounter += 1
         let stored = session.storedCapture(capture)
-        session.conversation.append(ChatTurn(id: session.turnCounter, kind: .image(stored)))
+        session.conversation.append(ChatTurn(id: session.turnCounter, kind: .image(stored), question: question?.nilIfEmpty))
         session.lifecycle.inferenceTask = Task { await session.runTurn(capturedNow: capture) }
     }
 }

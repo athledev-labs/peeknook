@@ -79,6 +79,13 @@ public final class SessionOrchestrator {
     public var isLiveArmed: Bool { livePolicy != nil }
     /// When the last live refresh landed — drives the armed chip's "Last refresh …". Transient.
     public internal(set) var lastLiveRefreshAt: Date?
+    /// Observable mirror of `lifecycle.pendingLiveCapture != nil`. The pending frame lives in the
+    /// non-`@Observable` ``SessionLifecycleCoordinator``, so the result bar's "Answer now" gate and the
+    /// chip's "ask when ready" cue need this published flag to re-render. Kept in lockstep with the slot
+    /// by routing every park/consume through ``parkPendingLiveFrame(_:)`` / ``takePendingLiveFrame()``
+    /// (and the disarm choke point), all reached only while armed — so it is structurally false when
+    /// Live is off. Transient.
+    public internal(set) var hasPendingLiveFrame = false
     let inferenceRegistry: InferenceBackendRegistry
     /// The engine for the primary vision model's backend (profile binding, else global), resolved
     /// per call so a backend switch or profile switch takes effect on the next turn. Pinned to
@@ -464,6 +471,34 @@ public final class SessionOrchestrator {
         liveCoordinator.refresh()
     }
 
+    /// "Answer now": promote the already-parked refreshed frame into an answered turn (optionally with
+    /// a note from the follow-up composer). No new capture. No-op when nothing is parked.
+    public func answerLive(note: String? = nil) {
+        liveCoordinator.answerFromPending(note: note)
+    }
+
+    /// "Update & ask": grab the latest screen AND answer in one press, optionally folding a note typed
+    /// in the follow-up composer (symmetric with ``answerLive(note:)``). See ``LiveCoordinator/updateAndAsk(note:)``.
+    public func updateAndAskLive(note: String? = nil) {
+        liveCoordinator.updateAndAsk(note: note)
+    }
+
+    /// Park a freshly refreshed frame as the armed chat's pending context and raise the observable
+    /// mirror in lockstep. Only ``LiveCoordinator/refresh()`` calls this (while armed).
+    func parkPendingLiveFrame(_ capture: CaptureResult) {
+        lifecycle.pendingLiveCapture = capture
+        lifecycle.pendingLiveCaptureAt = Date()
+        hasPendingLiveFrame = true
+    }
+
+    /// Atomically take the parked frame and lower the observable mirror in lockstep (nil when none).
+    /// Only the live-promotion paths call this (while armed).
+    func takePendingLiveFrame() -> CaptureResult? {
+        let capture = lifecycle.consumePendingLive()
+        hasPendingLiveFrame = false
+        return capture
+    }
+
     // MARK: - Capture (delegates to CaptureCoordinator)
 
     /// Hotkey / compact affordance entry: capture → preview → infer. Starts a fresh chat only when
@@ -513,9 +548,10 @@ public final class SessionOrchestrator {
     }
 
     /// Appends the confirmed screenshot as an image turn (resetting first for a fresh chat) and
-    /// runs the answer. Shared by the screen pipeline and the camera shutter.
-    func commitCapture(_ capture: CaptureResult, intent: CaptureIntent) {
-        captureCoordinator.commitCapture(capture, intent: intent)
+    /// runs the answer. Shared by the screen pipeline and the camera shutter. `question` rides only on
+    /// the live-promotion path; every other caller leaves it nil (byte-identical).
+    func commitCapture(_ capture: CaptureResult, intent: CaptureIntent, question: String? = nil) {
+        captureCoordinator.commitCapture(capture, intent: intent, question: question)
     }
 
     // MARK: - Inference (delegates to InferenceCoordinator)

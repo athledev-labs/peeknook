@@ -122,7 +122,7 @@ final class PeeknookSettingsCommandOverrideTests: XCTestCase {
     func testMoveAtTheEndsIsANoOp() {
         let stack = makeStack()
         stack.settings.moveCommand("idle.resume", in: .idle, by: -1)   // first up
-        stack.settings.moveCommand("result.refreshLive", in: .result, by: 1) // last customizable down
+        stack.settings.moveCommand("result.updateAndAsk", in: .result, by: 1) // last customizable down (stopLive is non-customizable)
         XCTAssertTrue(
             stack.orchestrator.settings.commandOverrides(forScope: "global").isEmpty,
             "moving past an end must not write anything"

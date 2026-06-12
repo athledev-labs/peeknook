@@ -55,6 +55,20 @@ final class CommandLayoutCatalogTests: XCTestCase {
         )
     }
 
+    /// The Live chip's pending-frame cue + accessibility labels are `Text(peek:)` strings (not command
+    /// descriptors), so the descriptor scans above don't cover them. SwiftUI silently degrades a missing
+    /// key to its own text, so guard these explicitly or the cue would ship un-localizable and invisible.
+    func testLiveChipPendingCueKeysExistInTheCatalog() throws {
+        let catalogKeys = try loadCatalogKeys()
+        let chipKeys = [
+            "Seeing latest screen — ask when ready",
+            "Live session armed, auto-respond off, seeing latest screen",
+            "Live session armed, auto-respond on, seeing latest screen",
+        ]
+        let missing = chipKeys.filter { !catalogKeys.contains($0) }
+        XCTAssertTrue(missing.isEmpty, "Live chip pending-cue keys missing from Localizable.xcstrings: \(missing)")
+    }
+
     // MARK: - Loading the source catalog
 
     private func loadCatalogKeys() throws -> Set<String> {

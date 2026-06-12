@@ -65,6 +65,28 @@ final class SettingsAndPromptTests: XCTestCase {
         XCTAssertFalse(message.contains("Ground: camera"))
     }
 
+    func testCaptureUserMessageFoldsQuestionWhenPresent() {
+        let capture = CaptureResult(text: "t", sourceLabel: "Safari (vision)", screenshotBase64: "x")
+        let withQ = PromptBuilder.captureUserMessage(
+            capture: capture, assembly: PromptAssembly(answerDepth: .deep), question: "what is this?"
+        )
+        XCTAssertTrue(withQ.contains("## Question"))
+        XCTAssertTrue(withQ.contains("what is this?"))
+        XCTAssertTrue(withQ.contains("Answer the question above using the screenshot."))
+        XCTAssertFalse(withQ.contains("Respond to the screenshot above."), "the question replaces the default Task line")
+    }
+
+    func testCaptureUserMessageWithNilOrBlankQuestionIsByteIdentical() {
+        let capture = CaptureResult(text: "t", sourceLabel: "Safari (vision)", screenshotBase64: "x")
+        let plain = PromptBuilder.captureUserMessage(capture: capture, assembly: PromptAssembly(answerDepth: .deep))
+        let blank = PromptBuilder.captureUserMessage(
+            capture: capture, assembly: PromptAssembly(answerDepth: .deep), question: "   "
+        )
+        XCTAssertEqual(blank, plain, "a blank question is the same as none")
+        XCTAssertTrue(plain.contains("Respond to the screenshot above."))
+        XCTAssertFalse(plain.contains("## Question"))
+    }
+
     func testWebLookupPromptAddsSearchContext() {
         let capture = CaptureResult(text: "Swift actors", sourceLabel: "Front window (vision)", screenshotBase64: "x")
         let snapshot = WebLookupSnapshot(

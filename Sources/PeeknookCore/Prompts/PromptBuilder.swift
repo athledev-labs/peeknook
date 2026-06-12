@@ -69,7 +69,8 @@ enum PromptBuilder {
     static func captureUserMessage(
         capture: CaptureResult,
         assembly: PromptAssembly,
-        webLookup: WebLookupSnapshot? = nil
+        webLookup: WebLookupSnapshot? = nil,
+        question: String? = nil
     ) -> String {
         var sections: [String] = []
 
@@ -88,7 +89,17 @@ enum PromptBuilder {
             """)
         }
 
-        sections.append("## Task\nRespond to the screenshot above.")
+        // A live-promoted frame can carry the user's own question; fold it into THIS message so the
+        // screenshot and question stay one grounded turn. `nil`/blank keeps the exact pre-Live Task line.
+        if let question = question?.trimmingCharacters(in: .whitespacesAndNewlines), !question.isEmpty {
+            sections.append("""
+            ## Question
+            \(question)
+            """)
+            sections.append("## Task\nAnswer the question above using the screenshot.")
+        } else {
+            sections.append("## Task\nRespond to the screenshot above.")
+        }
         return sections.joined(separator: "\n\n")
     }
 

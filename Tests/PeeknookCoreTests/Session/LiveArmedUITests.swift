@@ -342,6 +342,280 @@ final class LiveArmedUITests: XCTestCase {
         XCTAssertTrue(refresh.isDisabled(in: CommandBarContext(isReady: false, isLiveArmed: true, enabledModules: [.screenCapture])))
         XCTAssertFalse(refresh.isDisabled(in: CommandBarContext(isReady: true, isLiveArmed: true, enabledModules: [.screenCapture])))
     }
+
+    // MARK: Slice 4 — Update & ask + Answer from pending context
+
+    /// Wait for a promotion's full cycle (image turn committed, then runTurn streams the assistant).
+    /// `waitForResult` alone is racy here: every Mock answer is "a", so the phase is already `.result("a")`
+    /// before the promote runs — gate on the new image count + a trailing assistant instead.
+    @discardableResult
+    private func waitForPromotedAnswer(_ o: SessionOrchestrator, expectedImages: Int) async -> Bool {
+        await o.waitUntil {
+            o.conversation.filter(\.isImage).count == expectedImages && o.conversation.last?.isAssistant == true
+        }
+    }
+
+    /// "Answer now" promotes the already-parked refreshed frame into an answered turn with NO new
+    /// capture: an image turn lands, the frame is consumed, the mirror lowers, and Live stays armed.
+    func testAnswerNowPromotesPendingFrameWithoutCapturing() async {
+        let o = await makeArmed()
+        o.refreshLive()
+        _ = await o.waitUntil { o.lifecycle.pendingLiveCapture != nil }
+        XCTAssertTrue(o.hasPendingLiveFrame, "refresh raises the observable mirror")
+        let imagesBefore = o.conversation.filter(\.isImage).count
+        o.answerLive()
+        let answered = await waitForPromotedAnswer(o, expectedImages: imagesBefore + 1)
+        XCTAssertTrue(answered, "the parked frame became an image turn and was answered")
+        XCTAssertNil(o.lifecycle.pendingLiveCapture, "the frame is consumed on answer")
+        XCTAssertFalse(o.hasPendingLiveFrame, "the mirror lowers with the slot")
+        XCTAssertTrue(o.isLiveArmed, "still armed after answering")
+        if case .result = o.phase {} else { XCTFail("answer lands back in .result, got \(o.phase)") }
+    }
+
+    func testAnswerNowNoOpWhenNoPendingFrame() async {
+        let o = await makeArmed()
+        let turnsBefore = o.conversation.count
+        o.answerLive()
+        let changed = await o.waitUntil(timeout: 0.4) { o.conversation.count != turnsBefore }
+        XCTAssertFalse(changed, "Answer now with nothing parked is a no-op")
+        XCTAssertTrue(o.isLiveArmed)
+    }
+
+    /// A double press is safe: the atomic take means only the first promotes; the second finds no frame.
+    func testAnswerNowDoublePressPromotesOnce() async {
+        let o = await makeArmed()
+        o.refreshLive()
+        _ = await o.waitUntil { o.hasPendingLiveFrame }
+        let imagesBefore = o.conversation.filter(\.isImage).count
+        o.answerLive()
+        o.answerLive()   // second press: frame already taken
+        let answered = await waitForPromotedAnswer(o, expectedImages: imagesBefore + 1)
+        XCTAssertTrue(answered, "only one image turn from a double press, and it gets answered")
+    }
+
+    /// "Update & ask" grabs a fresh frame AND answers in one press; it never parks the frame.
+    func testUpdateAndAskCapturesThenAnswers() async {
+        let o = await makeArmed()
+        let imagesBefore = o.conversation.filter(\.isImage).count
+        o.updateAndAskLive()
+        let answered = await waitForPromotedAnswer(o, expectedImages: imagesBefore + 1)
+        XCTAssertTrue(answered, "Update & ask grabs a fresh frame as an image turn and answers it")
+        XCTAssertNotNil(o.lastLiveRefreshAt, "Update & ask stamps the last-refresh time")
+        XCTAssertNil(o.lifecycle.pendingLiveCapture, "Update & ask never parks a frame")
+        XCTAssertFalse(o.hasPendingLiveFrame)
+        XCTAssertTrue(o.isLiveArmed)
+    }
+
+    /// Anti-graft: a Retake after Update & ask keeps Live armed, and the Retake's `.fresh` reset wipes
+    /// the prior thread so no update turn grafts onto the replaced chat.
+    func testUpdateAndAskThenRetakeKeepsLiveArmedAndNoGraft() async {
+        let o = await makeArmed()
+        o.updateAndAskLive()
+        _ = await waitForPromotedAnswer(o, expectedImages: 2)   // makeArmed's image + the update's image
+        o.retake()
+        // Retake's `.fresh` reset wipes the thread, then commits a single fresh image + answer.
+        let retook = await waitForPromotedAnswer(o, expectedImages: 1)
+        XCTAssertTrue(retook, "the Retake produced a clean single-image thread")
+        XCTAssertTrue(o.isLiveArmed, "a Retake after Update & ask keeps Live armed (anti-graft)")
+    }
+
+    /// Anti-graft, the PARKED-frame path: a Retake REPLACES the thread via `.fresh` reset, which must
+    /// drop the parked refresh frame + its mirror — otherwise "Answer now" would graft a stale
+    /// pre-Retake frame onto the new thread. Live stays armed (livePolicy is untouched).
+    func testRetakeClearsParkedLiveFrameAndMirror() async {
+        let o = await makeArmed()
+        o.refreshLive()
+        _ = await o.waitUntil { o.hasPendingLiveFrame }
+        XCTAssertNotNil(o.lifecycle.pendingLiveCapture, "precondition: a frame is parked")
+        o.retake()   // synchronously moves to .capturing, so waitForResult can't return on the pre-retake state
+        _ = await o.waitForResult("a")
+        XCTAssertEqual(o.conversation.filter(\.isImage).count, 1, ".fresh reset produced one fresh image+answer")
+        XCTAssertTrue(o.isLiveArmed, "Retake keeps Live armed (livePolicy untouched)")
+        XCTAssertNil(o.lifecycle.pendingLiveCapture, "the pre-Retake frame is dropped — no graft onto the replaced thread")
+        XCTAssertFalse(o.hasPendingLiveFrame, "the mirror clears with the slot")
+        let visible = CommandLayout.screenDefault.visibleCommands(.result, in:
+            CommandBarContext(isReady: true, isLiveArmed: o.isLiveArmed, hasPendingLiveFrame: o.hasPendingLiveFrame,
+                              enabledModules: [.liveSession, .screenCapture])
+        ).map(\.id)
+        XCTAssertFalse(visible.contains("result.answerNow"), "no parked frame → Answer now hidden after a Retake")
+    }
+
+    /// Update & ask grabs a NEWER frame, so it supersedes any frame a prior Refresh parked — no stale
+    /// "Answer now" / "ask when ready" should linger pointing at the older screenshot.
+    func testUpdateAndAskSupersedesAParkedFrame() async {
+        let o = await makeArmed()
+        o.refreshLive()
+        _ = await o.waitUntil { o.hasPendingLiveFrame }   // a frame is parked from the Refresh
+        o.updateAndAskLive()
+        let answered = await waitForPromotedAnswer(o, expectedImages: 2)
+        XCTAssertTrue(answered, "Update & ask grabbed a fresh frame and answered it")
+        XCTAssertNil(o.lifecycle.pendingLiveCapture, "the parked refresh frame is superseded by the fresher grab")
+        XCTAssertFalse(o.hasPendingLiveFrame, "no lingering 'ask when ready' after Update & ask")
+        XCTAssertTrue(o.isLiveArmed)
+    }
+
+    /// The observable mirror tracks the parked slot in lockstep across refresh, promote, and disarm.
+    func testMirrorTracksStashThroughRefreshPromoteDisarm() async {
+        let o = await makeArmed()
+        XCTAssertFalse(o.hasPendingLiveFrame)
+        o.refreshLive(); _ = await o.waitUntil { o.hasPendingLiveFrame }
+        XCTAssertNotNil(o.lifecycle.pendingLiveCapture)
+        o.answerLive()
+        // Wait for the FULL promote (phase back to .result) before the next refresh — a refresh while
+        // inferring would no-op and the next wait would hang.
+        _ = await waitForPromotedAnswer(o, expectedImages: 2)
+        XCTAssertFalse(o.hasPendingLiveFrame); XCTAssertNil(o.lifecycle.pendingLiveCapture)
+        o.refreshLive(); _ = await o.waitUntil { o.hasPendingLiveFrame }
+        o.stopLive()
+        XCTAssertFalse(o.hasPendingLiveFrame, "disarm lowers the mirror")
+        XCTAssertNil(o.lifecycle.pendingLiveCapture, "disarm clears the slot — lockstep with the mirror")
+    }
+
+    /// Critical context disables both new commands (mirroring Add image) and the orchestrator-level
+    /// guard leaves a parked frame UNCONSUMED so the user can Stop / New chat and retry.
+    func testAnswerAndUpdateDisabledAtCriticalContext() {
+        let blocked = CommandBarContext(
+            isReady: true, isContextBlocked: true, isLiveArmed: true,
+            hasPendingLiveFrame: true, enabledModules: [.liveSession, .screenCapture]
+        )
+        let answer = CommandLayout.screenDefault.commands.first { $0.id == "result.answerNow" }!
+        let update = CommandLayout.screenDefault.commands.first { $0.id == "result.updateAndAsk" }!
+        XCTAssertTrue(answer.isDisabled(in: blocked))
+        XCTAssertTrue(update.isDisabled(in: blocked))
+        let calm = CommandBarContext(
+            isReady: true, isContextBlocked: false, isLiveArmed: true,
+            hasPendingLiveFrame: true, enabledModules: [.liveSession, .screenCapture]
+        )
+        XCTAssertFalse(answer.isDisabled(in: calm))
+        XCTAssertFalse(update.isDisabled(in: calm))
+    }
+
+    func testAnswerNowAtCriticalContextKeepsFrameParked() async {
+        let o = await makeArmed()
+        o.refreshLive()
+        _ = await o.waitUntil { o.hasPendingLiveFrame }
+        o.lastPromptTokens = 1000
+        o.contextWindow = 1000   // contextFraction 1.0 → .critical
+        XCTAssertTrue(o.isContextBlocked, "precondition: critical context pressure")
+        o.answerLive()
+        XCTAssertNotNil(o.lifecycle.pendingLiveCapture, "a full-context Answer now leaves the frame parked to retry")
+        XCTAssertTrue(o.hasPendingLiveFrame)
+        XCTAssertEqual(o.lastNotice, .contextFull, "the user is told the window is full")
+    }
+
+    // MARK: Command descriptor gates
+
+    func testAnswerNowDescriptorAndVisibility() {
+        let answer = CommandLayout.screenDefault.commands.first { $0.id == "result.answerNow" }!
+        XCTAssertEqual(answer.action, .answerLive)
+        XCTAssertEqual(answer.visibility, .liveHasPendingFrame)
+        XCTAssertEqual(answer.requiredModules, [.liveSession])
+        XCTAssertTrue(answer.requiredPermissions.isEmpty, "Answer now spends an already-captured frame — no Screen Recording gate")
+        XCTAssertTrue(answer.isCustomizable, "Answer now is a normal, hideable action")
+        let modules: Set<ModuleID> = [.liveSession, .screenCapture]
+        XCTAssertFalse(
+            CommandLayout.screenDefault.visibleCommands(.result, in:
+                CommandBarContext(isReady: true, isLiveArmed: true, hasPendingLiveFrame: false, enabledModules: modules)
+            ).map(\.id).contains("result.answerNow"),
+            "hidden while armed with no parked frame"
+        )
+        XCTAssertTrue(
+            CommandLayout.screenDefault.visibleCommands(.result, in:
+                CommandBarContext(isReady: true, isLiveArmed: true, hasPendingLiveFrame: true, enabledModules: modules)
+            ).map(\.id).contains("result.answerNow"),
+            "shown once a frame is parked"
+        )
+    }
+
+    func testUpdateAndAskDescriptorAndOrderBeforeStop() {
+        let update = CommandLayout.screenDefault.commands.first { $0.id == "result.updateAndAsk" }!
+        XCTAssertEqual(update.action, .updateAndAskLive)
+        XCTAssertEqual(update.visibility, .liveArmed)
+        XCTAssertEqual(update.requiredModules, [.screenCapture])
+        XCTAssertEqual(update.requiredPermissions, [.screenRecording], "it re-captures, so it gates on Screen Recording")
+        XCTAssertTrue(update.isCustomizable)
+        let visible = CommandLayout.screenDefault.visibleCommands(.result, in:
+            CommandBarContext(isReady: true, isLiveArmed: true, hasPendingLiveFrame: true,
+                              enabledModules: [.liveSession, .screenCapture])
+        ).map(\.id)
+        let ui = visible.firstIndex(of: "result.updateAndAsk") ?? .max
+        let si = visible.firstIndex(of: "result.stopLive") ?? .min
+        XCTAssertLessThan(ui, si, "Update & ask appears before Stop (the exit stays last)")
+    }
+
+    // MARK: Follow-up consumes the pending frame — folded into ONE grounded message
+
+    private func makeScriptedOrchestrator(_ engine: ScriptedEngine) -> SessionOrchestrator {
+        SessionOrchestrator(
+            settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "screen")]),
+            inference: engine
+        )
+    }
+
+    func testFollowUpConsumesPendingFrameFoldedIntoOneMessage() async {
+        let engine = ScriptedEngine(responsesPerCall: [["a1"], ["a2"]])
+        let o = makeScriptedOrchestrator(engine)
+        o.beginCapture()
+        _ = await o.waitForResult("a1")
+        o.armLive()
+        o.refreshLive()
+        _ = await o.waitUntil { o.hasPendingLiveFrame }
+        o.sendFollowUp("what is this?")
+        _ = await o.waitForResult("a2")
+
+        let userMsgs = (engine.requests.last?.messages ?? []).filter { $0.role == .user }
+        let withImage = userMsgs.filter { !$0.imagesBase64.isEmpty }
+        XCTAssertEqual(withImage.count, 1, "exactly one user message carries the promoted frame's image")
+        XCTAssertTrue(withImage.first?.text.contains("what is this?") ?? false,
+                      "the note folds into the image's grounded message")
+        XCTAssertFalse(
+            userMsgs.contains { $0.imagesBase64.isEmpty && $0.text.contains("what is this?") },
+            "the note is NOT a separate bare user message — no adjacent user/user shape"
+        )
+        XCTAssertNil(o.lifecycle.pendingLiveCapture, "the follow-up consumed the parked frame")
+        XCTAssertFalse(o.hasPendingLiveFrame)
+        XCTAssertTrue(o.isLiveArmed)
+    }
+
+    func testFollowUpWithoutPendingFrameStaysTextOnly() async {
+        let engine = ScriptedEngine(responsesPerCall: [["a1"], ["a2"]])
+        let o = makeScriptedOrchestrator(engine)
+        o.beginCapture()
+        _ = await o.waitForResult("a1")
+        o.armLive()   // armed but NO frame parked
+        let imagesBefore = o.conversation.filter(\.isImage).count
+        o.sendFollowUp("text only please")
+        _ = await o.waitForResult("a2")
+        XCTAssertEqual(o.conversation.filter(\.isImage).count, imagesBefore,
+                       "no parked frame → a normal text-only follow-up adds no image turn")
+        let userMsgs = (engine.requests.last?.messages ?? []).filter { $0.role == .user }
+        XCTAssertTrue(
+            userMsgs.contains { $0.imagesBase64.isEmpty && $0.text.contains("text only please") },
+            "the follow-up rode as a bare text user message (capturedNow nil)"
+        )
+    }
+
+    /// "Update & ask" with composer text folds the note into the fresh frame's single grounded message,
+    /// symmetric with "Answer now" — no adjacent user/user shape.
+    func testUpdateAndAskFoldsComposerNoteIntoOneMessage() async {
+        let engine = ScriptedEngine(responsesPerCall: [["a1"], ["a2"]])
+        let o = makeScriptedOrchestrator(engine)
+        o.beginCapture()
+        _ = await o.waitForResult("a1")
+        o.armLive()
+        o.updateAndAskLive(note: "explain this")
+        _ = await o.waitForResult("a2")
+        let userMsgs = (engine.requests.last?.messages ?? []).filter { $0.role == .user }
+        let withImage = userMsgs.filter { !$0.imagesBase64.isEmpty }
+        XCTAssertEqual(withImage.count, 1, "the fresh frame rides one user message")
+        XCTAssertTrue(withImage.first?.text.contains("explain this") ?? false,
+                      "Update & ask folds the note into the fresh frame's message")
+        XCTAssertFalse(
+            userMsgs.contains { $0.imagesBase64.isEmpty && $0.text.contains("explain this") },
+            "the note is NOT a separate bare user message"
+        )
+    }
 }
 
 /// A capture provider that succeeds once (so a test can reach `.result`) then fails — exercising the

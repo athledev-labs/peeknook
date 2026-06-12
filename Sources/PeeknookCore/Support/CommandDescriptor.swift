@@ -65,6 +65,8 @@ public enum CommandAction: String, Codable, Sendable, CaseIterable {
     case compositeCapture   // screen + camera asked as one question (opt-in, gated on .parallelScreen)
     case toggleLive         // arm a live session from an answered thread (opt-in, gated on .liveSession)
     case refreshLive        // capture the latest screen into the armed live chat's pending context (no infer)
+    case answerLive         // answer from the already-parked live frame (no new capture)
+    case updateAndAskLive   // capture the latest screen AND answer in one press
     case stopLive           // disarm the live session — the single, never-hideable exit
     // case planAction   ← Phase 5 sidecar (agent control)
 }
@@ -90,8 +92,9 @@ public enum CommandVisibility: String, Codable, Sendable {
     case hasConversationHistory    // History — the thread has more than the latest answer
     case showingFullConversation   // Export — the full-thread view is open
     case previewing                // Use this — only while a capture is awaiting confirmation
-    case liveArmed                 // Stop live — only while the session is armed
+    case liveArmed                 // Stop live / Refresh / Update & ask — only while the session is armed
     case liveDisarmed              // Go live — only while the session is NOT armed
+    case liveHasPendingFrame       // Answer now — armed AND a refreshed frame is waiting to be answered
 }
 
 /// An alternate appearance a command adopts while its (renderer-computed) toggle state is active.
@@ -456,10 +459,26 @@ public extension CommandLayout {
             defaultOrder: 11
         ),
         CommandDescriptor(
+            id: "result.answerNow", kind: .button, action: .answerLive,
+            titleKey: "Answer now", symbol: "arrow.up.message",
+            helpKey: "Answer from the latest screen Peek already grabbed",
+            placement: .result, visibility: .liveHasPendingFrame,
+            requiredModules: [.liveSession],   // no permission gate: it answers a frame already captured
+            defaultOrder: 12
+        ),
+        CommandDescriptor(
+            id: "result.updateAndAsk", kind: .button, action: .updateAndAskLive,
+            titleKey: "Update & ask", symbol: "arrow.clockwise.circle",
+            helpKey: "Capture the latest screen and answer in one step",
+            placement: .result, visibility: .liveArmed,
+            requiredModules: [.screenCapture], requiredPermissions: [.screenRecording],   // it re-captures
+            defaultOrder: 13
+        ),
+        CommandDescriptor(
             id: "result.stopLive", kind: .button, action: .stopLive,
             titleKey: "Stop", symbol: "stop.circle",
             helpKey: "Stop the live session",
-            placement: .result, visibility: .liveArmed, defaultOrder: 12
+            placement: .result, visibility: .liveArmed, defaultOrder: 14
         ),
         CommandDescriptor(
             id: "result.done", kind: .button, action: .done,

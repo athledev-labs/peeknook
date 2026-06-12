@@ -85,6 +85,24 @@ struct PeekHomeConversationView: View {
         return orchestrator.speechSpokenRange
     }
 
+    /// The user's words as a bubble — a typed/pill follow-up turn, or a live-promoted frame's folded
+    /// question. One renderer so both read identically in the thread.
+    private func userBubble(_ text: String) -> some View {
+        HStack(alignment: .top, spacing: 6) {
+            Image(systemName: "person.crop.circle")
+                .font(.system(size: 11))
+                .foregroundStyle(theme.tertiaryLabel)
+            Text(text)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(theme.secondaryLabel)
+                .textSelection(.enabled)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 6)
+        .padding(.horizontal, 10)
+        .background(theme.tertiaryLabel.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+    }
+
     @ViewBuilder
     private func turnView(_ turn: ChatTurn, isLatestAssistant: Bool, showAllTurnTypes: Bool) -> some View {
         switch turn.kind {
@@ -100,23 +118,17 @@ struct PeekHomeConversationView: View {
                         .lineLimit(1)
                         .truncationMode(.middle)
                     CaptureTurnThumbnail(orchestrator: orchestrator, capture: capture)
+                    // A live-promoted frame can carry the user's typed question (folded into one prompt
+                    // message). Render it here so the user's words stay visible in the thread, the way a
+                    // plain follow-up's `.user` turn does — otherwise the question would silently vanish.
+                    if let question = turn.question, !question.isEmpty {
+                        userBubble(question)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         case .user(let text):
-            HStack(alignment: .top, spacing: 6) {
-                Image(systemName: "person.crop.circle")
-                    .font(.system(size: 11))
-                    .foregroundStyle(theme.tertiaryLabel)
-                Text(text)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(theme.secondaryLabel)
-                    .textSelection(.enabled)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, 6)
-            .padding(.horizontal, 10)
-            .background(theme.tertiaryLabel.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+            userBubble(text)
         case .assistant(let text):
             VStack(alignment: .leading, spacing: 4) {
                 PeekHomeAnswerCard(

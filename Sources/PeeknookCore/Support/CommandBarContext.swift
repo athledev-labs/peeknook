@@ -29,6 +29,10 @@ public struct CommandBarContext: Sendable, Equatable {
     public var isContextBlocked: Bool
     /// The thread is an armed live session — shows the Stop control, hides the Go-live arm command.
     public var isLiveArmed: Bool
+    /// An armed live session has a refreshed frame parked, waiting to be answered — shows "Answer now".
+    /// Mirrors `SessionOrchestrator.hasPendingLiveFrame`; defaults false, so off the armed path the
+    /// command can never surface.
+    public var hasPendingLiveFrame: Bool
     /// Modules currently enabled in the active profile (`Module.isEnabled`). A command whose
     /// `requiredModules` are not all present is hidden (Speak when speak-answers is off, camera
     /// commands in a screen profile, …).
@@ -46,6 +50,7 @@ public struct CommandBarContext: Sendable, Equatable {
         followUpComposerVisible: Bool = false,
         isContextBlocked: Bool = false,
         isLiveArmed: Bool = false,
+        hasPendingLiveFrame: Bool = false,
         enabledModules: Set<ModuleID> = []
     ) {
         self.isPreviewing = isPreviewing
@@ -59,6 +64,7 @@ public struct CommandBarContext: Sendable, Equatable {
         self.followUpComposerVisible = followUpComposerVisible
         self.isContextBlocked = isContextBlocked
         self.isLiveArmed = isLiveArmed
+        self.hasPendingLiveFrame = hasPendingLiveFrame
         self.enabledModules = enabledModules
     }
 }
@@ -78,6 +84,7 @@ public extension CommandDescriptor {
         case .previewing:              return context.isPreviewing
         case .liveArmed:               return context.isLiveArmed
         case .liveDisarmed:            return !context.isLiveArmed
+        case .liveHasPendingFrame:     return context.isLiveArmed && context.hasPendingLiveFrame
         }
     }
 
@@ -85,7 +92,11 @@ public extension CommandDescriptor {
     /// gates disable; module/visibility gates hide.
     func isDisabled(in context: CommandBarContext) -> Bool {
         if !requiredPermissions.isEmpty && !context.isReady { return true }
-        if action == .addImage && context.isContextBlocked { return true }
+        // Adding another image at critical context would overflow the window — disable the commands
+        // that commit a new image turn (Add image, and the live answer paths), mirroring each other.
+        if context.isContextBlocked, action == .addImage || action == .answerLive || action == .updateAndAskLive {
+            return true
+        }
         return false
     }
 

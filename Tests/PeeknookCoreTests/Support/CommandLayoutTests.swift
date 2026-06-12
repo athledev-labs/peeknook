@@ -34,7 +34,8 @@ final class CommandLayoutTests: XCTestCase {
             layout.forPlacement(.result).map(\.id),
             ["result.history", "result.export", "result.brief", "result.followUp",
              "result.retake", "result.addImage", "result.speak", "result.done", "result.newChat",
-             "result.compositeCapture", "result.toggleLive", "result.refreshLive", "result.stopLive"]
+             "result.compositeCapture", "result.toggleLive", "result.refreshLive",
+             "result.answerNow", "result.updateAndAsk", "result.stopLive"]
         )
     }
 

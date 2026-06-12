@@ -46,7 +46,8 @@ final class CommandOverrideMergeTests: XCTestCase {
             bar,
             ["result.history", "result.export", "result.followUp",
              "result.retake", "result.addImage", "result.speak", "result.done", "result.newChat",
-             "result.compositeCapture", "result.toggleLive", "result.refreshLive", "result.stopLive"]
+             "result.compositeCapture", "result.toggleLive", "result.refreshLive",
+             "result.answerNow", "result.updateAndAsk", "result.stopLive"]
         )
     }
 
@@ -86,7 +87,8 @@ final class CommandOverrideMergeTests: XCTestCase {
             Array(bar.dropFirst(2)),
             ["result.history", "result.export", "result.retake", "result.addImage",
              "result.speak", "result.done", "result.newChat", "result.compositeCapture",
-             "result.toggleLive", "result.refreshLive", "result.stopLive"]
+             "result.toggleLive", "result.refreshLive", "result.answerNow",
+             "result.updateAndAsk", "result.stopLive"]
         )
     }
 

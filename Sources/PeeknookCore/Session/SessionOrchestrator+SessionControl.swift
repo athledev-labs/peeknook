@@ -42,6 +42,15 @@ extension SessionOrchestrator {
     public func sendFollowUp(_ raw: String) {
         let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, case .result = phase, !conversation.isEmpty, !isContextBlocked else { return }
+        // A follow-up while a live frame is parked CONSUMES it: the question grounds on the latest
+        // screen (one folded image+question turn), not text-only over prior screenshots. Off the live
+        // path (not armed, or nothing parked) this branch is skipped and the body below is unchanged.
+        if isLiveArmed, lifecycle.pendingLiveCapture != nil {
+            suggestedFollowUps = []
+            isFetchingSuggestions = false
+            liveCoordinator.answerFromPending(note: text)
+            return
+        }
         lifecycle.cancelInferenceAndSuggestions()
         suggestedFollowUps = []
         isFetchingSuggestions = false
@@ -97,8 +106,9 @@ extension SessionOrchestrator {
         guard isLiveArmed || lifecycle.pendingLiveCapture != nil else { return }
         livePolicy = nil
         lastLiveRefreshAt = nil
-        liveCoordinator.cancelLiveWork()   // cancel any in-flight refresh (and, later, the timer)
+        liveCoordinator.cancelLiveWork()   // cancel any in-flight refresh / promote (and, later, the timer)
         lifecycle.clearPendingLive()
+        hasPendingLiveFrame = false        // lower the observable mirror with the slot it shadows
     }
 
     /// Surface a transient, one-shot signal to the UI (see ``SessionNotice``).
@@ -117,6 +127,13 @@ extension SessionOrchestrator {
     func resetConversation() {
         purgeSessionBlobs()
         lifecycle.clearPendingComposite()
+        // A `.fresh` reset REPLACES the thread (Retake, fresh capture). A live frame parked for the old
+        // thread must not survive to graft onto the new one via "Answer now" — drop it (and its mirror)
+        // WITHOUT disarming (livePolicy is untouched here, so Live stays armed across a Retake, the
+        // anti-graft rule). No-op when Live is off (slot already nil, mirror already false), so this stays
+        // byte-identical. Distinct from `abortSessionWork`, which must NOT drop the frame (slice 3).
+        lifecycle.clearPendingLive()
+        hasPendingLiveFrame = false
         conversation = []
         suggestedFollowUps = []
         isFetchingSuggestions = false

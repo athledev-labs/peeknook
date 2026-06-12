@@ -1376,6 +1376,34 @@
     "Opens the live camera preview from anywhere.": {
       "comment": "Camera hotkey row detail",
       "extractionState": "manual"
+    },
+    "Answer now": {
+      "comment": "Command-bar action: answer from the already-grabbed live frame.",
+      "extractionState": "manual"
+    },
+    "Answer from the latest screen Peek already grabbed": {
+      "comment": "Command-bar help: Answer now.",
+      "extractionState": "manual"
+    },
+    "Update & ask": {
+      "comment": "Command-bar action: refresh the live frame and answer in one press.",
+      "extractionState": "manual"
+    },
+    "Capture the latest screen and answer in one step": {
+      "comment": "Command-bar help: Update & ask.",
+      "extractionState": "manual"
+    },
+    "Seeing latest screen — ask when ready": {
+      "comment": "Live chip: a refreshed frame is parked, waiting to be answered.",
+      "extractionState": "manual"
+    },
+    "Live session armed, auto-respond off, seeing latest screen": {
+      "comment": "Live chip accessibility label: armed, auto-respond off, a frame is parked.",
+      "extractionState": "manual"
+    },
+    "Live session armed, auto-respond on, seeing latest screen": {
+      "comment": "Live chip accessibility label: armed, auto-respond on, a frame is parked.",
+      "extractionState": "manual"
     }
   },
   "version": "1.0"

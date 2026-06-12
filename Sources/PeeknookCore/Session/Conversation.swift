@@ -25,12 +25,26 @@ public struct ChatTurn: Identifiable, Equatable, Sendable, Codable {
     /// turns and old readers see `nil` and treat each leg as a standalone image — never throws,
     /// never writes a key for non-composite turns (so the archive stays byte-identical by default).
     public var compositeGroupID: UUID?
+    /// The typed question this `.image` turn was promoted with (a live "Answer now" / "Update & ask"
+    /// with composer text, or a follow-up that consumed a pending live frame). Folded into the image's
+    /// single grounded user message so the screenshot and the question ride together — never as a
+    /// second adjacent `.user` message. Same additive Optional discipline as ``compositeGroupID``:
+    /// `nil` writes no key (archive byte-identical for every non-promoted turn) and legacy turns decode
+    /// `nil`.
+    public var question: String?
 
-    public init(id: Int, kind: Kind, turnUsage: TurnUsage? = nil, compositeGroupID: UUID? = nil) {
+    public init(
+        id: Int,
+        kind: Kind,
+        turnUsage: TurnUsage? = nil,
+        compositeGroupID: UUID? = nil,
+        question: String? = nil
+    ) {
         self.id = id
         self.kind = kind
         self.turnUsage = turnUsage
         self.compositeGroupID = compositeGroupID
+        self.question = question
     }
 
     public var isAssistant: Bool {

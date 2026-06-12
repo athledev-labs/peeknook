@@ -162,7 +162,12 @@ struct PeekHomeResultView: View {
             Text(peek: liveAutoRespondOn ? "Auto-respond on" : "Auto-respond off")
                 .font(.system(size: 11))
                 .foregroundStyle(theme.secondaryLabel)
-            if let refresh = lastLiveRefreshLabel {
+            if orchestrator.hasPendingLiveFrame {
+                Text(verbatim: "·").foregroundStyle(theme.tertiaryLabel).peekDecorative()
+                Text(peek: "Seeing latest screen — ask when ready")
+                    .font(.system(size: 11))
+                    .foregroundStyle(theme.secondaryLabel)
+            } else if let refresh = lastLiveRefreshLabel {
                 Text(verbatim: "·").foregroundStyle(theme.tertiaryLabel).peekDecorative()
                 Text(peek: "Last refresh")
                     .font(.system(size: 11))
@@ -177,9 +182,20 @@ struct PeekHomeResultView: View {
         .background(theme.accent.opacity(0.14), in: Capsule())
         .overlay(Capsule().strokeBorder(theme.accent.opacity(0.28), lineWidth: 1))
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text(peek: liveAutoRespondOn
+        .accessibilityLabel(Text(peek: liveChipAccessibilityLabel))
+    }
+
+    /// One spoken label for the chip: the armed/auto-respond state, plus the "ask when ready" cue while
+    /// a refreshed frame is waiting.
+    private var liveChipAccessibilityLabel: String {
+        if orchestrator.hasPendingLiveFrame {
+            return liveAutoRespondOn
+                ? "Live session armed, auto-respond on, seeing latest screen"
+                : "Live session armed, auto-respond off, seeing latest screen"
+        }
+        return liveAutoRespondOn
             ? "Live session armed, auto-respond on"
-            : "Live session armed, auto-respond off"))
+            : "Live session armed, auto-respond off"
     }
 
     private var liveAutoRespondOn: Bool {
@@ -232,6 +248,7 @@ struct PeekHomeResultView: View {
             followUpComposerVisible: isFollowUpComposerVisible,
             isContextBlocked: orchestrator.contextPressure == .critical,
             isLiveArmed: orchestrator.isLiveArmed,
+            hasPendingLiveFrame: orchestrator.hasPendingLiveFrame,
             enabledModules: Set(ModuleID.allCases.filter {
                 Module.isEnabled($0, in: orchestrator.settings, profile: profile)
             })
@@ -270,6 +287,8 @@ struct PeekHomeResultView: View {
         case .toggleLive: withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) { orchestrator.armLive() }
         case .stopLive:   withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) { orchestrator.stopLive() }
         case .refreshLive: orchestrator.refreshLive()
+        case .answerLive: submitLivePromotion(answerFromPending: true)
+        case .updateAndAskLive: submitLivePromotion(answerFromPending: false)
         case .done:     onFinishChat()
         case .newChat:  onRequestNewChat()
         default:        break
@@ -293,6 +312,25 @@ struct PeekHomeResultView: View {
         }
         focusFollowUpField.wrappedValue = false
         orchestrator.sendFollowUp(text)
+    }
+
+    /// The live promote bar actions ("Answer now" / "Update & ask"), each carrying any text already typed
+    /// in the follow-up composer as the note (so a typed-but-unsent question isn't lost on a bar press).
+    /// Both fold the note identically — only the capture differs (parked frame vs a fresh grab).
+    private func submitLivePromotion(answerFromPending: Bool) {
+        let note = followUpIsEmpty ? nil : followUpText   // View-local trim — `nilIfEmpty` is Core-internal
+        if note != nil {
+            followUpText = ""
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+                isFollowUpComposerVisible = false
+            }
+            focusFollowUpField.wrappedValue = false
+        }
+        if answerFromPending {
+            orchestrator.answerLive(note: note)
+        } else {
+            orchestrator.updateAndAskLive(note: note)
+        }
     }
 
     private func toggleFollowUpComposer() {

@@ -298,7 +298,8 @@ final class InferenceCoordinator {
                         text: PromptBuilder.captureUserMessage(
                             capture: capture,
                             assembly: assembly,
-                            webLookup: lookup
+                            webLookup: lookup,
+                            question: turn.question   // a live-promoted frame folds its note into this message
                         ),
                         imageBase64: includeImage ? (imageBase64ByTurnID[turn.id] ?? capture.screenshotBase64) : nil
                     ))

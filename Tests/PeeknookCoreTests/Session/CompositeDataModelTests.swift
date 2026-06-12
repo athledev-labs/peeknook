@@ -62,6 +62,44 @@ final class CompositeDataModelTests: XCTestCase {
         XCTAssertTrue(turn.isAssistant)
     }
 
+    // MARK: ChatTurn.question round-trip + tolerance (live-promoted frames)
+
+    func testQuestionRoundTripsAndOmitsKeyWhenNil() throws {
+        let withQ = ChatTurn(
+            id: 1,
+            kind: .image(CaptureResult(text: "t", sourceLabel: "s", screenshotBase64: "b", ground: .screen)),
+            question: "what is this?"
+        )
+        let data = try JSONEncoder().encode(withQ)
+        XCTAssertTrue(String(data: data, encoding: .utf8)!.contains("what is this?"))
+        XCTAssertEqual(try JSONDecoder().decode(ChatTurn.self, from: data).question, "what is this?")
+
+        // BYTE-IDENTICAL GUARD: a turn with no question writes no `question` key and decodes nil.
+        let noQ = ChatTurn(id: 2, kind: .image(CaptureResult(text: "t", sourceLabel: "s", screenshotBase64: "b", ground: .screen)))
+        let noQData = try JSONEncoder().encode(noQ)
+        XCTAssertFalse(String(data: noQData, encoding: .utf8)!.contains("question"))
+        XCTAssertNil(try JSONDecoder().decode(ChatTurn.self, from: noQData).question)
+    }
+
+    func testLegacyTurnMissingQuestionDecodesNilWithSiblingsIntact() throws {
+        // A pre-slice-4 image turn (no question key, but a sibling additive field) decodes question nil.
+        var dict = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(
+                ChatTurn(
+                    id: 9,
+                    kind: .image(CaptureResult(text: "t", sourceLabel: "s", screenshotBase64: "b", ground: .screen)),
+                    compositeGroupID: UUID()
+                )
+            )) as? [String: Any]
+        )
+        dict.removeValue(forKey: "question")   // ensure absent (legacy shape)
+        let data = try JSONSerialization.data(withJSONObject: dict)
+        let turn = try JSONDecoder().decode(ChatTurn.self, from: data)
+        XCTAssertNil(turn.question)
+        XCTAssertTrue(turn.isImage)
+        XCTAssertNotNil(turn.compositeGroupID, "a sibling additive field survives the missing key")
+    }
+
     // MARK: compositeCaptureEnabled setting
 
     func testCompositeCaptureEnabledDefaultsFalseAndRoundTrips() throws {

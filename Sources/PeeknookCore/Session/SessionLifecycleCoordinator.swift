@@ -76,4 +76,15 @@ final class SessionLifecycleCoordinator {
         pendingLiveCapture = nil
         pendingLiveCaptureAt = nil
     }
+
+    /// Atomically take the parked live frame, clearing both slots in one step so a double "Answer now"
+    /// can't promote the same frame twice (the second take returns nil). The orchestrator pairs this
+    /// with resetting its observable `hasPendingLiveFrame` mirror — see ``SessionOrchestrator``.
+    func consumePendingLive() -> CaptureResult? {
+        defer {
+            pendingLiveCapture = nil
+            pendingLiveCaptureAt = nil
+        }
+        return pendingLiveCapture
+    }
 }
