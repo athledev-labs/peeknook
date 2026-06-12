@@ -176,6 +176,24 @@ package_release_artifacts() {
   echo "==> Packaging DMG (v${VERSION})"
   rm -f "$DMG_VERSIONED" "$DMG_LATEST" "$CHECKSUM_PATH"
   hdiutil create -volname Peeknook -srcfolder "$APP_PATH" -ov -format UDZO "$DMG_VERSIONED"
+
+  # The app inside is already signed, notarized, and stapled, but the DMG is its own
+  # distributable artifact that Gatekeeper assesses on mount. A stapled-but-unsigned
+  # DMG still fails `spctl -t open` ("no usable signature"), so sign it with Developer
+  # ID first, then notarize it in its own right and staple the ticket — a download then
+  # opens cleanly and offline instead of tripping "Apple cannot check it".
+  if [[ "$DISTRIBUTION_BUILD" == true && -n "$NOTARY_PROFILE" ]]; then
+    DEVID_IDENTITY="$(security find-identity -v -p codesigning | awk '/Developer ID Application/ {print $2; exit}')"
+    if [[ -z "$DEVID_IDENTITY" ]]; then
+      echo "error: no Developer ID Application identity found to sign the DMG." >&2
+      exit 1
+    fi
+    echo "==> Signing, notarizing, and stapling DMG"
+    codesign --force --sign "$DEVID_IDENTITY" --timestamp "$DMG_VERSIONED"
+    xcrun notarytool submit "$DMG_VERSIONED" --keychain-profile "$NOTARY_PROFILE" --wait
+    xcrun stapler staple "$DMG_VERSIONED"
+  fi
+
   cp -f "$DMG_VERSIONED" "$DMG_LATEST"
   shasum -a 256 "$DMG_LATEST" | awk '{print $1}' >"$CHECKSUM_PATH"
 
