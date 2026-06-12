@@ -1,6 +1,6 @@
 # Peeknook privacy policy
 
-Last updated: 2026-06-08
+Last updated: 2026-06-11
 
 Peeknook is local-first AI for Mac in the MacBook notch. This policy describes what the app processes, what stays on your Mac, and what can leave your Mac when you opt in.
 
@@ -8,7 +8,7 @@ Peeknook is local-first AI for Mac in the MacBook notch. This policy describes w
 
 - Peeknook does **not** operate its own cloud inference service. By default, capture and answers go to **Ollama on this Mac** (`http://127.0.0.1:11434`).
 - You can point inference at a **remote Ollama server** you control, or choose Ollama **`:cloud` model tags**; in those cases screenshots and chat can leave this Mac to that endpoint (and, for `:cloud` tags, to Ollama's cloud runtime as configured by Ollama).
-- Capture happens **only when you press the capture hotkey** (default ⌘⇧P) — or, for the camera, when you open the live camera preview (default ⌘⇧C) and **press the shutter**. There is no ambient or background recording of any kind.
+- Capture happens **only when you press the capture hotkey** (default ⌘⇧P) — or, for the camera, when you open the live camera preview (default ⌘⇧C) and **press the shutter**, or, in a **Live session you armed**, when you press **Refresh**. There is no ambient or background recording of any kind.
 - Conversation archive and web lookup are **off by default**.
 - Peeknook does **not** include analytics or crash telemetry in the current release.
 
@@ -31,6 +31,14 @@ When **Web lookup** is enabled, Peeknook skips searches when capture context loo
 Pressing the camera hotkey (default ⌘⇧C) opens a **live camera preview inside the notch**. While the preview is open, frames stream from the camera to the on-screen preview only — **nothing is captured, stored, or sent**. A photo is taken only when you press **Shutter**; it then follows exactly the same path as a screenshot: sent to your configured Ollama instance for the answer, kept in memory for the active chat, and written to the conversation archive only if **Save conversations** is on.
 
 The camera session is torn down — camera light off — whenever the preview closes: on Shutter, on Cancel, when the notch collapses or hides, and when you switch away from Peeknook. Camera access requires the macOS Camera permission, which is requested the first time you open the preview. The camera-only flow never requires Screen Recording.
+
+### Live session (armed refresh)
+
+When you turn on **Live session** (Settings → Capture — **off by default**), an answered chat gains a **Go live** control. Arming a chat keeps it in context and lets you **Refresh** — capture the latest screen into that chat — without starting over. A live session is **armed only by you**: nothing arms automatically, a persistent **Live** indicator and a **Stop** stay visible the entire time it is armed, and capture stays under your control.
+
+A refreshed frame is a **screenshot** — the same pixel capture, with the same sensitivity, as any other capture (it can include whatever is on screen). **Refresh** updates the chat's pending context **in memory**; like any capture it is sent to your configured Ollama only when you ask, and refreshed frames follow the same **Save conversations** rules. Manual refresh on its own sends nothing to the model.
+
+Live is **not ambient recording**: you arm it per chat, and you choose when to refresh. The session **disarms — and stops refreshing —** when you press **Stop** or **Done**, start a **New chat**, switch or delete a chat, or whenever the notch **collapses or hides** or you **switch away** from Peeknook (the same kill-paths as the camera). If a later update adds an optional **timed** refresh or an automatic answer after a refresh, those stay **off by default, armed-only, clearly indicated, and rate-capped** — never hidden or always-on.
 
 ### Prompts and answers
 
@@ -77,6 +85,7 @@ You control the following opt-in or configuration-dependent features:
 | Profile instructions | No instruction by default | A profile's standing instruction (Settings → Profiles) is added to every prompt for that profile, so — like the rest of the prompt — it goes wherever your inference server is. Keep secrets out of instructions if you point Peeknook at a remote server. |
 | Ollama `:cloud` model tags | Off (not the default model) | Same as inference above: payloads go to your configured Ollama endpoint; `:cloud` tags may be executed on Ollama's cloud infrastructure per Ollama's behavior. |
 | Model library catalog browse | Only when you browse | Search terms and model/tag names to `https://ollama-models-api.devcomfort.workers.dev` (community proxy for ollama.com library metadata). No screenshots. |
+| Live session | Off | When armed, **Refresh** captures the latest screen into the chat; like any capture it goes to your configured Ollama only when you ask. Armed only by you, with a persistent **Live** indicator and **Stop**, and it disarms on every exit (including notch collapse / switch away). |
 | Save conversations | Off | Nothing leaves your Mac; active screenshots stay in memory only (no blob files on disk). When on, encrypted thread JSON, encrypted screenshot blobs, and the encrypted metadata index stay local. |
 | Voice input | Off | On-device speech recognition (Microphone + Speech Recognition permissions) |
 | Read answers aloud | Off | On-device text-to-speech; no network |
