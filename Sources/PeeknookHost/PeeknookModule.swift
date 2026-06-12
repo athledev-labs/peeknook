@@ -149,8 +149,16 @@ public final class PeeknookModule: NookModule {
         // loop below can never see them. These hooks fire the camera cancel unconditionally — it is
         // a no-op outside `.cameraLive` and idempotent against the loop's own pin release. Without
         // this, a `.stayResident` module would keep the camera running with no visible UI.
-        configuration.onCompact = { [weak self] in self?.orchestrator.cancelCameraLive() }
-        configuration.onHide = { [weak self] in self?.orchestrator.cancelCameraLive() }
+        // They ALSO disarm any live session: an armed thread must never linger with no visible chip,
+        // and there is no orchestrator re-show hook to re-arm on expand — collapse is a full disarm.
+        configuration.onCompact = { [weak self] in
+            self?.orchestrator.cancelCameraLive()
+            self?.orchestrator.stopLiveSession()
+        }
+        configuration.onHide = { [weak self] in
+            self?.orchestrator.cancelCameraLive()
+            self?.orchestrator.stopLiveSession()
+        }
         configuration.onReady = { [weak self] coordinator in
             self?.registerHotkeys(on: coordinator)
             self?.startPreviewPhaseHandling(on: coordinator)
@@ -277,8 +285,9 @@ public final class PeeknookModule: NookModule {
     }
 
     /// `.stayResident` keeps this module alive across module switches — never leave the camera
-    /// running behind another module's surface.
+    /// running, or a live session armed, behind another module's surface.
     public func prepareForSwitchAway() async {
         orchestrator.cancelCameraLive()
+        orchestrator.stopLiveSession()
     }
 }

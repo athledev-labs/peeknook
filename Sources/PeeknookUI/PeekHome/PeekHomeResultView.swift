@@ -24,6 +24,10 @@ struct PeekHomeResultView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
+            if orchestrator.isLiveArmed {
+                liveChip
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
             if isBriefComposerVisible {
                 PeekSessionBriefStrip(
                     orchestrator: orchestrator,
@@ -143,6 +147,54 @@ struct PeekHomeResultView: View {
         }
     }
 
+    /// Persistent armed indicator — rendered only while a live session is armed (the Stop control lives
+    /// in the command bar). Shows the master "Live" state, the auto-respond mode, and, once refreshes
+    /// land (later slices), the relative time of the last refresh.
+    private var liveChip: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(Color.green)
+                .frame(width: 7, height: 7)
+                .peekDecorative()
+            Text(peek: "Live")
+                .font(.system(size: 11, weight: .semibold))
+            Text(verbatim: "·").foregroundStyle(theme.tertiaryLabel).peekDecorative()
+            Text(peek: liveAutoRespondOn ? "Auto-respond on" : "Auto-respond off")
+                .font(.system(size: 11))
+                .foregroundStyle(theme.secondaryLabel)
+            if let refresh = lastLiveRefreshLabel {
+                Text(verbatim: "·").foregroundStyle(theme.tertiaryLabel).peekDecorative()
+                Text(peek: "Last refresh")
+                    .font(.system(size: 11))
+                    .foregroundStyle(theme.secondaryLabel)
+                Text(refresh)
+                    .font(.system(size: 11))
+                    .foregroundStyle(theme.secondaryLabel)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(theme.accent.opacity(0.14), in: Capsule())
+        .overlay(Capsule().strokeBorder(theme.accent.opacity(0.28), lineWidth: 1))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(peek: liveAutoRespondOn
+            ? "Live session armed, auto-respond on"
+            : "Live session armed, auto-respond off"))
+    }
+
+    private var liveAutoRespondOn: Bool {
+        orchestrator.livePolicy?.autoRespond ?? false
+    }
+
+    /// Locale-formatted relative time of the last live refresh, or nil before the first refresh (always
+    /// nil until refresh-capable slices land).
+    private var lastLiveRefreshLabel: String? {
+        guard let at = orchestrator.lastLiveRefreshAt else { return nil }
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: at, relativeTo: Date())
+    }
+
     private var resultCommandBar: some View {
         PeekCommandBar(
             placement: .result,
@@ -179,6 +231,7 @@ struct PeekHomeResultView: View {
             briefComposerVisible: isBriefComposerVisible,
             followUpComposerVisible: isFollowUpComposerVisible,
             isContextBlocked: orchestrator.contextPressure == .critical,
+            isLiveArmed: orchestrator.isLiveArmed,
             enabledModules: Set(ModuleID.allCases.filter {
                 Module.isEnabled($0, in: orchestrator.settings, profile: profile)
             })
@@ -214,6 +267,8 @@ struct PeekHomeResultView: View {
         case .retake:   orchestrator.retake()
         case .addImage: orchestrator.addImage()
         case .compositeCapture: orchestrator.beginComposite()
+        case .toggleLive: withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) { orchestrator.armLive() }
+        case .stopLive:   withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) { orchestrator.stopLive() }
         case .done:     onFinishChat()
         case .newChat:  onRequestNewChat()
         default:        break

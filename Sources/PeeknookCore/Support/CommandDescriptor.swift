@@ -63,6 +63,8 @@ public enum CommandAction: String, Codable, Sendable, CaseIterable {
     case brief, resume, followUp, speak, done, newChat
     case history, export, retake, addImage
     case compositeCapture   // screen + camera asked as one question (opt-in, gated on .parallelScreen)
+    case toggleLive         // arm a live session from an answered thread (opt-in, gated on .liveSession)
+    case stopLive           // disarm the live session — the single, never-hideable exit
     // case planAction   ← Phase 5 sidecar (agent control)
 }
 
@@ -87,6 +89,8 @@ public enum CommandVisibility: String, Codable, Sendable {
     case hasConversationHistory    // History — the thread has more than the latest answer
     case showingFullConversation   // Export — the full-thread view is open
     case previewing                // Use this — only while a capture is awaiting confirmation
+    case liveArmed                 // Stop live — only while the session is armed
+    case liveDisarmed              // Go live — only while the session is NOT armed
 }
 
 /// An alternate appearance a command adopts while its (renderer-computed) toggle state is active.
@@ -189,6 +193,7 @@ public extension CommandDescriptor {
     var isCustomizable: Bool {
         if pinnedTrailing { return false }
         if action == .cancel || action == .confirmPreview { return false }
+        if action == .stopLive { return false }   // the only disarm control — Layout must never hide it
         return true
     }
 }
@@ -432,6 +437,20 @@ public extension CommandLayout {
             helpKey: "Read the answer aloud",
             placement: .result, visibility: .always,
             requiredModules: [.speakAnswers], defaultOrder: 6
+        ),
+        CommandDescriptor(
+            id: "result.toggleLive", kind: .button, action: .toggleLive,
+            titleKey: "Go live", symbol: "dot.radiowaves.left.and.right",
+            helpKey: "Keep this chat live so it stays in context across captures",
+            placement: .result, visibility: .liveDisarmed,
+            requiredModules: [.liveSession],
+            defaultOrder: 10
+        ),
+        CommandDescriptor(
+            id: "result.stopLive", kind: .button, action: .stopLive,
+            titleKey: "Stop", symbol: "stop.circle",
+            helpKey: "Stop the live session",
+            placement: .result, visibility: .liveArmed, defaultOrder: 11
         ),
         CommandDescriptor(
             id: "result.done", kind: .button, action: .done,

@@ -110,6 +110,12 @@ public final class PeekSettingsController {
 
     // MARK: - Live session preferences
 
+    /// Opt in to the live-session feature (surfaces the "Go live" command on the result bar).
+    public func setLiveEnabled(_ enabled: Bool) {
+        guard settings.liveEnabled != enabled else { return }
+        update { $0.liveEnabled = enabled }
+    }
+
     public func setLiveAutoRespond(_ enabled: Bool) {
         guard settings.liveAutoRespond != enabled else { return }
         update { $0.liveAutoRespond = enabled }

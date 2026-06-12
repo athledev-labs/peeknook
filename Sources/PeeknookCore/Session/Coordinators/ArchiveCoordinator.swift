@@ -74,6 +74,7 @@ final class ArchiveCoordinator {
         }
         guard session.lifecycle.isCurrentSession(generation) else { return }
         session.abortSessionWork()
+        session.stopLiveSession()   // switching threads ends the armed session for the old thread
         session.suggestedFollowUps = []
         session.streamedAnswer = ""
         adopt(thread)
@@ -101,6 +102,7 @@ final class ArchiveCoordinator {
             // Deleting the chat that's currently on screen: abort any in-flight inference first, or
             // a late stream could re-file an answer for the thread we just removed.
             session.abortSessionWork()
+            session.stopLiveSession()   // the deleted thread's armed session ends with it
             session.resetConversation()
             _ = session.applyPhaseEvent(.deleteActiveThreadToIdle)
         }
@@ -169,6 +171,8 @@ final class ArchiveCoordinator {
     func purgeAllConversations() {
         guard let session else { return }
         session.abortSessionWork()
+        session.stopLiveSession()   // wiping everything returns to idle — disarm (resetConversation
+                                    // must NOT, since a Retake's .fresh commit funnels through it)
         session.streamedAnswer = ""
         session.sessionBrief = ""
         session.lifecycle.clearPendingCapture()

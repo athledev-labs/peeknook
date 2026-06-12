@@ -109,6 +109,13 @@ struct PeekSettingsCaptureSection: View {
                 detail: "Adds a command that captures your screen and a camera photo, then asks about both as one question. Needs Camera access.",
                 isOn: compositeCaptureBinding
             )
+
+            PeekSettingsToggleRow(
+                icon: orchestrator.settings.liveEnabled ? "dot.radiowaves.left.and.right" : "antenna.radiowaves.left.and.right.slash",
+                title: "Live session",
+                detail: "Adds a Go live command to an answered chat so it stays armed and keeps context across captures. You stay in control: a clear Live indicator with a Stop, and capture stays user-triggered.",
+                isOn: liveEnabledBinding
+            )
         }
         .task(id: appState.isNookVisible) {
             guard !setup.skipsLiveProbes, appState.isNookVisible else { return }
@@ -291,6 +298,13 @@ struct PeekSettingsCaptureSection: View {
         Binding(
             get: { orchestrator.settings.compositeCaptureEnabled },
             set: { settings.setCompositeCaptureEnabled($0) }
+        )
+    }
+
+    private var liveEnabledBinding: Binding<Bool> {
+        Binding(
+            get: { orchestrator.settings.liveEnabled },
+            set: { settings.setLiveEnabled($0) }
         )
     }
 

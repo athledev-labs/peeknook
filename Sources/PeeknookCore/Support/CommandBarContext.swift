@@ -27,6 +27,8 @@ public struct CommandBarContext: Sendable, Equatable {
     public var followUpComposerVisible: Bool
     /// Context meter at critical fill — disables Add image on the result bar.
     public var isContextBlocked: Bool
+    /// The thread is an armed live session — shows the Stop control, hides the Go-live arm command.
+    public var isLiveArmed: Bool
     /// Modules currently enabled in the active profile (`Module.isEnabled`). A command whose
     /// `requiredModules` are not all present is hidden (Speak when speak-answers is off, camera
     /// commands in a screen profile, …).
@@ -43,6 +45,7 @@ public struct CommandBarContext: Sendable, Equatable {
         briefComposerVisible: Bool = false,
         followUpComposerVisible: Bool = false,
         isContextBlocked: Bool = false,
+        isLiveArmed: Bool = false,
         enabledModules: Set<ModuleID> = []
     ) {
         self.isPreviewing = isPreviewing
@@ -55,6 +58,7 @@ public struct CommandBarContext: Sendable, Equatable {
         self.briefComposerVisible = briefComposerVisible
         self.followUpComposerVisible = followUpComposerVisible
         self.isContextBlocked = isContextBlocked
+        self.isLiveArmed = isLiveArmed
         self.enabledModules = enabledModules
     }
 }
@@ -72,6 +76,8 @@ public extension CommandDescriptor {
         case .hasConversationHistory:  return context.hasConversationHistory
         case .showingFullConversation: return context.showingFullConversation
         case .previewing:              return context.isPreviewing
+        case .liveArmed:               return context.isLiveArmed
+        case .liveDisarmed:            return !context.isLiveArmed
         }
     }
 

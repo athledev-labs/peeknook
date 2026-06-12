@@ -87,6 +87,10 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     /// ``ModuleID/parallelScreen`` module.
     public var compositeCaptureEnabled: Bool
     // Live-session preferences (the armed state itself is transient, never persisted — see ``LivePolicy``).
+    /// Master opt-in for the live-session feature: surfaces the "Go live" arm command on the result
+    /// bar. Off by default — when off the command is hidden and the result bar is byte-identical to
+    /// pre-Live. Flips the ``ModuleID/liveSession`` module (mirrors ``compositeCaptureEnabled``).
+    public var liveEnabled: Bool
     /// How an armed live session refreshes its frame: `manual` (default) or `timer`. See ``liveRefreshTrigger``.
     public var liveRefreshTriggerRaw: String
     /// Whether an armed live session answers automatically after a refresh (rate-capped). Off by default.
@@ -130,6 +134,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         textOnlyBackend: InferenceBackend = .ollama,
         textOnlyModelTag: String = "",
         compositeCaptureEnabled: Bool = false,
+        liveEnabled: Bool = false,
         liveRefreshTriggerRaw: String = "manual",
         liveAutoRespond: Bool = false,
         liveTimerIntervalSeconds: Double = 5,
@@ -168,6 +173,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.textOnlyBackend = textOnlyBackend
         self.textOnlyModelTag = textOnlyModelTag
         self.compositeCaptureEnabled = compositeCaptureEnabled
+        self.liveEnabled = liveEnabled
         self.liveRefreshTriggerRaw = liveRefreshTriggerRaw
         self.liveAutoRespond = liveAutoRespond
         self.liveTimerIntervalSeconds = liveTimerIntervalSeconds
@@ -207,7 +213,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, customModels, commandOverrides, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, highlightSpeechWhileReading, speechVoiceIdentifier, briefHotkey, inferenceImageReplay, captureQuality, acceptInsecureRemoteOllama, activeProfileID, cameraHotkey, answerBackend, openAICompatibleBaseURL, openAICompatibleModelTag, acceptInsecureRemoteOpenAICompatible, fastTextFollowUps, textOnlyBackend, textOnlyModelTag, compositeCaptureEnabled, liveRefreshTriggerRaw, liveAutoRespond, liveTimerIntervalSeconds, liveRateCapSeconds
+        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, customModels, commandOverrides, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, highlightSpeechWhileReading, speechVoiceIdentifier, briefHotkey, inferenceImageReplay, captureQuality, acceptInsecureRemoteOllama, activeProfileID, cameraHotkey, answerBackend, openAICompatibleBaseURL, openAICompatibleModelTag, acceptInsecureRemoteOpenAICompatible, fastTextFollowUps, textOnlyBackend, textOnlyModelTag, compositeCaptureEnabled, liveEnabled, liveRefreshTriggerRaw, liveAutoRespond, liveTimerIntervalSeconds, liveRateCapSeconds
     }
 
     // Tolerant decode, a saved blob missing a newer key keeps the rest of the user's
@@ -256,6 +262,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.textOnlyBackend = textOnlyBackendRaw.flatMap(InferenceBackend.init(rawValue:)) ?? .ollama
         self.textOnlyModelTag = try c.decodeIfPresent(String.self, forKey: .textOnlyModelTag) ?? ""
         self.compositeCaptureEnabled = try c.decodeIfPresent(Bool.self, forKey: .compositeCaptureEnabled) ?? false
+        self.liveEnabled = try c.decodeIfPresent(Bool.self, forKey: .liveEnabled) ?? false
         // Raw-String trigger (mirrors answerBackend) so an unknown future value degrades to "manual"
         // instead of throwing and resetting every setting. Interval/rate-cap clamp at READ time, never
         // here, so a hand-edited 0.1 can't trip the reset bomb either.

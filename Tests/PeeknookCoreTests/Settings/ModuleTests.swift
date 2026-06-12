@@ -41,4 +41,12 @@ final class ModuleTests: XCTestCase {
         settings.compositeCaptureEnabled = true
         XCTAssertTrue(Module.isEnabled(.parallelScreen, in: settings, profile: profile), "on when the user opts in")
     }
+
+    func testLiveSessionFollowsLiveEnabledSetting() {
+        var settings = PeeknookSettings()
+        let profile = GroundProfile.screenDefault
+        XCTAssertFalse(Module.isEnabled(.liveSession, in: settings, profile: profile), "off by default")
+        settings.liveEnabled = true
+        XCTAssertTrue(Module.isEnabled(.liveSession, in: settings, profile: profile), "on when the user opts in")
+    }
 }

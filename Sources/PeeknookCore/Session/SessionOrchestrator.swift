@@ -115,6 +115,7 @@ public final class SessionOrchestrator {
     @ObservationIgnored private(set) lazy var speechCoordinator = SpeechCoordinator(session: self)
     @ObservationIgnored private(set) lazy var archiveCoordinator = ArchiveCoordinator(session: self)
     @ObservationIgnored private(set) lazy var cameraCoordinator = CameraCoordinator(session: self)
+    @ObservationIgnored private(set) lazy var liveCoordinator = LiveCoordinator(session: self)
     @ObservationIgnored private(set) lazy var captureCoordinator = CaptureCoordinator(session: self)
     @ObservationIgnored private(set) lazy var inferenceCoordinator = InferenceCoordinator(session: self)
 
@@ -441,6 +442,20 @@ public final class SessionOrchestrator {
     /// THE single camera teardown choke point (idempotent) — see ``CameraCoordinator``.
     func stopCameraPreview() {
         cameraCoordinator.stopCameraPreview()
+    }
+
+    // MARK: - Live session (delegates to LiveCoordinator)
+
+    /// Arm a live session from an answered thread (the "Go live" command). Seeds the policy from the
+    /// user's saved preferences; legal only from `.result`. Disarm is ``stopLive()`` / the choke point
+    /// ``stopLiveSession()``.
+    public func armLive() {
+        liveCoordinator.arm()
+    }
+
+    /// Disarm the live session (the "Stop" command). Idempotent — see ``stopLiveSession()``.
+    public func stopLive() {
+        liveCoordinator.stop()
     }
 
     // MARK: - Capture (delegates to CaptureCoordinator)

@@ -13,6 +13,7 @@ extension SessionOrchestrator {
     /// Leave the result view for the calm home screen while keeping the thread for resume.
     public func finishChat() {
         guard case .applied = applyPhaseEvent(.finishChat) else { return }
+        stopLiveSession()   // Done returns to idle — Live disarms (the MVP rule; survive-Done is v1.3.1).
         lifecycle.suggestionTask?.cancel()
         streamedAnswer = ""
         lifecycle.clearPendingCapture()
@@ -67,6 +68,7 @@ extension SessionOrchestrator {
 
     public func dismissResult() {
         abortSessionWork()
+        stopLiveSession()   // New chat / discard returns to idle — disarm (also covers startNewChat).
         streamedAnswer = ""
         lifecycle.clearPendingCapture()
         sessionBrief = ""

@@ -9,6 +9,10 @@
       "comment": "Settings: fast follow-up model picker subtitle.",
       "extractionState": "manual"
     },
+    "Adds a Go live command to an answered chat so it stays armed and keeps context across captures. You stay in control: a clear Live indicator with a Stop, and capture stays user-triggered.": {
+      "comment": "Settings: live session toggle subtitle.",
+      "extractionState": "manual"
+    },
     "API key (optional)": {
       "comment": "Tier B localization",
       "extractionState": "manual"
@@ -95,6 +99,14 @@
     },
     "Ask a follow-up about this answer": {
       "comment": "Command-bar help: Follow up button.",
+      "extractionState": "manual"
+    },
+    "Auto-respond off": {
+      "comment": "Live chip: auto-respond mode label.",
+      "extractionState": "manual"
+    },
+    "Auto-respond on": {
+      "comment": "Live chip: auto-respond mode label.",
       "extractionState": "manual"
     },
     "Back": {
@@ -417,6 +429,10 @@
       "comment": "Profile editor: model row detail.",
       "extractionState": "manual"
     },
+    "Go live": {
+      "comment": "Command-bar action: arm a live session.",
+      "extractionState": "manual"
+    },
     "Got it": {
       "comment": "Notice banner: dismiss button title.",
       "extractionState": "manual"
@@ -469,6 +485,14 @@
       "comment": "Profile delete confirm message.",
       "extractionState": "manual"
     },
+    "Keep this chat live so it stays in context across captures": {
+      "comment": "Command-bar help: arm a live session.",
+      "extractionState": "manual"
+    },
+    "Last refresh": {
+      "comment": "Live chip: last-refresh label.",
+      "extractionState": "manual"
+    },
     "Layout": {
       "comment": "Settings section title: command bar layout editor.",
       "extractionState": "manual"
@@ -479,6 +503,22 @@
     },
     "Listening…": {
       "comment": "Tier B localization",
+      "extractionState": "manual"
+    },
+    "Live": {
+      "comment": "Live chip: armed indicator.",
+      "extractionState": "manual"
+    },
+    "Live session": {
+      "comment": "Settings: live session toggle title.",
+      "extractionState": "manual"
+    },
+    "Live session armed, auto-respond off": {
+      "comment": "Live chip: VoiceOver status.",
+      "extractionState": "manual"
+    },
+    "Live session armed, auto-respond on": {
+      "comment": "Live chip: VoiceOver status.",
       "extractionState": "manual"
     },
     "Loading tags…": {
@@ -931,6 +971,10 @@
     },
     "Stop reading the answer aloud": {
       "comment": "Command-bar help: Stop button.",
+      "extractionState": "manual"
+    },
+    "Stop the live session": {
+      "comment": "Command-bar help: disarm the live session.",
       "extractionState": "manual"
     },
     "Suggest follow-ups": {

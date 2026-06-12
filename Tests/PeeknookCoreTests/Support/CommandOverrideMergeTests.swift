@@ -46,7 +46,7 @@ final class CommandOverrideMergeTests: XCTestCase {
             bar,
             ["result.history", "result.export", "result.followUp",
              "result.retake", "result.addImage", "result.speak", "result.done", "result.newChat",
-             "result.compositeCapture"]
+             "result.compositeCapture", "result.toggleLive", "result.stopLive"]
         )
     }
 
@@ -85,7 +85,8 @@ final class CommandOverrideMergeTests: XCTestCase {
         XCTAssertEqual(
             Array(bar.dropFirst(2)),
             ["result.history", "result.export", "result.retake", "result.addImage",
-             "result.speak", "result.done", "result.newChat", "result.compositeCapture"]
+             "result.speak", "result.done", "result.newChat", "result.compositeCapture",
+             "result.toggleLive", "result.stopLive"]
         )
     }
 
@@ -125,6 +126,7 @@ final class CommandOverrideMergeTests: XCTestCase {
             let expected = !command.pinnedTrailing
                 && command.action != .cancel
                 && command.action != .confirmPreview
+                && command.action != .stopLive
             XCTAssertEqual(command.isCustomizable, expected, "isCustomizable wrong for \(command.id)")
         }
         // Spot-check the protected set explicitly.
@@ -132,6 +134,7 @@ final class CommandOverrideMergeTests: XCTestCase {
         XCTAssertFalse(descriptor("result.done").isCustomizable)      // pinned
         XCTAssertFalse(descriptor("active.cancel").isCustomizable)    // .cancel
         XCTAssertFalse(descriptor("active.useThis").isCustomizable)   // .confirmPreview
+        XCTAssertFalse(descriptor("result.stopLive").isCustomizable)  // .stopLive (only disarm control)
         XCTAssertTrue(descriptor("result.brief").isCustomizable)
         XCTAssertTrue(descriptor("result.newChat").isCustomizable)
         XCTAssertTrue(descriptor("idle.model").isCustomizable)        // a dropdown is customizable
