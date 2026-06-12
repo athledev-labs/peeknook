@@ -56,16 +56,24 @@ struct PeekConfirmationOverlay: View {
 
     @Environment(\.nookResolvedTheme) private var theme
 
+    /// Scrim corner radius. The host clips the panel to its internal `NookShape` (top 19 / bottom 24,
+    /// set in `PeeknookModule`) and publishes neither that shape nor its radius to modules, and it
+    /// pre-clips this surface to a rectangle inset by the column gutter — so the scrim can't inherit the
+    /// panel's rounding or bleed out to it. Tuned by eye to nest just inside the panel's corner instead
+    /// of reading as a square patch; this is the one knob to turn if it looks tight or loose.
+    private static let scrimCornerRadius: CGFloat = 16
+
     var body: some View {
         ZStack {
-            Rectangle()
-                .fill(Color.black.opacity(0.4))
-                .contentShape(Rectangle())
+            // Round the scrim to its own (rectangular, gutter-inset) frame — see scrimCornerRadius.
+            RoundedRectangle(cornerRadius: Self.scrimCornerRadius, style: .continuous)
+                .fill(Color.black.opacity(0.55))
+                .contentShape(RoundedRectangle(cornerRadius: Self.scrimCornerRadius, style: .continuous))
                 .onTapGesture(perform: onCancel)
 
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 8) {
                 Text(title)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(theme.primaryLabel)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(message)
@@ -78,15 +86,22 @@ struct PeekConfirmationOverlay: View {
                     NookToolbarButton(title: "Cancel", symbol: "xmark", action: onCancel)
                     NookToolbarButton(title: confirmTitle, symbol: confirmSymbol, prominent: true, action: onConfirm)
                 }
+                .padding(.top, 4)
             }
-            .padding(14)
-            .frame(maxWidth: 280)
+            .padding(16)
+            .frame(maxWidth: 300)
+            // An opaque, tone-adaptive card. The material OCCLUDES the content behind (no more
+            // bleed-through) and matches the panel's light/dark tone, so the theme's tone-adaptive
+            // labels stay readable on both the black notch and the frosted Liquid Glass surface. A
+            // hairline crisps the edge and a soft shadow lifts it off the scrim.
             .background {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color.black.opacity(0.55))
-                    PeekCommandPillGlass(cornerRadius: 12)
-                }
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(.ultraThickMaterial)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .strokeBorder(theme.subtleStroke.opacity(0.6), lineWidth: 1)
+                    }
+                    .shadow(color: .black.opacity(0.35), radius: 16, y: 6)
             }
             .padding(16)
         }
