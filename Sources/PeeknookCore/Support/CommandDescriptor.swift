@@ -368,6 +368,16 @@ public extension CommandLayout {
             requiredModules: [.screenCapture], requiredPermissions: [.screenRecording],
             defaultOrder: 6
         ),
+        // Idle Stop — only reachable when a Live session persisted across Done (`livePersistAcrossDone`),
+        // so the armed thread is one-tap disarmable from the home screen. Mirrors `result.stopLive`: no
+        // `requiredModules` (the sole disarm control must never be module-gated while armed) and
+        // `action == .stopLive` makes it non-customizable for free (Layout can never hide it).
+        CommandDescriptor(
+            id: "idle.stopLive", kind: .button, action: .stopLive,
+            titleKey: "Stop", symbol: "stop.circle",
+            helpKey: "Stop the live session",
+            placement: .idle, visibility: .liveArmed, defaultOrder: 8
+        ),
 
         // ── Active controls (post-capture confirm) ────────────────────────────────────────────
         CommandDescriptor(

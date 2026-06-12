@@ -198,6 +198,11 @@ final class InferenceCoordinator {
                 ChatTurn(id: session.turnCounter, kind: .assistant(answer), turnUsage: turnUsage)
             )
             _ = session.applyPhaseEvent(.inferenceCompleted(answer: answer))
+            // Restore the live auto-refresh timer if a persist-across-Done quiesce killed it and this turn
+            // re-entered the armed thread via a capture (not Resume) — otherwise an armed `.timer` thread
+            // could show the Live chip with a permanently dead loop. Idempotent: a no-op when the loop is
+            // already running (normal in-result turns), when not armed, or for a manual-trigger session.
+            session.liveCoordinator.ensureTimerLoopRunning()
             let turnProfile = session.gatingProfile(forTurnGround: capture?.ground)
             session.persistConversationNow()
             session.speakLastAnswer(gatedBy: turnProfile)

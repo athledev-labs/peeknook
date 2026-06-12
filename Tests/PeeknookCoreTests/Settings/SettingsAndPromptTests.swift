@@ -327,6 +327,20 @@ final class SettingsAndPromptTests: XCTestCase {
         XCTAssertEqual(back.briefHotkey.keySymbol, "V")
     }
 
+    func testLivePersistAcrossDoneDefaultsOffAndRoundTrips() throws {
+        // A legacy blob missing the key keeps its siblings and defaults persist-across-Done to off (the
+        // MVP behavior: Done disarms). Tolerant decode — adding the field must not reset saved state.
+        let legacy = Data(#"{"mode":"general","textModel":"gemma4:e4b","liveEnabled":true}"#.utf8)
+        let decoded = try JSONDecoder().decode(PeeknookSettings.self, from: legacy)
+        XCTAssertFalse(decoded.livePersistAcrossDone, "a missing key defaults off")
+        XCTAssertTrue(decoded.liveEnabled, "sibling live field is preserved")
+        XCTAssertEqual(decoded.textModel, "gemma4:e4b")
+
+        let on = PeeknookSettings(textModel: "gemma4:e4b", liveEnabled: true, livePersistAcrossDone: true)
+        let back = try JSONDecoder().decode(PeeknookSettings.self, from: JSONEncoder().encode(on))
+        XCTAssertTrue(back.livePersistAcrossDone, "the field round-trips through encode/decode")
+    }
+
     func testSpeechVoiceOptionMenuLabelIncludesQuality() {
         let enhanced = SpeechVoiceOption(identifier: "x", displayName: "Ava", qualityLabel: "Enhanced")
         XCTAssertEqual(enhanced.menuLabel, "Ava · Enhanced")

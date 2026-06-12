@@ -112,7 +112,7 @@ final class PeeknookSettingsCommandOverrideTests: XCTestCase {
         XCTAssertEqual(
             CommandLayout.screenDefault.forPlacement(.idle, applying: resolved).map(\.id),
             ["idle.resume", "idle.brief", "idle.model", "idle.scope", "idle.depth",
-             "idle.importFile", "idle.compositeCapture", "idle.capture"]
+             "idle.importFile", "idle.compositeCapture", "idle.capture", "idle.stopLive"]
         )
         // Pinned, non-customizable Capture never acquired an entry.
         XCTAssertFalse(resolved.contains { $0.id == "idle.capture" })
@@ -142,7 +142,7 @@ final class PeeknookSettingsCommandOverrideTests: XCTestCase {
         XCTAssertEqual(
             CommandLayout.screenDefault.forPlacement(.idle, applying: stack.orchestrator.resolvedCommandOverrides(for: .idle)).map(\.id),
             ["idle.resume", "idle.brief", "idle.model", "idle.scope", "idle.depth",
-             "idle.importFile", "idle.compositeCapture", "idle.capture"]
+             "idle.importFile", "idle.compositeCapture", "idle.capture", "idle.stopLive"]
         )
     }
 

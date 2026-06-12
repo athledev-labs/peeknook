@@ -182,6 +182,12 @@ struct PeekIdleCommandBar: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
+            if orchestrator.isLiveArmed {
+                // A Live session persisted across Done — keep it visible on the idle home (the Stop lives
+                // in the command bar as `idle.stopLive`). Reachable only via `livePersistAcrossDone`.
+                idleLiveChip
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
             if isBriefComposerVisible {
                 PeekSessionBriefStrip(
                     orchestrator: orchestrator,
@@ -223,6 +229,7 @@ struct PeekIdleCommandBar: View {
             isSpeaking: orchestrator.isSpeakingLastAnswer,
             briefHasContent: !orchestrator.sessionBrief.isEmpty,
             briefComposerVisible: isBriefComposerVisible,
+            isLiveArmed: orchestrator.isLiveArmed,   // shows idle.stopLive when a session persisted across Done
             enabledModules: Set(ModuleID.allCases.filter {
                 Module.isEnabled($0, in: orchestrator.settings, profile: profile)
             })
@@ -242,6 +249,8 @@ struct PeekIdleCommandBar: View {
         case .capture: onCapture()
         case .importFile: presentFileImport()
         case .compositeCapture: orchestrator.beginComposite()
+        case .stopLive:
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) { orchestrator.stopLive() }
         case .resume:  onResume()
         case .brief:
             PeekSessionBriefStrip.toggleComposer(
@@ -345,6 +354,38 @@ struct PeekIdleCommandBar: View {
         case .needsDownload(let pending):
             pendingDownload = pending
         }
+    }
+
+    /// Compact armed indicator on the idle home, shown only when a Live session persisted across Done.
+    /// Deliberately minimal vs the result-view `liveChip`: no last-refresh time (the timer is quiesced
+    /// while idle), no parked-frame cue (a frame isn't answerable until Resume), no paused state (context
+    /// pressure is static here). The Stop control is the separately focusable `idle.stopLive` command —
+    /// this chip is decorative status only. Copy + a11y keys are shared with the result chip.
+    private var idleLiveChip: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(Color.green)
+                .frame(width: 7, height: 7)
+                .peekDecorative()
+            Text(peek: "Live")
+                .font(.system(size: 11, weight: .semibold))
+            Text(verbatim: "·").foregroundStyle(theme.tertiaryLabel).peekDecorative()
+            Text(peek: liveAutoRespondOn ? "Auto-respond on" : "Auto-respond off")
+                .font(.system(size: 11))
+                .foregroundStyle(theme.secondaryLabel)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(theme.accent.opacity(0.14), in: Capsule())
+        .overlay(Capsule().strokeBorder(theme.accent.opacity(0.28), lineWidth: 1))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(peek: liveAutoRespondOn
+            ? "Live session armed, auto-respond on"
+            : "Live session armed, auto-respond off"))
+    }
+
+    private var liveAutoRespondOn: Bool {
+        orchestrator.livePolicy?.autoRespond ?? false
     }
 }
 

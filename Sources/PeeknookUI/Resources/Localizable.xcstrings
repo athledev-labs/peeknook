@@ -493,6 +493,10 @@
       "comment": "Profile delete confirm message.",
       "extractionState": "manual"
     },
+    "Keep Live after Done": {
+      "comment": "Settings: persist-live-across-Done toggle title.",
+      "extractionState": "manual"
+    },
     "Keep this chat live so it stays in context across captures": {
       "comment": "Command-bar help: arm a live session.",
       "extractionState": "manual"
@@ -1055,6 +1059,10 @@
     },
     "Started a new chat": {
       "comment": "Notice banner title: a full context window started a fresh chat.",
+      "extractionState": "manual"
+    },
+    "Stay armed when you tap Done and return home, so Resume re-enters the same live chat. A Live indicator with a Stop stays on the home screen; every other exit (New chat, switch chat, collapse) still disarms.": {
+      "comment": "Settings: persist-live-across-Done toggle subtitle.",
       "extractionState": "manual"
     },
     "Stop": {

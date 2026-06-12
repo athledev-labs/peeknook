@@ -126,6 +126,7 @@ struct PeekSettingsCaptureSection: View {
                         liveRateCapRow
                     }
                 }
+                livePersistAcrossDoneRow
             }
         }
         .task(id: appState.isNookVisible) {
@@ -338,10 +339,28 @@ struct PeekSettingsCaptureSection: View {
         }
     }
 
+    /// Keep an armed Live session across Done so Resume re-enters the same live chat. Independent of the
+    /// refresh trigger, so it sits at the top of the Live block (not nested under `.timer`).
+    private var livePersistAcrossDoneRow: some View {
+        PeekSettingsToggleRow(
+            icon: orchestrator.settings.livePersistAcrossDone ? "pin.fill" : "pin",
+            title: "Keep Live after Done",
+            detail: "Stay armed when you tap Done and return home, so Resume re-enters the same live chat. A Live indicator with a Stop stays on the home screen; every other exit (New chat, switch chat, collapse) still disarms.",
+            isOn: livePersistAcrossDoneBinding
+        )
+    }
+
     private var liveAutoRespondBinding: Binding<Bool> {
         Binding(
             get: { orchestrator.settings.liveAutoRespond },
             set: { settings.setLiveAutoRespond($0) }
+        )
+    }
+
+    private var livePersistAcrossDoneBinding: Binding<Bool> {
+        Binding(
+            get: { orchestrator.settings.livePersistAcrossDone },
+            set: { settings.setLivePersistAcrossDone($0) }
         )
     }
 

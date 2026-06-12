@@ -13,7 +13,19 @@ extension SessionOrchestrator {
     /// Leave the result view for the calm home screen while keeping the thread for resume.
     public func finishChat() {
         guard case .applied = applyPhaseEvent(.finishChat) else { return }
-        stopLiveSession()   // Done returns to idle — Live disarms (the MVP rule; survive-Done is v1.3.1).
+        // Done returns to idle. By default Live disarms here. With `livePersistAcrossDone` on, an armed
+        // session is KEPT — we only QUIESCE it: cancel the timer AND any in-flight refresh/promote capture
+        // leg, but leave `livePolicy`/the rate clocks/the parked frame intact, so Resume re-enters the same
+        // armed chat. Cancelling the in-flight legs (not just the timer) is load-bearing: a refresh capture
+        // suspended mid-`await` at the instant of Done would otherwise resume at idle and PARK a post-Done
+        // screenshot of the home screen — a capture-while-idle. `cancelLiveWork()` cancels all three live
+        // tasks but, unlike `stopLiveSession()`, tears down nothing else. Every OTHER exit (New chat,
+        // switch/delete thread, purge, collapse/hide) still routes through the full `stopLiveSession()`.
+        if settings.livePersistAcrossDone && isLiveArmed {
+            liveCoordinator.cancelLiveWork()
+        } else {
+            stopLiveSession()
+        }
         lifecycle.suggestionTask?.cancel()
         streamedAnswer = ""
         lifecycle.clearPendingCapture()
@@ -23,7 +35,13 @@ extension SessionOrchestrator {
 
     /// Return to the last answer when a finished chat is still in memory.
     public func resumeChat() {
-        _ = applyPhaseEvent(.resumeChat(answer: lastAssistantText ?? ""))
+        // Re-enter the result view. If a persisted Live session was quiesced on Done, restart its timer
+        // loop now that we're back in `.result` (the loop/refresh `.result` guards require it). Restart only
+        // AFTER the phase flip succeeds. `startTimerLoopIfNeeded()` no-ops for a disarmed or manual-trigger
+        // session and re-seeds the pacing clock, so the first post-resume park lands one full interval later.
+        if case .applied = applyPhaseEvent(.resumeChat(answer: lastAssistantText ?? "")) {
+            liveCoordinator.startTimerLoopIfNeeded()
+        }
     }
 
     /// Discard the current thread and return to idle.

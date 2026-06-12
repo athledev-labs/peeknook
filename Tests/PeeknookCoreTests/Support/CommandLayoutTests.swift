@@ -21,7 +21,7 @@ final class CommandLayoutTests: XCTestCase {
         XCTAssertEqual(
             layout.forPlacement(.idle).map(\.id),
             ["idle.resume", "idle.brief", "idle.model", "idle.depth", "idle.scope",
-             "idle.importFile", "idle.capture", "idle.compositeCapture"]
+             "idle.importFile", "idle.capture", "idle.compositeCapture", "idle.stopLive"]
         )
     }
 

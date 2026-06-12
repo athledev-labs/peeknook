@@ -114,6 +114,18 @@ public final class PeekSettingsController {
     public func setLiveEnabled(_ enabled: Bool) {
         guard settings.liveEnabled != enabled else { return }
         update { $0.liveEnabled = enabled }
+        // Turning the feature OFF must also disarm any session armed-at-idle via persist-across-Done, so
+        // it can't outlive the flag (no Live chip/Stop is reachable once the module is gone). Order is
+        // load-bearing: the flag flips OFF first (synchronous `update`), THEN we disarm — so no concurrent
+        // re-arm can observe `liveEnabled == true`. `stopLive()` is idempotent (no-op when not armed).
+        if !enabled { orchestrator.stopLive() }
+    }
+
+    /// Opt-in: keep an armed Live session across Done (Resume re-enters the same live chat). Off by
+    /// default — see ``PeeknookSettings/livePersistAcrossDone``.
+    public func setLivePersistAcrossDone(_ enabled: Bool) {
+        guard settings.livePersistAcrossDone != enabled else { return }
+        update { $0.livePersistAcrossDone = enabled }
     }
 
     public func setLiveAutoRespond(_ enabled: Bool) {

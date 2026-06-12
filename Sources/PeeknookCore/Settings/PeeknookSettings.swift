@@ -99,6 +99,11 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     public var liveTimerIntervalSeconds: Double
     /// Minimum seconds between auto-responses (clamped to ≥ 1 at read time, never at decode).
     public var liveRateCapSeconds: Double
+    /// Opt-in: keep an armed Live session across Done. When on, tapping Done returns to the idle home
+    /// WITHOUT disarming, so Resume re-enters the same live chat. Off by default (Done disarms — the
+    /// MVP rule). Every OTHER exit (New chat, switch/delete chat, purge, collapse/hide) still disarms
+    /// regardless. See ``SessionOrchestrator/finishChat()``.
+    public var livePersistAcrossDone: Bool
 
     public init(
         mode: PracticeMode = .general,
@@ -138,7 +143,8 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         liveRefreshTriggerRaw: String = "manual",
         liveAutoRespond: Bool = false,
         liveTimerIntervalSeconds: Double = 5,
-        liveRateCapSeconds: Double = 5
+        liveRateCapSeconds: Double = 5,
+        livePersistAcrossDone: Bool = false
     ) {
         self.mode = mode
         self.previewBeforeInfer = previewBeforeInfer
@@ -178,6 +184,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.liveAutoRespond = liveAutoRespond
         self.liveTimerIntervalSeconds = liveTimerIntervalSeconds
         self.liveRateCapSeconds = liveRateCapSeconds
+        self.livePersistAcrossDone = livePersistAcrossDone
     }
 
     /// True when inference is configured to a host other than the default local Ollama loopback.
@@ -213,7 +220,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, customModels, commandOverrides, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, highlightSpeechWhileReading, speechVoiceIdentifier, briefHotkey, inferenceImageReplay, captureQuality, acceptInsecureRemoteOllama, activeProfileID, cameraHotkey, answerBackend, openAICompatibleBaseURL, openAICompatibleModelTag, acceptInsecureRemoteOpenAICompatible, fastTextFollowUps, textOnlyBackend, textOnlyModelTag, compositeCaptureEnabled, liveEnabled, liveRefreshTriggerRaw, liveAutoRespond, liveTimerIntervalSeconds, liveRateCapSeconds
+        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, customModels, commandOverrides, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, highlightSpeechWhileReading, speechVoiceIdentifier, briefHotkey, inferenceImageReplay, captureQuality, acceptInsecureRemoteOllama, activeProfileID, cameraHotkey, answerBackend, openAICompatibleBaseURL, openAICompatibleModelTag, acceptInsecureRemoteOpenAICompatible, fastTextFollowUps, textOnlyBackend, textOnlyModelTag, compositeCaptureEnabled, liveEnabled, liveRefreshTriggerRaw, liveAutoRespond, liveTimerIntervalSeconds, liveRateCapSeconds, livePersistAcrossDone
     }
 
     // Tolerant decode, a saved blob missing a newer key keeps the rest of the user's
@@ -271,6 +278,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.liveAutoRespond = try c.decodeIfPresent(Bool.self, forKey: .liveAutoRespond) ?? false
         self.liveTimerIntervalSeconds = try c.decodeIfPresent(Double.self, forKey: .liveTimerIntervalSeconds) ?? 5
         self.liveRateCapSeconds = try c.decodeIfPresent(Double.self, forKey: .liveRateCapSeconds) ?? 5
+        self.livePersistAcrossDone = try c.decodeIfPresent(Bool.self, forKey: .livePersistAcrossDone) ?? false
     }
 
     public static let `default` = PeeknookSettings(

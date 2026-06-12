@@ -91,6 +91,13 @@ final class LiveCoordinator {
                 // the generation — drop a stale/late frame rather than act on it on a replaced thread.
                 guard !Task.isCancelled, session.isLiveArmed,
                       session.lifecycle.isCurrentSession(generation) else { return }
+                // Defense-in-depth idle guard: a grab whose `await` straddled a persist-across-Done (phase
+                // now `.idle`) must not park or stamp onto the idle home. `cancelLiveWork()` already cancels
+                // this task on Done, but guarding `.idle` here too closes the no-capture-while-idle invariant
+                // even if a future caller forgets to cancel. Guard ONLY `.idle`, not "not `.result`": a
+                // concurrent user Answer-now flips the phase to `.inferring` while a timer grab is in flight,
+                // and that frame must still PARK (retrievable), not drop — see `shouldAutoRespond`.
+                if case .idle = session.phase { return }
                 session.lastLiveRefreshAt = Date()   // refresh stamp (chip) — for BOTH a park and an auto-answer
                 if self.shouldAutoRespond(trigger: trigger, session: session) {
                     // START-stamp the rate clock on the SAME main-actor hop as promote(), BEFORE it. This is
@@ -170,6 +177,7 @@ final class LiveCoordinator {
                 // capture can't graft a turn onto the replaced thread. Disarm fails the armed re-check.
                 guard !Task.isCancelled, session.isLiveArmed,
                       session.lifecycle.isCurrentSession(generation) else { return }
+                if case .idle = session.phase { return }   // idle-safe post-await (see refresh())
                 session.lastLiveRefreshAt = Date()
                 _ = session.takePendingLiveFrame()   // this fresher grab supersedes any parked refresh — don't leave a stale "Answer now"
                 self.promote(capture, note: note)
@@ -180,6 +188,18 @@ final class LiveCoordinator {
                 session.emitNotice(.liveRefreshFailed)
             }
         }
+    }
+
+    /// Restore the auto-refresh loop if it SHOULD be running but isn't — the re-entry counterpart to
+    /// ``startTimerLoopIfNeeded()``. A persist-across-Done quiesce cancels the loop (via ``cancelLiveWork()``);
+    /// if the user then re-enters the armed thread via a CAPTURE rather than Resume, the turn lands back in
+    /// `.result` with the loop dead, leaving the Live chip on a thread whose timer never fires again. Calling
+    /// this at turn completion restarts it. Idempotent and cheap: a no-op when the loop is already running (a
+    /// normal in-result Add image / Retake never stopped it, so its cadence is untouched — while armed the
+    /// loop only ends via cancellation/disarm, which nils `timerTask`), when not armed, or for a manual session.
+    func ensureTimerLoopRunning() {
+        guard timerTask == nil else { return }
+        startTimerLoopIfNeeded()
     }
 
     /// Start (or restart) the repeating auto-refresh loop for a `.timer`-trigger armed session.
