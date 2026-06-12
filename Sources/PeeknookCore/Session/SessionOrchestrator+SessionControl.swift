@@ -86,6 +86,18 @@ extension SessionOrchestrator {
         isFetchingWebLookup = false
     }
 
+    /// THE single live-session teardown choke point — idempotent and a no-op when not armed. Disarms
+    /// the session and clears the pending frame (later slices also cancel the refresh timer and reset
+    /// the rate limiter). DELIBERATELY NOT folded into ``abortSessionWork()``: a Retake / Add-image
+    /// aborts in-flight work but must NOT disarm Live, so disarm has its own choke point that only the
+    /// explicit exits (Stop live, Done, New chat, switch thread, nook-collapse) call.
+    public func stopLiveSession() {
+        guard isLiveArmed || lifecycle.pendingLiveCapture != nil else { return }
+        livePolicy = nil
+        lastLiveRefreshAt = nil
+        lifecycle.clearPendingLive()
+    }
+
     /// Surface a transient, one-shot signal to the UI (see ``SessionNotice``).
     func emitNotice(_ notice: SessionNotice) {
         lastNotice = notice

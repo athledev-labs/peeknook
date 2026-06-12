@@ -25,6 +25,12 @@ final class SessionLifecycleCoordinator {
     var pendingCompositeScreen: CaptureResult?
     var pendingCompositeIntent: SessionOrchestrator.CaptureIntent = .fresh
 
+    /// A frame grabbed by a live-session refresh, held pending until "Update & ask" / auto-respond
+    /// promotes it (or it's cleared on disarm / Done). A SEPARATE slot from the composite legs, never
+    /// aliased. `pendingLiveCaptureAt` drives the armed chip's "Last refresh …" timestamp.
+    var pendingLiveCapture: CaptureResult?
+    var pendingLiveCaptureAt: Date?
+
     func snapshotCapture() -> Int { captureGeneration }
     func snapshotSession() -> Int { sessionGeneration }
 
@@ -64,5 +70,10 @@ final class SessionLifecycleCoordinator {
         pendingCompositeGroupID = nil
         pendingCompositeScreen = nil
         pendingCompositeIntent = .fresh
+    }
+
+    func clearPendingLive() {
+        pendingLiveCapture = nil
+        pendingLiveCaptureAt = nil
     }
 }

@@ -70,6 +70,15 @@ public final class SessionOrchestrator {
     /// a phase payload — so `SessionPhase` stays a value-type `Equatable`/`Sendable` enum. Set by
     /// `openCameraLive()`, cleared by `stopCameraPreview()` (the single teardown choke point).
     public internal(set) var activeCameraSession: (any CameraSessionControlling)?
+
+    /// The armed live session, or nil when not armed. Transient — never persisted; set ONLY by an
+    /// explicit user toggle (`armLive`, added in a later slice) and cleared by ``stopLiveSession()``.
+    /// Its presence is the master "Live" control; Live OFF (nil) is byte-identical to pre-Live.
+    public internal(set) var livePolicy: LivePolicy?
+    /// True while a live session is armed.
+    public var isLiveArmed: Bool { livePolicy != nil }
+    /// When the last live refresh landed — drives the armed chip's "Last refresh …". Transient.
+    public internal(set) var lastLiveRefreshAt: Date?
     let inferenceRegistry: InferenceBackendRegistry
     /// The engine for the primary vision model's backend (profile binding, else global), resolved
     /// per call so a backend switch or profile switch takes effect on the next turn. Pinned to

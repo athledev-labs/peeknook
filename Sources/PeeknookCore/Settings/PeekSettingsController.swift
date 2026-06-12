@@ -108,6 +108,30 @@ public final class PeekSettingsController {
         update { $0.compositeCaptureEnabled = enabled }
     }
 
+    // MARK: - Live session preferences
+
+    public func setLiveAutoRespond(_ enabled: Bool) {
+        guard settings.liveAutoRespond != enabled else { return }
+        update { $0.liveAutoRespond = enabled }
+    }
+
+    public func setLiveRefreshTrigger(_ trigger: RefreshTrigger) {
+        guard settings.liveRefreshTrigger != trigger else { return }
+        update { $0.liveRefreshTriggerRaw = trigger.rawValue }
+    }
+
+    public func setLiveTimerInterval(_ seconds: Double) {
+        let clamped = max(1, seconds)
+        guard settings.liveTimerIntervalSeconds != clamped else { return }
+        update { $0.liveTimerIntervalSeconds = clamped }
+    }
+
+    public func setLiveRateCap(_ seconds: Double) {
+        let clamped = max(1, seconds)
+        guard settings.liveRateCapSeconds != clamped else { return }
+        update { $0.liveRateCapSeconds = clamped }
+    }
+
     public func setInferenceImageReplay(_ replay: InferenceImageReplay) {
         guard settings.inferenceImageReplay != replay else { return }
         update { $0.inferenceImageReplay = replay }

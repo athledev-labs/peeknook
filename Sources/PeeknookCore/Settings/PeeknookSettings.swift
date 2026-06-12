@@ -86,6 +86,15 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     /// default — when off the command is hidden and behavior is byte-identical. Flips the reserved
     /// ``ModuleID/parallelScreen`` module.
     public var compositeCaptureEnabled: Bool
+    // Live-session preferences (the armed state itself is transient, never persisted — see ``LivePolicy``).
+    /// How an armed live session refreshes its frame: `manual` (default) or `timer`. See ``liveRefreshTrigger``.
+    public var liveRefreshTriggerRaw: String
+    /// Whether an armed live session answers automatically after a refresh (rate-capped). Off by default.
+    public var liveAutoRespond: Bool
+    /// Seconds between timer refreshes while armed (clamped to ≥ 1 at read time, never at decode).
+    public var liveTimerIntervalSeconds: Double
+    /// Minimum seconds between auto-responses (clamped to ≥ 1 at read time, never at decode).
+    public var liveRateCapSeconds: Double
 
     public init(
         mode: PracticeMode = .general,
@@ -120,7 +129,11 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         fastTextFollowUps: Bool = false,
         textOnlyBackend: InferenceBackend = .ollama,
         textOnlyModelTag: String = "",
-        compositeCaptureEnabled: Bool = false
+        compositeCaptureEnabled: Bool = false,
+        liveRefreshTriggerRaw: String = "manual",
+        liveAutoRespond: Bool = false,
+        liveTimerIntervalSeconds: Double = 5,
+        liveRateCapSeconds: Double = 5
     ) {
         self.mode = mode
         self.previewBeforeInfer = previewBeforeInfer
@@ -155,6 +168,10 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.textOnlyBackend = textOnlyBackend
         self.textOnlyModelTag = textOnlyModelTag
         self.compositeCaptureEnabled = compositeCaptureEnabled
+        self.liveRefreshTriggerRaw = liveRefreshTriggerRaw
+        self.liveAutoRespond = liveAutoRespond
+        self.liveTimerIntervalSeconds = liveTimerIntervalSeconds
+        self.liveRateCapSeconds = liveRateCapSeconds
     }
 
     /// True when inference is configured to a host other than the default local Ollama loopback.
@@ -190,7 +207,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, customModels, commandOverrides, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, highlightSpeechWhileReading, speechVoiceIdentifier, briefHotkey, inferenceImageReplay, captureQuality, acceptInsecureRemoteOllama, activeProfileID, cameraHotkey, answerBackend, openAICompatibleBaseURL, openAICompatibleModelTag, acceptInsecureRemoteOpenAICompatible, fastTextFollowUps, textOnlyBackend, textOnlyModelTag, compositeCaptureEnabled
+        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, customModels, commandOverrides, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, highlightSpeechWhileReading, speechVoiceIdentifier, briefHotkey, inferenceImageReplay, captureQuality, acceptInsecureRemoteOllama, activeProfileID, cameraHotkey, answerBackend, openAICompatibleBaseURL, openAICompatibleModelTag, acceptInsecureRemoteOpenAICompatible, fastTextFollowUps, textOnlyBackend, textOnlyModelTag, compositeCaptureEnabled, liveRefreshTriggerRaw, liveAutoRespond, liveTimerIntervalSeconds, liveRateCapSeconds
     }
 
     // Tolerant decode, a saved blob missing a newer key keeps the rest of the user's
@@ -239,6 +256,14 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.textOnlyBackend = textOnlyBackendRaw.flatMap(InferenceBackend.init(rawValue:)) ?? .ollama
         self.textOnlyModelTag = try c.decodeIfPresent(String.self, forKey: .textOnlyModelTag) ?? ""
         self.compositeCaptureEnabled = try c.decodeIfPresent(Bool.self, forKey: .compositeCaptureEnabled) ?? false
+        // Raw-String trigger (mirrors answerBackend) so an unknown future value degrades to "manual"
+        // instead of throwing and resetting every setting. Interval/rate-cap clamp at READ time, never
+        // here, so a hand-edited 0.1 can't trip the reset bomb either.
+        let liveTriggerRaw = try c.decodeIfPresent(String.self, forKey: .liveRefreshTriggerRaw) ?? RefreshTrigger.manual.rawValue
+        self.liveRefreshTriggerRaw = RefreshTrigger(rawValue: liveTriggerRaw)?.rawValue ?? RefreshTrigger.manual.rawValue
+        self.liveAutoRespond = try c.decodeIfPresent(Bool.self, forKey: .liveAutoRespond) ?? false
+        self.liveTimerIntervalSeconds = try c.decodeIfPresent(Double.self, forKey: .liveTimerIntervalSeconds) ?? 5
+        self.liveRateCapSeconds = try c.decodeIfPresent(Double.self, forKey: .liveRateCapSeconds) ?? 5
     }
 
     public static let `default` = PeeknookSettings(
