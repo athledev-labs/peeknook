@@ -121,6 +121,10 @@ struct PeekSettingsCaptureSection: View {
                 liveRefreshTriggerRow
                 if orchestrator.settings.liveRefreshTrigger == .timer {
                     liveTimerIntervalRow
+                    liveAutoRespondRow
+                    if orchestrator.settings.liveAutoRespond {
+                        liveRateCapRow
+                    }
                 }
             }
         }
@@ -305,6 +309,40 @@ struct PeekSettingsCaptureSection: View {
                 close: close
             )
         }
+    }
+
+    /// Auto-respond: answer automatically after each timed refresh (rate-capped). Only meaningful with
+    /// the timer trigger (a manual Refresh has no automatic driver), so it is nested under `.timer`.
+    private var liveAutoRespondRow: some View {
+        PeekSettingsToggleRow(
+            icon: orchestrator.settings.liveAutoRespond ? "bolt.fill" : "bolt",
+            title: "Auto-respond",
+            detail: "After each timed refresh, answer automatically (rate-capped). You stay in control: it pauses when context is full, capture stays user-triggered, and Stop disarms.",
+            isOn: liveAutoRespondBinding
+        )
+    }
+
+    private var liveRateCapRow: some View {
+        let seconds = orchestrator.settings.liveRateCapSeconds
+        return PeekSettingsMenuRow(
+            icon: "hourglass",
+            title: "Answer at most every",
+            detail: "Floor between automatic answers (a manual Update & ask ignores it)",
+            value: LiveRefreshLabels.intervalPillLabel(seconds)
+        ) { close in
+            PeekPreflightMenuContent.liveRateCapHomeMenu(
+                current: seconds,
+                onSelect: { settings.setLiveRateCap($0) },
+                close: close
+            )
+        }
+    }
+
+    private var liveAutoRespondBinding: Binding<Bool> {
+        Binding(
+            get: { orchestrator.settings.liveAutoRespond },
+            set: { settings.setLiveAutoRespond($0) }
+        )
     }
 
     private var displayNameBinding: Binding<String> {

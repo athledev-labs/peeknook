@@ -24,8 +24,12 @@ public struct LivePolicy: Sendable, Equatable {
     /// Answer automatically after a qualifying refresh (rate-capped). Default off — the user opts into
     /// the chatty path; a refresh otherwise only updates pending context.
     public var autoRespond: Bool
-    /// Minimum seconds between auto-responses (completion-stamped). A user-triggered "Update & ask"
-    /// bypasses it.
+    /// Minimum seconds between auto-responses, **issue-stamped** (measured from the START of the previous
+    /// auto-answer, not its completion). This ordering is load-bearing: `runTurn` awaits the model-residency
+    /// check before flipping the phase to `.inferring`, so for a brief window an auto-promote has been
+    /// issued while the phase is still `.result`; stamping at issue (before `promote`) — together with the
+    /// `>= 1` clamp — is what stops a fast timer tick landing in that window from double-issuing. A
+    /// user-triggered "Update & ask" bypasses the cap entirely. See `LiveCoordinator.refresh`.
     public var rateCap: TimeInterval
     /// Seconds between automatic `.timer` refreshes. Snapshotted from settings at arm (clamped to >= 1,
     /// like `rateCap`); the timer loop obeys this snapshot, never live settings, so a mid-session

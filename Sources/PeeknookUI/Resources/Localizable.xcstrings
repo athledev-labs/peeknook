@@ -589,6 +589,22 @@
       "comment": "Settings: live-refresh interval preset.",
       "extractionState": "manual"
     },
+    "Auto-respond": {
+      "comment": "Settings: live-session auto-respond toggle title.",
+      "extractionState": "manual"
+    },
+    "After each timed refresh, answer automatically (rate-capped). You stay in control: it pauses when context is full, capture stays user-triggered, and Stop disarms.": {
+      "comment": "Settings: live-session auto-respond toggle subtitle.",
+      "extractionState": "manual"
+    },
+    "Answer at most every": {
+      "comment": "Settings: live-session auto-respond rate-cap row title.",
+      "extractionState": "manual"
+    },
+    "Floor between automatic answers (a manual Update & ask ignores it)": {
+      "comment": "Settings: live-session auto-respond rate-cap row subtitle.",
+      "extractionState": "manual"
+    },
     "Loading tags…": {
       "comment": "Tier B localization",
       "extractionState": "manual"

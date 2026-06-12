@@ -57,18 +57,22 @@ final class LiveCoordinator {
         session?.stopLiveSession()
     }
 
-    /// Manual "Refresh" (also the timer's per-tick park): grab the latest primary-vision frame into the
-    /// armed chat's PENDING context. It does NOT append a turn, run inference, or change phase — the frame
-    /// waits in `lifecycle.pendingLiveCapture` for "Update & ask" / auto-respond to promote it. A new
-    /// refresh supersedes any in-flight one. A capture failure keeps the session armed and surfaces a
-    /// transient notice rather than the `.failed` recovery card (which would leave armed).
+    /// Grab the latest primary-vision frame for the armed chat. `trigger` decides what happens to it:
+    /// `.manual` (the Refresh command and the public `refreshLive()`) ALWAYS just PARKS it into
+    /// `lifecycle.pendingLiveCapture` — no turn, no inference, no phase change — for "Update & ask" /
+    /// "Answer now" to promote later. `.timer` (the auto-refresh loop) parks the same way UNLESS
+    /// auto-respond qualifies (``shouldAutoRespond(trigger:session:)``), in which case it routes the frame
+    /// STRAIGHT to ``promote(_:note:)`` and never parks. So a manual Refresh is byte-identical to slice 6,
+    /// and only the timer can drive the automatic infer path. A new refresh supersedes any in-flight one. A
+    /// capture failure keeps the session armed and surfaces a transient notice rather than the `.failed`
+    /// recovery card (which would leave armed).
     ///
     /// **Generation-guarded** like ``updateAndAsk(note:)``: a Retake / Add-image bumps the session
     /// generation (via `abortSessionWork`) and a `.fresh` Retake REPLACES the thread, so a grab whose
     /// `await` straddled it must be DROPPED rather than parked — otherwise a stale pre-Retake frame would
     /// graft onto the replaced thread via "Answer now" / a follow-up. The timer makes this race routine
     /// (one in-flight grab per interval), so the guard is load-bearing, not defensive.
-    func refresh() {
+    func refresh(trigger: RefreshTrigger = .manual) {
         guard let session, case .result = session.phase, session.isLiveArmed else { return }
         session.setup?.refreshCapturePermission()
         if let setup = session.setup, !setup.isReady { return }   // disabled button already guards; defensive
@@ -84,11 +88,22 @@ final class LiveCoordinator {
                 let encoding = CaptureEncodingPolicy.resolve(scope: scope, quick: quick, quality: quality)
                 let capture = try await provider.capture(scope: scope, quick: quick, encoding: encoding)
                 // Disarm cancels this task and clears the slot; a Retake/Add-image during the grab bumps
-                // the generation — drop a stale/late frame rather than park it onto a replaced thread.
+                // the generation — drop a stale/late frame rather than act on it on a replaced thread.
                 guard !Task.isCancelled, session.isLiveArmed,
                       session.lifecycle.isCurrentSession(generation) else { return }
-                session.parkPendingLiveFrame(capture)   // slot + observable mirror, in lockstep
-                session.lastLiveRefreshAt = Date()
+                session.lastLiveRefreshAt = Date()   // refresh stamp (chip) — for BOTH a park and an auto-answer
+                if self.shouldAutoRespond(trigger: trigger, session: session) {
+                    // START-stamp the rate clock on the SAME main-actor hop as promote(), BEFORE it. This is
+                    // LOAD-BEARING, not cosmetic: `runTurn` awaits the model-residency check BEFORE flipping
+                    // the phase to `.inferring`, so the phase stays `.result` across that await and the
+                    // `.result` guard alone does NOT serialize a fast tick landing in that window — this stamp
+                    // (plus the `>= 1` rateCap clamp) is what closes the double-issue window. Do NOT move this
+                    // stamp after `promote()`.
+                    session.lastAutoResponseAt = Date()
+                    self.promote(capture, note: nil)        // THE choke point; re-guards .result/armed/!blocked; .addToChat
+                } else {
+                    session.parkPendingLiveFrame(capture)   // park only (slice-6 behavior): slot + mirror in lockstep
+                }
             } catch is CancellationError {
                 return
             } catch {
@@ -99,6 +114,24 @@ final class LiveCoordinator {
                 session.emitNotice(.liveRefreshFailed)
             }
         }
+    }
+
+    /// Whether THIS refresh should auto-answer (the chatty auto-respond path) rather than just park.
+    /// Decided AFTER the frame exists, so pressure and the rate clock are read fresh. Auto-respond is
+    /// **timer-only**: a manual Refresh always parks (its grab-and-answer analogue is the user-triggered
+    /// Update & ask, which bypasses the rate cap). Pauses at critical via the shared ``LiveRefreshPolicy/livePaused(pressure:)``
+    /// (a critical refresh parks instead of overflowing the window), then defers to the pure rate cap.
+    private func shouldAutoRespond(trigger: RefreshTrigger, session: SessionOrchestrator) -> Bool {
+        guard trigger == .timer, let policy = session.livePolicy, policy.autoRespond else { return false }
+        // Re-check the phase AFTER the capture await: a concurrent user action (Answer now, or a follow-up
+        // that consumed a parked frame) can promote and flip the phase to `.inferring` while THIS grab is in
+        // flight (it does not bump the generation, so the generation guard above lets us through). If we
+        // auto-answered now, `promote()` would bail on its own `.result` guard — leaving the frame neither
+        // promoted nor parked (silently dropped) and the rate clock charged for an answer that never fired.
+        // Falling through to the park branch keeps the frame retrievable, matching slice 6's unconditional park.
+        guard case .result = session.phase else { return false }
+        guard !LiveRefreshPolicy.livePaused(pressure: session.contextPressure) else { return false }
+        return LiveRefreshPolicy.autoResponseDue(last: session.lastAutoResponseAt, cap: policy.rateCap, now: Date())
     }
 
     /// "Answer now": promote the already-parked frame into an answered turn (no new capture). Optional
@@ -188,7 +221,7 @@ final class LiveCoordinator {
                     // Re-check after the await boundary and BEFORE mutating, matching refresh()/updateAndAsk().
                     guard !Task.isCancelled, session.isLiveArmed else { return }
                     reference = Date()        // advance first → the next decide() returns .sleep(interval), no spin
-                    session.refreshLive()     // PARK only via the audited manual-refresh path — never infers
+                    self.refresh(trigger: .timer)   // PARK, or — when auto-respond qualifies — promote (decided post-capture)
                 }
             }
         }

@@ -58,6 +58,17 @@ public enum LiveRefreshPolicy: Sendable {
         pressure == .critical
     }
 
+    /// Whether an automatic answer is permitted now under the rate cap (auto-respond, the chatty path).
+    /// `last` is the issue-stamp of the previous auto-answer (`SessionOrchestrator.lastAutoResponseAt`);
+    /// `nil` means none has fired this armed session, so the first qualifying timed refresh answers
+    /// immediately (no warm-up delay). `cap` is the minimum seconds between auto-answer STARTS (clamped to
+    /// `>= 1` at arm via ``LivePolicy``). Pure — `now`/`last` injected — so it unit-tests without a clock,
+    /// like ``decide``. A user-triggered "Update & ask" never consults this; it bypasses the cap by design.
+    public static func autoResponseDue(last: Date?, cap: TimeInterval, now: Date) -> Bool {
+        guard let last else { return true }            // first auto-answer of the armed session: fire now
+        return now.timeIntervalSince(last) >= cap      // `>=` boundary, matching decide()'s `elapsed >= interval`
+    }
+
     /// Floor for a near-due `.sleep` so the loop can't spin on a sub-tick residual.
     static let minSleep: TimeInterval = 0.05
     /// Re-poll cadence while paused-at-critical, independent of the user's interval.

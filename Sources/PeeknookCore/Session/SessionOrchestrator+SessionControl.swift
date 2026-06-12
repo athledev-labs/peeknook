@@ -107,7 +107,8 @@ extension SessionOrchestrator {
         guard isLiveArmed || lifecycle.pendingLiveCapture != nil else { return }
         livePolicy = nil
         lastLiveRefreshAt = nil
-        liveCoordinator.cancelLiveWork()   // cancel any in-flight refresh / promote (and, later, the timer)
+        lastAutoResponseAt = nil           // a fresh arm starts with a clean rate clock (first answer immediate)
+        liveCoordinator.cancelLiveWork()   // cancel any in-flight refresh / promote / auto-refresh timer
         lifecycle.clearPendingLive()
         hasPendingLiveFrame = false        // lower the observable mirror with the slot it shadows
     }

@@ -85,4 +85,29 @@ final class LiveRefreshPolicyTests: XCTestCase {
         // A disarm mid-pause must tear the loop down, not keep polling.
         XCTAssertEqual(decide(armed: false, pressure: .critical, sinceSeconds: 0, nowSeconds: 100), .stop)
     }
+
+    // MARK: Rate cap (slice 7 auto-respond) — the pure throttle, no clock
+
+    func testFirstAutoResponseFiresImmediately() {
+        XCTAssertTrue(LiveRefreshPolicy.autoResponseDue(last: nil, cap: 5, now: t0),
+                      "no auto-response yet this armed session → eligible at once")
+    }
+
+    func testAutoResponseThrottledWithinCap() {
+        XCTAssertFalse(
+            LiveRefreshPolicy.autoResponseDue(last: t0, cap: 5, now: t0.addingTimeInterval(4)),
+            "4s into a 5s cap → not yet eligible"
+        )
+    }
+
+    func testAutoResponseDueAtAndAfterTheCapBoundary() {
+        XCTAssertTrue(
+            LiveRefreshPolicy.autoResponseDue(last: t0, cap: 5, now: t0.addingTimeInterval(5)),
+            "the boundary is inclusive, matching decide()'s elapsed >= interval"
+        )
+        XCTAssertTrue(
+            LiveRefreshPolicy.autoResponseDue(last: t0, cap: 5, now: t0.addingTimeInterval(6)),
+            "overdue → eligible"
+        )
+    }
 }

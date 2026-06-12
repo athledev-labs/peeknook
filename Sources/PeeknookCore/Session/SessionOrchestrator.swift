@@ -79,6 +79,11 @@ public final class SessionOrchestrator {
     public var isLiveArmed: Bool { livePolicy != nil }
     /// When the last live refresh landed — drives the armed chip's "Last refresh …". Transient.
     public internal(set) var lastLiveRefreshAt: Date?
+    /// The issue-stamp of the last auto-response (the rate-cap clock), SEPARATE from `lastLiveRefreshAt`:
+    /// a park-only refresh advances `lastLiveRefreshAt` but NOT this, and an auto-answer advances both. `nil`
+    /// = none fired this armed session, so the first qualifying timed refresh auto-answers immediately.
+    /// Transient — never persisted; cleared on disarm so a fresh arm starts with a clean rate clock.
+    public internal(set) var lastAutoResponseAt: Date?
     /// Observable mirror of `lifecycle.pendingLiveCapture != nil`. The pending frame lives in the
     /// non-`@Observable` ``SessionLifecycleCoordinator``, so the result bar's "Answer now" gate and the
     /// chip's "ask when ready" cue need this published flag to re-render. Kept in lockstep with the slot

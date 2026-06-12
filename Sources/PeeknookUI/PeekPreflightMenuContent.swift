@@ -183,6 +183,28 @@ enum PeekPreflightMenuContent {
             .buttonStyle(.plain)
         }
     }
+
+    /// The auto-respond rate-cap floor (seconds) — reuses the same presets/copy as the refresh interval.
+    @ViewBuilder
+    static func liveRateCapHomeMenu(
+        current: Double,
+        onSelect: @escaping (Double) -> Void,
+        close: @escaping () -> Void
+    ) -> some View {
+        ForEach(LiveRefreshLabels.intervalPresets, id: \.self) { seconds in
+            Button {
+                onSelect(seconds)
+                close()
+            } label: {
+                ValueMenuRow(
+                    title: LiveRefreshLabels.intervalMenuKey(seconds),
+                    subtitle: nil,
+                    selected: abs(current - seconds) < 0.001
+                )
+            }
+            .buttonStyle(.plain)
+        }
+    }
 }
 
 /// Display copy for the live-session refresh controls. Kept in the UI layer (not Core) so `RefreshTrigger`
