@@ -7,6 +7,10 @@ public enum SetupStepState: Sendable, Equatable {
     case pending
     case inProgress(String)
     case complete
+    /// Previously satisfied, but an upstream prerequisite (Ollama) is currently down, so there is
+    /// nothing to do on this row. Distinct from `.failed` (an actionable problem) and never equal to
+    /// `.complete`, so it can NEVER make setup "ready" — do not add `.blocked` to any readiness OR.
+    case blocked(String)
     case failed(String)
 }
 
@@ -50,6 +54,9 @@ public final class SetupCoordinator {
         self.probeCache = probeCache
         self.ollama = OllamaSetupClient(probeCache: probeCache)
         self.permissionStatusProvider = permissionStatus
+        // Seed the known-installed set from the last reachable probe so an offline first paint (e.g. a
+        // relaunch with Ollama quit) can report the model as installed-but-blocked, not missing.
+        installedModelNames = Self.loadLastInstalledModels(from: defaults)
         if defaults.bool(forKey: Self.smokeTestKey) {
             smokeTestStep = .complete
         }
@@ -57,6 +64,14 @@ public final class SetupCoordinator {
 
     public static let smokeTestKey = "peeknook.setup.smokeTest.v1"
     public static let onboardingCompleteKey = "peeknook.setup.onboardingComplete.v1"
+    /// Last installed-model tags seen on a reachable probe, persisted so a relaunch while Ollama is
+    /// offline still knows the model is there (the model row stays "installed", not "download me").
+    /// Read tolerantly (`?? []`); standalone key, never part of PeeknookSettings Codable; never feeds readiness.
+    static let lastInstalledModelsKey = "peeknook.setup.lastInstalledModels.v1"
+
+    static func loadLastInstalledModels(from defaults: UserDefaults) -> [String] {
+        defaults.stringArray(forKey: lastInstalledModelsKey) ?? []
+    }
 
     /// User finished or skipped past the first-run setup drill-in (persisted).
     public var hasCompletedOnboarding: Bool {
@@ -167,12 +182,24 @@ public final class SetupCoordinator {
         if status.isReachable {
             ollamaStep = .complete
             // The list comes back on the status probe itself now — no second `/api/tags` round trip.
-            installedModelNames = status.installedNames
+            // Persist it so an offline relaunch still knows what's installed.
+            rememberInstalledModels(status.installedNames)
         } else {
             ollamaStep = .failed(status.reachabilityMessage)
-            modelStep = .pending
-            installedModelNames = []
-            if !isPullingModel { captureStep = evaluateCaptureStep() }
+            // The server is down, so `/api/tags` can't be re-read — but that does NOT mean the model
+            // vanished. Keep the last-known installed set (seeded from disk at init, refreshed on every
+            // reachable probe). If we last saw the model installed, the row is blocked-on-server with no
+            // action; only a genuinely never-installed model stays `.pending` (the first-run download
+            // CTA). NEVER wipe the set here — wiping it is exactly what made the row flip to "download me".
+            if !isPullingModel {
+                if installedModelNames.isEmpty {
+                    installedModelNames = Self.loadLastInstalledModels(from: defaults)
+                }
+                modelStep = isModelInstalled(settings.textModel)
+                    ? .blocked("Installed. Waiting for Ollama to come back online.")
+                    : .pending
+                captureStep = evaluateCaptureStep()
+            }
             return
         }
 
@@ -212,7 +239,7 @@ public final class SetupCoordinator {
                 }
             } catch {
                 if !Task.isCancelled {
-                    modelStep = .failed(error.localizedDescription)
+                    modelStep = .complete
                     pullStatusLine = nil
                 }
             }
@@ -258,6 +285,15 @@ public final class SetupCoordinator {
 
     public func isModelInstalled(_ model: String) -> Bool {
         Self.matchesModel(installedNames: installedModelNames, wanted: model)
+    }
+
+    /// Records the installed-model set from a reachable probe and persists it (only on change, to avoid
+    /// churn from the 3s auto-refresh). The persisted copy lets an offline relaunch stay honest about
+    /// what's installed. NEVER called from the unreachable path — that keeps the set sticky.
+    func rememberInstalledModels(_ names: [String]) {
+        guard names != installedModelNames else { return }
+        installedModelNames = names
+        defaults.set(names, forKey: Self.lastInstalledModelsKey)
     }
 
     private static func matchesModel(installedNames: [String], wanted: String) -> Bool {

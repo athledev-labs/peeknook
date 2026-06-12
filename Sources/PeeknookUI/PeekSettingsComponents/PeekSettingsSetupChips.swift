@@ -59,6 +59,7 @@ enum PeekSettingsSetupChipSupport {
         case .complete: .ready
         case .pending: .warning
         case .inProgress: .loading
+        case .blocked: .loading   // neutral "waiting" — keep the actionable red on the Ollama chip only
         case .failed: .error
         }
     }
@@ -68,6 +69,7 @@ enum PeekSettingsSetupChipSupport {
         case .complete: "Done"
         case .pending: "Needed"
         case .inProgress: "Working"
+        case .blocked: "Installed"
         case .failed: "Fix"
         }
     }

@@ -80,9 +80,16 @@ struct PeekSettingsSetupSection: View {
         }
         var missing: [String] = []
         if setup.ollamaStep != .complete { missing.append("Ollama") }
-        if setup.modelStep != .complete { missing.append("model") }
+        // A blocked model isn't "still needed" — it's installed and just waiting on Ollama, which is
+        // already listed. Don't double-point at the model when the server is the only real culprit.
+        if setup.modelStep != .complete, !isBlocked(setup.modelStep) { missing.append("model") }
         if setup.captureStep != .complete { missing.append("Screen Recording") }
         guard !missing.isEmpty else { return "Finish setup before capturing." }
         return "Still needed: \(missing.joined(separator: ", "))."
+    }
+
+    private func isBlocked(_ state: SetupStepState) -> Bool {
+        if case .blocked = state { return true }
+        return false
     }
 }

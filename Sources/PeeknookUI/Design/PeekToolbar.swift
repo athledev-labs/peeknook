@@ -9,30 +9,43 @@ import SwiftUI
 struct NookToolbarButton: View {
     @Environment(\.nookResolvedTheme) private var theme
     let title: String
-    let symbol: String
+    var symbol: String? = nil
     var hotkey: CaptureHotkey?
     var help: String?
     var testIdentifier: String?
     var onHoverChange: ((Bool) -> Void)?
     var prominent = false
+    var size: Size = .toolbar
     let action: () -> Void
     @State private var isHovered = false
+
+    /// Glass-pill scale. `.toolbar` is the dense top-bar size (default — every existing caller is
+    /// byte-identical); `.setup` is the larger first-run CTA size used by the Get-ready checklist.
+    enum Size {
+        case toolbar
+        case setup
+        var font: CGFloat { self == .toolbar ? 9 : 11 }
+        var hPad: CGFloat { self == .toolbar ? 8 : 10 }
+        var vPad: CGFloat { self == .toolbar ? 5 : 6 }
+    }
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 4) {
-                Image(systemName: symbol)
-                    .font(.system(size: 9, weight: .regular))
+                if let symbol {
+                    Image(systemName: symbol)
+                        .font(.system(size: size.font, weight: .regular))
+                }
                 Text(LocalizedStringKey(title), bundle: .module)
-                    .font(.system(size: 9, weight: .regular))
+                    .font(.system(size: size.font, weight: .regular))
                     .lineLimit(1)
                 if let hotkey {
                     InlineHotkeyKeycaps(symbols: hotkey.displaySymbols, theme: theme)
                 }
             }
             .foregroundStyle(foreground)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 5)
+            .padding(.horizontal, size.hPad)
+            .padding(.vertical, size.vPad)
             .peekGlass(cornerRadius: 7, isHovered: isHovered, prominent: prominent)
         }
         .buttonStyle(.borderless)

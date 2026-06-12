@@ -1,6 +1,38 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Accessibility": {
+      "comment": "Setup: secondary action to open the Accessibility permission.",
+      "extractionState": "manual"
+    },
+    "Check again": {
+      "comment": "Setup: re-run the readiness checks.",
+      "extractionState": "manual"
+    },
+    "Continue": {
+      "comment": "Setup: proceed past the Get-ready checklist.",
+      "extractionState": "manual"
+    },
+    "Get Ollama app": {
+      "comment": "Setup: open the Ollama download page.",
+      "extractionState": "manual"
+    },
+    "Installed": {
+      "comment": "Setup chip: the model is installed while Ollama is offline.",
+      "extractionState": "manual"
+    },
+    "Installed. Waiting for Ollama to come back online.": {
+      "comment": "Setup: model-row detail when the model is installed but Ollama is unreachable.",
+      "extractionState": "manual"
+    },
+    "Screen Recording": {
+      "comment": "Setup: Screen Recording step title.",
+      "extractionState": "manual"
+    },
+    "Try now": {
+      "comment": "Setup: run a test capture.",
+      "extractionState": "manual"
+    },
     "A profile bundles a standing instruction, an answer model, and feature overrides. The active profile shapes every capture.": {
       "comment": "Settings: Profiles section intro.",
       "extractionState": "manual"
