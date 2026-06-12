@@ -64,6 +64,9 @@ final class CommandLayoutCatalogTests: XCTestCase {
             "Seeing latest screen — ask when ready",
             "Live session armed, auto-respond off, seeing latest screen",
             "Live session armed, auto-respond on, seeing latest screen",
+            "Paused — context full",
+            "Live session armed, auto-respond off, paused, context full",
+            "Live session armed, auto-respond on, paused, context full",
         ]
         let missing = chipKeys.filter { !catalogKeys.contains($0) }
         XCTAssertTrue(missing.isEmpty, "Live chip pending-cue keys missing from Localizable.xcstrings: \(missing)")

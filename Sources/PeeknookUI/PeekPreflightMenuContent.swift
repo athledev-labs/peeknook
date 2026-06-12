@@ -135,4 +135,82 @@ enum PeekPreflightMenuContent {
             .buttonStyle(.plain)
         }
     }
+
+    // MARK: - Live session
+
+    /// How an armed live session grabs a fresh frame: Manual (only on Refresh) or Timer (fixed interval).
+    @ViewBuilder
+    static func liveRefreshTriggerHomeMenu(
+        current: RefreshTrigger,
+        onSelect: @escaping (RefreshTrigger) -> Void,
+        close: @escaping () -> Void
+    ) -> some View {
+        ForEach(RefreshTrigger.allCases, id: \.self) { option in
+            Button {
+                onSelect(option)
+                close()
+            } label: {
+                ValueMenuRow(
+                    title: LiveRefreshLabels.title(option),
+                    subtitle: LiveRefreshLabels.detail(option),
+                    selected: current == option
+                )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    /// Discrete refresh-interval presets (seconds) for a `.timer` live session — a menu, not a slider,
+    /// matching the established preflight idiom. A hand-edited non-preset value persists and just shows
+    /// no highlighted row until the user picks a preset.
+    @ViewBuilder
+    static func liveTimerIntervalHomeMenu(
+        current: Double,
+        onSelect: @escaping (Double) -> Void,
+        close: @escaping () -> Void
+    ) -> some View {
+        ForEach(LiveRefreshLabels.intervalPresets, id: \.self) { seconds in
+            Button {
+                onSelect(seconds)
+                close()
+            } label: {
+                ValueMenuRow(
+                    title: LiveRefreshLabels.intervalMenuKey(seconds),
+                    subtitle: nil,
+                    selected: abs(current - seconds) < 0.001
+                )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+}
+
+/// Display copy for the live-session refresh controls. Kept in the UI layer (not Core) so `RefreshTrigger`
+/// stays a pure persistence enum; all strings route through `Localizable.xcstrings` keys.
+enum LiveRefreshLabels {
+    static let intervalPresets: [Double] = [2, 5, 10, 30, 60]
+
+    static func title(_ trigger: RefreshTrigger) -> String {
+        switch trigger {
+        case .manual: return "Manual"
+        case .timer:  return "Timer"
+        }
+    }
+
+    static func detail(_ trigger: RefreshTrigger) -> String {
+        switch trigger {
+        case .manual: return "Only when you press Refresh"
+        case .timer:  return "Capture the latest screen on a fixed interval"
+        }
+    }
+
+    /// The full-sentence catalog key for the interval menu row (e.g. "Every 5 seconds").
+    static func intervalMenuKey(_ seconds: Double) -> String {
+        "Every \(Int(seconds)) seconds"
+    }
+
+    /// The compact pill value for the Settings row (e.g. "5s").
+    static func intervalPillLabel(_ seconds: Double) -> String {
+        "\(Int(seconds))s"
+    }
 }

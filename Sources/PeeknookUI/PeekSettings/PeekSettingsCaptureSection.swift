@@ -116,6 +116,13 @@ struct PeekSettingsCaptureSection: View {
                 detail: "Adds a Go live command to an answered chat so it stays armed and keeps context across captures. You stay in control: a clear Live indicator with a Stop, and capture stays user-triggered.",
                 isOn: liveEnabledBinding
             )
+
+            if orchestrator.settings.liveEnabled {
+                liveRefreshTriggerRow
+                if orchestrator.settings.liveRefreshTrigger == .timer {
+                    liveTimerIntervalRow
+                }
+            }
         }
         .task(id: appState.isNookVisible) {
             guard !setup.skipsLiveProbes, appState.isNookVisible else { return }
@@ -261,6 +268,40 @@ struct PeekSettingsCaptureSection: View {
             PeekPreflightMenuContent.inferenceImageReplayHomeMenu(
                 current: replay,
                 onSelect: { settings.setInferenceImageReplay($0) },
+                close: close
+            )
+        }
+    }
+
+    /// How an armed live session grabs a fresh frame — Manual (only on Refresh) or Timer (fixed interval).
+    /// Shown only when the Live session feature is enabled (byte-identical when off, behind the `if`).
+    private var liveRefreshTriggerRow: some View {
+        let trigger = orchestrator.settings.liveRefreshTrigger
+        return PeekSettingsMenuRow(
+            icon: "arrow.clockwise",
+            title: "Live refresh",
+            detail: LiveRefreshLabels.detail(trigger),
+            value: LiveRefreshLabels.title(trigger)
+        ) { close in
+            PeekPreflightMenuContent.liveRefreshTriggerHomeMenu(
+                current: trigger,
+                onSelect: { settings.setLiveRefreshTrigger($0) },
+                close: close
+            )
+        }
+    }
+
+    private var liveTimerIntervalRow: some View {
+        let seconds = orchestrator.settings.liveTimerIntervalSeconds
+        return PeekSettingsMenuRow(
+            icon: "timer",
+            title: "Refresh every",
+            detail: "How often Live grabs the latest screen",
+            value: LiveRefreshLabels.intervalPillLabel(seconds)
+        ) { close in
+            PeekPreflightMenuContent.liveTimerIntervalHomeMenu(
+                current: seconds,
+                onSelect: { settings.setLiveTimerInterval($0) },
                 close: close
             )
         }

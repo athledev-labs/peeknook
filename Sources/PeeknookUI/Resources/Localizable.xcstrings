@@ -529,6 +529,66 @@
       "comment": "Live chip: VoiceOver status.",
       "extractionState": "manual"
     },
+    "Live session armed, auto-respond off, paused, context full": {
+      "comment": "Live chip: VoiceOver status while the auto-refresh timer is paused at full context.",
+      "extractionState": "manual"
+    },
+    "Live session armed, auto-respond on, paused, context full": {
+      "comment": "Live chip: VoiceOver status while the auto-refresh timer is paused at full context.",
+      "extractionState": "manual"
+    },
+    "Paused — context full": {
+      "comment": "Live chip: the auto-refresh timer is paused because the context window is full.",
+      "extractionState": "manual"
+    },
+    "Live refresh": {
+      "comment": "Settings: live-session refresh-trigger row title.",
+      "extractionState": "manual"
+    },
+    "Refresh every": {
+      "comment": "Settings: live-session timer interval row title.",
+      "extractionState": "manual"
+    },
+    "How often Live grabs the latest screen": {
+      "comment": "Settings: live-session timer interval row subtitle.",
+      "extractionState": "manual"
+    },
+    "Only when you press Refresh": {
+      "comment": "Settings: manual refresh-trigger detail.",
+      "extractionState": "manual"
+    },
+    "Capture the latest screen on a fixed interval": {
+      "comment": "Settings: timer refresh-trigger detail.",
+      "extractionState": "manual"
+    },
+    "Manual": {
+      "comment": "Settings: manual live-refresh trigger option.",
+      "extractionState": "manual"
+    },
+    "Timer": {
+      "comment": "Settings: timer live-refresh trigger option.",
+      "extractionState": "manual"
+    },
+    "Every 2 seconds": {
+      "comment": "Settings: live-refresh interval preset.",
+      "extractionState": "manual"
+    },
+    "Every 5 seconds": {
+      "comment": "Settings: live-refresh interval preset.",
+      "extractionState": "manual"
+    },
+    "Every 10 seconds": {
+      "comment": "Settings: live-refresh interval preset.",
+      "extractionState": "manual"
+    },
+    "Every 30 seconds": {
+      "comment": "Settings: live-refresh interval preset.",
+      "extractionState": "manual"
+    },
+    "Every 60 seconds": {
+      "comment": "Settings: live-refresh interval preset.",
+      "extractionState": "manual"
+    },
     "Loading tags…": {
       "comment": "Tier B localization",
       "extractionState": "manual"

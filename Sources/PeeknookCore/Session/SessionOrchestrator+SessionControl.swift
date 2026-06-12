@@ -98,8 +98,9 @@ extension SessionOrchestrator {
     }
 
     /// THE single live-session teardown choke point — idempotent and a no-op when not armed. Disarms
-    /// the session and clears the pending frame (later slices also cancel the refresh timer and reset
-    /// the rate limiter). DELIBERATELY NOT folded into ``abortSessionWork()``: a Retake / Add-image
+    /// the session, cancels the live coordinator's in-flight work (manual refresh, promote, and the
+    /// recurring auto-refresh timer), and clears the pending frame. DELIBERATELY NOT folded into
+    /// ``abortSessionWork()``: a Retake / Add-image
     /// aborts in-flight work but must NOT disarm Live, so disarm has its own choke point that only the
     /// explicit exits (Stop live, Done, New chat, switch thread, nook-collapse) call.
     public func stopLiveSession() {

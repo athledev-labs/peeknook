@@ -162,7 +162,10 @@ struct PeekHomeResultView: View {
             Text(peek: liveAutoRespondOn ? "Auto-respond on" : "Auto-respond off")
                 .font(.system(size: 11))
                 .foregroundStyle(theme.secondaryLabel)
-            if orchestrator.hasPendingLiveFrame {
+            if orchestrator.hasPendingLiveFrame, !liveTimerPaused {
+                // While paused at full context the parked frame can't be answered (Answer now is
+                // disabled at critical), so the "ask when ready" cue would mislead — suppress it so the
+                // chip matches `liveChipAccessibilityLabel`, where the paused state supersedes it.
                 Text(verbatim: "·").foregroundStyle(theme.tertiaryLabel).peekDecorative()
                 Text(peek: "Seeing latest screen — ask when ready")
                     .font(.system(size: 11))
@@ -176,6 +179,12 @@ struct PeekHomeResultView: View {
                     .font(.system(size: 11))
                     .foregroundStyle(theme.secondaryLabel)
             }
+            if liveTimerPaused {
+                Text(verbatim: "·").foregroundStyle(theme.tertiaryLabel).peekDecorative()
+                Text(peek: "Paused — context full")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Color.orange)
+            }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 5)
@@ -185,9 +194,16 @@ struct PeekHomeResultView: View {
         .accessibilityLabel(Text(peek: liveChipAccessibilityLabel))
     }
 
-    /// One spoken label for the chip: the armed/auto-respond state, plus the "ask when ready" cue while
-    /// a refreshed frame is waiting.
+    /// One spoken label for the chip — each branch is a WHOLE `Localizable.xcstrings` key (so
+    /// `Text(peek:)` resolves it, never a runtime-concatenated non-key). When the timer is paused at
+    /// full context that is the headline; the parked-frame cue is moot there (Answer now is disabled at
+    /// critical), so the paused label supersedes it rather than compounding into combinatorial keys.
     private var liveChipAccessibilityLabel: String {
+        if liveTimerPaused {
+            return liveAutoRespondOn
+                ? "Live session armed, auto-respond on, paused, context full"
+                : "Live session armed, auto-respond off, paused, context full"
+        }
         if orchestrator.hasPendingLiveFrame {
             return liveAutoRespondOn
                 ? "Live session armed, auto-respond on, seeing latest screen"
@@ -200,6 +216,12 @@ struct PeekHomeResultView: View {
 
     private var liveAutoRespondOn: Bool {
         orchestrator.livePolicy?.autoRespond ?? false
+    }
+
+    /// The auto-refresh timer holds (does not capture) because the context window is full. Derived from
+    /// observable state — no new orchestrator flag — so the chip re-renders on a pressure change.
+    private var liveTimerPaused: Bool {
+        orchestrator.livePolicy?.refresh == .timer && orchestrator.contextPressure == .critical
     }
 
     /// Locale-formatted relative time of the last live refresh, or nil before the first refresh (always

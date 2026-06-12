@@ -27,11 +27,22 @@ public struct LivePolicy: Sendable, Equatable {
     /// Minimum seconds between auto-responses (completion-stamped). A user-triggered "Update & ask"
     /// bypasses it.
     public var rateCap: TimeInterval
+    /// Seconds between automatic `.timer` refreshes. Snapshotted from settings at arm (clamped to >= 1,
+    /// like `rateCap`); the timer loop obeys this snapshot, never live settings, so a mid-session
+    /// Settings edit can't perturb an in-flight sleep (it takes effect on the next arm). Ignored unless
+    /// `refresh == .timer`.
+    public var timerInterval: TimeInterval
 
-    public init(refresh: RefreshTrigger = .manual, autoRespond: Bool = false, rateCap: TimeInterval = 5) {
+    public init(
+        refresh: RefreshTrigger = .manual,
+        autoRespond: Bool = false,
+        rateCap: TimeInterval = 5,
+        timerInterval: TimeInterval = 5
+    ) {
         self.refresh = refresh
         self.autoRespond = autoRespond
         self.rateCap = rateCap
+        self.timerInterval = timerInterval
     }
 }
 
