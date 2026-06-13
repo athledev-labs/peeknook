@@ -16,6 +16,26 @@ public enum SessionPhase: Equatable, Sendable {
     case failed(SessionFailure)
 }
 
+public extension SessionPhase {
+    /// True when the current failure card already names a missing setup prerequisite — `.setupIncomplete`
+    /// (Ollama / model / Screen Recording not all ready) or `.permissionRequired` (a specific permission,
+    /// e.g. Camera, off). The idle home uses this to SUPPRESS the standing "finish setup" banner so a
+    /// capture-while-not-ready shows ONE coherent message — the precise card, not the card AND the generic
+    /// banner beneath it. (The banner lives in the scrolling region and the card in the fixed block below,
+    /// so today they stack as two messages.) Genuine failures of a different class — Ollama dropped
+    /// mid-answer, empty answer, capture failed — return false and keep the banner, whose "finish setup"
+    /// nudge is still independently true and unaddressed by that card.
+    var suppressesSetupBanner: Bool {
+        guard case .failed(let failure) = self else { return false }
+        switch failure.kind {
+        case .setupIncomplete, .permissionRequired:
+            return true
+        default:
+            return false
+        }
+    }
+}
+
 public struct CapturePreview: Equatable, Sendable {
     public var excerpt: String
     /// Capture *modality* summary, e.g. "Vision + selected text".

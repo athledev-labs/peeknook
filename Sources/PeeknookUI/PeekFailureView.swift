@@ -109,7 +109,7 @@ private extension RecoveryAction {
     func label(usesRemoteOllama: Bool) -> String {
         switch self {
         case .tryAgain: PeekLocalized("Try again")
-        case .openSetup: PeekLocalized("Open setup")
+        case .openSetup: PeekLocalized("Get ready")
         case .checkOllama: usesRemoteOllama ? PeekLocalized("Check server") : PeekLocalized("Open Ollama")
         case .downloadModel: PeekLocalized("Download model")
         case .switchModel: PeekLocalized("Switch model")

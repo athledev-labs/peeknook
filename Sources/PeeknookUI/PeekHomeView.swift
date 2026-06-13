@@ -314,7 +314,10 @@ public struct PeekHomeView: View {
             if case .idle = orchestrator.phase {
                 PeekIdleHomeContent(settings: orchestrator.settings)
             }
-            if !setup.isReady {
+            // Suppress the standing setup banner when a failure card already names the missing
+            // prerequisite (setup incomplete / permission off) — otherwise the card and this banner
+            // stack as two messages for the same problem with different wording.
+            if !setup.isReady, !orchestrator.phase.suppressesSetupBanner {
                 setupBanner
                     .padding(.top, 8)
             }
