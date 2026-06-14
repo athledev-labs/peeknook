@@ -28,7 +28,7 @@ private struct PeekModelDownloadConfirmationModifier: ViewModifier {
             if let option = pending {
                 PeekConfirmationOverlay(
                     title: "Download \(option.displayName)?",
-                    message: option.downloadConfirmationMessage,
+                    message: confirmationMessage(for: option),
                     confirmTitle: "Download",
                     confirmSymbol: "arrow.down.circle",
                     onConfirm: {
@@ -40,6 +40,17 @@ private struct PeekModelDownloadConfirmationModifier: ViewModifier {
             }
         }
         .animation(.easeOut(duration: 0.15), value: pending)
+    }
+
+    /// For the larger tiers, name the size/speed tradeoff and the leaner alternative so a user isn't
+    /// nudged into the biggest download by default. (Informational; the picker is one Cancel away.)
+    private func confirmationMessage(for option: InferenceModelOption) -> String {
+        var message = option.downloadConfirmationMessage
+        if let leaner = TextModelCatalog.leanerAlternative(to: option),
+           let big = option.downloadHint, let small = leaner.downloadHint {
+            message += " " + PeekLocalized("This is the larger, higher-quality model (\(big)). A faster \(small) option is also available.")
+        }
+        return message
     }
 }
 

@@ -67,3 +67,18 @@ public enum EndpointURLPolicy: Sendable {
 
 /// Transitional alias from the pre-rename type name.
 public typealias OllamaURLPolicy = EndpointURLPolicy
+
+/// Shared, audience-aware copy for "Ollama isn't reachable yet". The shipped DMG (a Release build)
+/// never mentions Terminal; the from-source contributor build (Debug) keeps the `ollama serve` hint
+/// since `swift run` users do start the server by hand. Plain English — localization happens at the
+/// UI render site via `Text(peek:)`. Both the setup health probe and the live-inference probe share
+/// this one definition so the copy can never drift between the two surfaces.
+public enum OllamaUnreachableCopy: Sendable {
+    public static var notRunning: String {
+        #if DEBUG
+        return "Ollama isn't running yet. Open the Ollama app (or run `ollama serve`) and Peeknook will connect automatically."
+        #else
+        return "Ollama isn't running yet. Open the Ollama app and Peeknook will connect automatically."
+        #endif
+    }
+}

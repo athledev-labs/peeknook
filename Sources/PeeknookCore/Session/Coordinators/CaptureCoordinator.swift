@@ -84,7 +84,7 @@ final class CaptureCoordinator {
         guard let session else { return }
         session.setup?.refreshCapturePermission()
         if let setup = session.setup, !setup.isReady {
-            _ = session.applyPhaseEvent(.setupNotReady)
+            routeUnready(setup: setup)
             return
         }
         guard beginCapturePhase(intent: intent) else { return }
@@ -98,6 +98,25 @@ final class CaptureCoordinator {
             let encoding = CaptureEncodingPolicy.resolve(scope: scope, quick: quick, quality: quality)
             return try await provider.capture(scope: scope, quick: quick, encoding: encoding)
         }
+    }
+
+    /// When capture is blocked but the ONLY gap is a single missing capture permission for the active
+    /// profile (Ollama + model are installed), fail straight to the typed permission card
+    /// (e.g. "Screen Recording is off" → Open settings) so the hotkey matches the smarter Home banner
+    /// instead of the blanket "Finish setup first". Genuinely multi-missing states (Ollama/model not
+    /// done, or 2+ permissions off) keep the blanket card. Permissions come from the active profile, so
+    /// this generalizes past `screen.default` (mirrors ``CameraCoordinator.openCameraLive``).
+    private func routeUnready(setup: SetupCoordinator) {
+        guard let session else { return }
+        if setup.ollamaStep == .complete, setup.modelStep == .complete {
+            let missing = setup.missingActivePermissions
+            if missing.count == 1, let permission = missing.first {
+                guard case .applied = session.applyPhaseEvent(.beginCapture) else { return }
+                _ = session.applyPhaseEvent(.captureFailed(.permissionRequired(permission)))
+                return
+            }
+        }
+        _ = session.applyPhaseEvent(.setupNotReady)
     }
 
     // MARK: - File import (event-scoped, permission-free)

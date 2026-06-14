@@ -54,7 +54,7 @@ macOS ties **Screen Recording**, **Accessibility**, and **Camera** to the app bu
 | Pre-release / user-like testing | `./Scripts/release.sh` (or Xcode Release archive) → install the exported `.app` — grant TCC to **Peeknook** |
 | What you ship | Notarized `.app` from [Releases](https://github.com/glendonC/peeknook/releases/latest) |
 
-> For permission or Gatekeeper issues while developing, prefer testing the **signed `.app`** before filing bugs. Production users should install from the website or GitHub Releases, not `swift run`.
+> For permission or Gatekeeper issues while developing, prefer testing the **signed `.app`** before filing bugs. Production users should install from the website or GitHub Releases, not `swift run`. If a downloaded build is ever blocked, [INSTALL.md → If macOS blocks the app](INSTALL.md#if-macos-blocks-the-app) has the one-time Open-Anyway steps.
 
 ## Add another nook module
 

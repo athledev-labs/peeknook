@@ -16,6 +16,24 @@ final class SessionFailureTests: XCTestCase {
         XCTAssertEqual(accessibility.primaryRecovery, .openAccessibilitySettings)
     }
 
+    func testScreenRecordingCardsCarryRelaunchHintButOthersDoNot() {
+        // The relaunch quirk is ScreenCaptureKit-specific; only Screen Recording copy may claim it.
+        let screen = SessionFailure.permissionRequired(.screenRecording)
+        XCTAssertTrue(screen.message.contains("quit and reopen"),
+                      "Screen Recording card should tell the user to relaunch — got: \(screen.message)")
+
+        let accessibility = SessionFailure.permissionRequired(.accessibility)
+        XCTAssertFalse(accessibility.message.contains("quit and reopen"),
+                       "Non-SCK permissions must not over-claim the relaunch hint.")
+
+        let screenFromCapture = SessionFailure.from(captureError: .permissionRequired("Screen Recording"))
+        XCTAssertTrue(screenFromCapture.message.contains("quit and reopen"))
+        let cameraFromCapture = SessionFailure.from(captureError: .permissionRequired("Camera"))
+        XCTAssertFalse(cameraFromCapture.message.contains("quit and reopen"))
+
+        XCTAssertTrue(SessionFailure.from(captureError: .noContent).message.contains("quit and reopen Peeknook"))
+    }
+
     func testInferenceErrorMapsToRecoveryActions() {
         let unreachable = SessionFailure.from(inferenceError: .ollamaUnreachable("Start Ollama"))
         XCTAssertEqual(unreachable.kind, .ollamaUnreachable)

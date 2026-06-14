@@ -71,6 +71,12 @@ public struct SessionFailure: Equatable, Sendable {
 }
 
 public extension SessionFailure {
+    /// macOS often doesn't apply a freshly-granted Screen Recording permission to a running
+    /// ScreenCaptureKit client until the app relaunches. Appended only to Screen-Recording copy
+    /// (the relaunch quirk is SCK-specific — do not over-claim it on Camera/Accessibility/etc.).
+    static let screenRecordingRelaunchHint =
+        " If it stays off after you enable it, quit and reopen Peeknook."
+
     /// Capture was blocked because Ollama / model / Screen Recording aren't all ready.
     static let setupIncomplete = SessionFailure(
         kind: .setupIncomplete,
@@ -122,10 +128,11 @@ public extension SessionFailure {
     /// per-profile readiness matrix — the camera PR routes a failed `readiness(for:)` through this so
     /// each missing permission gets its own recovery, instead of the opaque `.setupIncomplete`.
     static func permissionRequired(_ permission: CapturePermission) -> SessionFailure {
-        SessionFailure(
+        let relaunch = permission == .screenRecording ? screenRecordingRelaunchHint : ""
+        return SessionFailure(
             kind: .permissionRequired(name: permission.displayName),
             title: "\(permission.displayName) is off",
-            message: "Allow \(permission.displayName) in System Settings → Privacy & Security, then try again.",
+            message: "Allow \(permission.displayName) in System Settings → Privacy & Security, then try again.\(relaunch)",
             primaryRecovery: permission.recoveryAction,
             secondaryRecovery: .tryAgain
         )
@@ -137,7 +144,7 @@ public extension SessionFailure {
             return SessionFailure(
                 kind: .captureFailed,
                 title: "Couldn't read the screen",
-                message: "Peeknook captured nothing to send. Make sure Screen Recording is allowed, then try again.",
+                message: "Peeknook captured nothing to send. Make sure Screen Recording is allowed, then try again.\(screenRecordingRelaunchHint)",
                 primaryRecovery: .openScreenRecordingSettings,
                 secondaryRecovery: .tryAgain
             )
@@ -146,10 +153,11 @@ public extension SessionFailure {
             // recovery opens the RIGHT Privacy pane (a substring heuristic once sent Camera to the
             // Accessibility pane).
             let permission = CapturePermission.allCases.first { $0.displayName == name }
+            let relaunch = permission == .screenRecording ? screenRecordingRelaunchHint : ""
             return SessionFailure(
                 kind: .permissionRequired(name: name),
                 title: "\(name) is off",
-                message: "Allow \(name) in System Settings → Privacy & Security, then try again.",
+                message: "Allow \(name) in System Settings → Privacy & Security, then try again.\(relaunch)",
                 primaryRecovery: permission?.recoveryAction ?? .openSetup,
                 secondaryRecovery: .tryAgain
             )

@@ -48,6 +48,12 @@ public struct InferenceModelOption: Identifiable, Equatable, Sendable {
         return "\(size) model file via \(provider). Peek won't capture until it's on your Mac."
     }
 
+    /// Estimated download size in bytes, derived from `downloadHint` (no new source of truth). Nil for
+    /// custom tags with no hint — the disk pre-check skips when the size is unknown.
+    public var estimatedDownloadBytes: Int64? {
+        ByteFormat.bytes(fromGigabytesHint: downloadHint)
+    }
+
     /// Build an option from a user-added model so custom tags flow through the same picker,
     /// download, and selection paths as curated ones.
     public init(custom entry: CustomModelEntry) {
@@ -132,6 +138,16 @@ public enum TextModelCatalog {
 
     public static func displayName(for tag: String, custom: [CustomModelEntry] = []) -> String {
         option(for: tag, custom: custom)?.displayName ?? tag
+    }
+
+    /// The next-smaller curated tier (`offered` is ordered smallest→largest), or nil for the smallest
+    /// tier or a custom tag with no defined ordering. Lets the download confirmation offer a lighter,
+    /// faster alternative before a user commits to a larger pull.
+    public static func leanerAlternative(to option: InferenceModelOption) -> InferenceModelOption? {
+        guard let index = offered.firstIndex(where: {
+            OllamaSetupClient.normalizedTag($0.tag) == OllamaSetupClient.normalizedTag(option.tag)
+        }), index > 0 else { return nil }
+        return offered[index - 1]
     }
 
     /// @deprecated Use ``displayName(for:)``, kept for tests migrating off short tags.

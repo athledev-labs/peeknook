@@ -12,10 +12,12 @@ public struct PeekSetupView: View {
     public var onContinue: () -> Void
     @Environment(\.nookResolvedTheme) private var theme
     @Environment(\.nookContentInsets) private var contentInsets
+    @Environment(\.openURL) private var openURL
     @EnvironmentObject private var appState: AppState
     @State private var pendingDownload: InferenceModelOption?
     @State private var showsModelLibrary = false
     @State private var servedModels: [String] = []
+    @State private var showsWelcome = false
 
     public init(
         setup: SetupCoordinator,
@@ -29,11 +31,19 @@ public struct PeekSetupView: View {
         self.settings = settings
         self.modelCatalog = modelCatalog
         self.onContinue = onContinue
+        // Seed from the persisted flag at init (not onAppear) so the checklist never flashes before
+        // the welcome on a fresh install.
+        _showsWelcome = State(initialValue: !setup.welcomeSeen)
     }
 
     public var body: some View {
         Group {
-            if showsModelLibrary {
+            if showsWelcome {
+                PeekWelcomeView(captureHotkey: orchestrator.settings.captureHotkey) {
+                    setup.markWelcomeSeen()
+                    withAnimation(.easeInOut(duration: 0.2)) { showsWelcome = false }
+                }
+            } else if showsModelLibrary {
                 PeekModelLibraryView(
                     orchestrator: orchestrator,
                     setup: setup,
@@ -72,12 +82,7 @@ public struct PeekSetupView: View {
             VStack(alignment: .leading, spacing: 14) {
                 header
                 stepList
-                if let pull = setup.pullStatusLine {
-                    Text(pull)
-                        .font(.system(size: 10))
-                        .foregroundStyle(theme.tertiaryLabel)
-                        .lineLimit(2)
-                }
+                downloadProgress
                 footerActions
             }
         }
@@ -85,27 +90,68 @@ public struct PeekSetupView: View {
     }
 
     private var header: some View {
-        Text("Gemma 4 runs on your Mac through Ollama. Screenshots stay local unless you turn on web lookup or point at a remote Ollama server in Settings.")
+        Text(peek: "Three quick steps and a test, then you're ready to capture.")
             .font(.system(size: 11))
             .foregroundStyle(theme.secondaryLabel)
+    }
+
+    /// Determinate download bar (reusing the context-meter tint ramp) once real aggregated bytes give
+    /// a fraction; an indeterminate spinner for the byte-less phases (preparing / verifying / finishing)
+    /// so we never fake a determinate value. The model row already speaks the phase; the caption here
+    /// carries the numbers.
+    @ViewBuilder
+    private var downloadProgress: some View {
+        if setup.isPullingModel {
+            VStack(alignment: .leading, spacing: 4) {
+                if let fraction = setup.pullFraction {
+                    ProgressView(value: fraction)
+                        .progressViewStyle(.linear)
+                        .tint(PeekContextTint.color(for: fraction))
+                } else {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+                if let caption = progressCaption {
+                    Text(verbatim: caption)
+                        .font(.system(size: 10))
+                        .foregroundStyle(theme.tertiaryLabel)
+                }
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(Text(verbatim: progressAccessibilityLabel))
+        }
+    }
+
+    private var progressCaption: String? {
+        guard let fraction = setup.pullFraction else { return nil }
+        let percent = Int((fraction * 100).rounded())
+        if let eta = setup.pullETA { return "\(percent)% · \(eta)" }
+        return "\(percent)%"
+    }
+
+    private var progressAccessibilityLabel: String {
+        let phase = setup.pullStatusLine ?? "Downloading"
+        guard let caption = progressCaption else { return phase }
+        return "\(phase) \(caption)"
     }
 
     private var stepList: some View {
         VStack(alignment: .leading, spacing: 10) {
             SetupStepRow(
-                title: "Ollama server",
+                title: "Ollama (the local AI engine)",
                 detail: ollamaDetail,
                 state: setup.ollamaStep,
                 theme: theme,
                 primaryEnabled: true,
-                primaryLabel: setup.settings.usesRemoteOllama ? "Check server" : "Open Ollama",
-                primarySymbol: setup.settings.usesRemoteOllama ? "arrow.clockwise" : "arrow.up.forward.app",
-                primaryHint: setup.settings.usesRemoteOllama ? "Re-checks the configured server" : "Launches the Ollama app",
+                primaryLabel: ollamaPrimaryLabel,
+                primarySymbol: ollamaPrimarySymbol,
+                primaryHint: ollamaPrimaryHint,
                 primaryAction: ollamaPrimaryAction,
-                secondaryAction: setup.settings.usesRemoteOllama ? nil : { SetupCoordinator.openOllamaDownload() },
-                secondaryLabel: setup.settings.usesRemoteOllama ? nil : "Get Ollama app",
-                secondarySymbol: setup.settings.usesRemoteOllama ? nil : "arrow.down.circle",
-                secondaryHint: setup.settings.usesRemoteOllama ? nil : "Opens the Ollama download page"
+                secondaryAction: ollamaShowsGetAppSecondary ? { SetupCoordinator.openOllamaDownload() } : nil,
+                secondaryLabel: ollamaShowsGetAppSecondary ? "Get Ollama app" : nil,
+                secondarySymbol: ollamaShowsGetAppSecondary ? "arrow.down.circle" : nil,
+                secondaryHint: ollamaShowsGetAppSecondary ? "Opens the Ollama download page" : nil,
+                accessory: ollamaActionable ? AnyView(needHelpButton) : nil
             )
 
             SetupStepRow(
@@ -126,17 +172,16 @@ public struct PeekSetupView: View {
 
             SetupStepRow(
                 title: "Screen Recording",
-                detail: "Required, Peeknook sends a screenshot to the answer model. Optional: Accessibility adds selected text.",
+                detail: "Required, Peeknook sends a screenshot to the answer model. If the row stays orange after you enable it, quit and reopen Peeknook.",
                 state: setup.captureStep,
                 theme: theme,
                 primaryEnabled: true,
                 primarySymbol: "checkmark.shield",
                 primaryHint: "Open Privacy settings to grant Screen Recording",
                 primaryAction: { CapturePermissionStatus.requestScreenRecording() },
-                secondaryAction: { CapturePermissionStatus.requestAccessibility() },
-                secondaryLabel: "Accessibility",
-                secondarySymbol: "accessibility",
-                secondaryHint: "Open Privacy settings to grant Accessibility"
+                secondaryAction: nil,
+                secondaryLabel: nil,
+                accessory: AnyView(accessibilityHintLink)
             )
 
             SetupStepRow(
@@ -160,12 +205,91 @@ public struct PeekSetupView: View {
         }
         let profile = SystemProfile.current()
         let model = TextModelCatalog.displayName(for: profile.suggestedTextModel)
-        return "Runs vision models locally. Recommended model for \(profile.physicalMemoryGB) GB RAM: \(model)."
+        let base = PeekLocalized("Runs the AI privately on your Mac. Recommended for \(profile.physicalMemoryGB) GB RAM: \(model).")
+        // F10: name the live 3-second auto-detect so the user knows to leave Ollama running and wait.
+        return "\(base) \(PeekLocalized("Leave Ollama running and come back — Peeknook checks every few seconds."))"
+    }
+
+    /// F9: when the local Ollama app isn't installed, the correct first action is to download it — so
+    /// "Get Ollama app" becomes the prominent primary and the redundant secondary drops away.
+    private var ollamaAppMissing: Bool {
+        !setup.settings.usesRemoteOllama && !setup.isOllamaAppInstalled
+    }
+
+    private var ollamaShowsGetAppSecondary: Bool {
+        !setup.settings.usesRemoteOllama && setup.isOllamaAppInstalled
+    }
+
+    private var ollamaPrimaryLabel: String {
+        if setup.settings.usesRemoteOllama { return "Check server" }
+        return ollamaAppMissing ? "Get Ollama app" : "Open Ollama"
+    }
+
+    private var ollamaPrimarySymbol: String {
+        if setup.settings.usesRemoteOllama { return "arrow.clockwise" }
+        return ollamaAppMissing ? "arrow.down.circle" : "arrow.up.forward.app"
+    }
+
+    private var ollamaPrimaryHint: String {
+        if setup.settings.usesRemoteOllama { return "Re-checks the configured server" }
+        return ollamaAppMissing
+            ? "Download Ollama, the free helper that runs the AI on your Mac."
+            : "Launches the Ollama app"
+    }
+
+    /// F10: the install guide + reassurance only make sense while the Ollama row still needs action.
+    private var ollamaActionable: Bool {
+        switch setup.ollamaStep {
+        case .pending, .failed, .unknown: return true
+        case .complete, .inProgress, .blocked: return false
+        }
+    }
+
+    private var needHelpButton: some View {
+        NookToolbarButton(
+            title: "Need help?",
+            symbol: "questionmark.circle",
+            help: "Open the install guide in your browser",
+            size: .setup
+        ) { openURL(PeekAppMetadata.setupHelpURL) }
+    }
+
+    /// F12a: Accessibility is OPTIONAL (it only supplements capture with selected text), so it drops
+    /// from a same-weight button to a low-emphasis inline link — leaving the prominent Screen
+    /// Recording button as the single unambiguous action and steering users away from granting the
+    /// wrong Privacy pane.
+    private var accessibilityHintLink: some View {
+        Button {
+            CapturePermissionStatus.requestAccessibility()
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "accessibility")
+                    .font(.system(size: 8))
+                    .foregroundStyle(theme.accent.opacity(0.9))
+                    .peekDecorative()
+                Text(peek: "Optional")
+                    .foregroundStyle(theme.tertiaryLabel)
+                Text(peek: "Add selected text")
+                    .foregroundStyle(theme.accent)
+                    .underline()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 7, weight: .semibold))
+                    .foregroundStyle(theme.accent.opacity(0.75))
+                    .peekDecorative()
+            }
+            .font(.system(size: 10))
+        }
+        .buttonStyle(.plain)
+        .help(PeekLocalized("Open Privacy settings to grant Accessibility (optional)"))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text(verbatim: "\(PeekLocalized("Add selected text")). \(PeekLocalized("Open Privacy settings to grant Accessibility (optional)"))"))
     }
 
     private func ollamaPrimaryAction() {
         if setup.settings.usesRemoteOllama {
             PeekSettingsNavigation.openVisionServer(appState: appState)
+        } else if ollamaAppMissing {
+            SetupCoordinator.openOllamaDownload()
         } else {
             SetupCoordinator.openOllamaApp()
         }
@@ -261,7 +385,7 @@ private struct SetupStepRow: View {
                 .peekDecorative()
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(title)
+                Text(peek: title)
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(theme.primaryLabel)
                 Text(peek: rowDetail)
@@ -308,6 +432,8 @@ private struct SetupStepRow: View {
             "Done."
         case .blocked(let msg):
             msg
+        case .unknown(let msg):
+            msg
         case .failed(let msg):
             msg
         }
@@ -317,6 +443,7 @@ private struct SetupStepRow: View {
         switch state {
         case .complete: "checkmark.circle.fill"
         case .blocked: "checkmark.circle"          // installed, but waiting on Ollama — hollow check, not the filled "verified" one
+        case .unknown: "questionmark.circle"       // can't tell yet (Ollama down, no cached list)
         case .failed: "exclamationmark.circle.fill"
         case .inProgress: "arrow.down.circle"
         case .pending: "circle"
@@ -327,6 +454,7 @@ private struct SetupStepRow: View {
         switch state {
         case .complete: .green
         case .blocked: theme.secondaryLabel        // muted — the actionable color belongs to the Ollama row
+        case .unknown: theme.secondaryLabel        // muted — non-actionable, same as blocked
         case .failed: .orange
         case .inProgress: .blue
         case .pending: Color.secondary.opacity(0.5)
@@ -335,7 +463,7 @@ private struct SetupStepRow: View {
 
     private var showsPrimary: Bool {
         switch state {
-        case .complete, .inProgress, .blocked:
+        case .complete, .inProgress, .blocked, .unknown:
             false
         case .pending, .failed:
             true
@@ -344,7 +472,7 @@ private struct SetupStepRow: View {
 
     private var showsSecondary: Bool {
         switch state {
-        case .complete, .inProgress, .blocked:
+        case .complete, .inProgress, .blocked, .unknown:
             false
         case .pending, .failed:
             secondaryAction != nil
@@ -360,7 +488,7 @@ private struct SetupStepRow: View {
         switch title {
         case "Test capture":
             return "Try now"
-        case "Ollama server":
+        case "Ollama (the local AI engine)":
             return "Open Ollama"
         default:
             return isModelStep ? "Download model" : "Fix"

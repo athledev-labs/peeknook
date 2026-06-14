@@ -14,6 +14,18 @@ public enum ByteFormat: Sendable {
         formatter.allowedUnits = [.useKB, .useMB, .useGB]
         return formatter.string(fromByteCount: bytes)
     }
+
+    /// Parses a catalog download hint like "~7 GB" / "10 GB" into a byte count, using decimal GB to
+    /// match `ByteCountFormatter.file` (so a "needs N free" message reads consistently with `storage`).
+    /// Returns nil for nil or unparseable hints (e.g. a custom tag with no size) — the disk pre-check
+    /// then skips, since a false block is worse than no block.
+    public static func bytes(fromGigabytesHint hint: String?) -> Int64? {
+        guard let hint else { return nil }
+        let scanner = Scanner(string: hint)
+        _ = scanner.scanUpToCharacters(from: .decimalDigits)   // skip a leading "~" etc.
+        guard let value = scanner.scanDouble(), value > 0 else { return nil }
+        return Int64(value * 1_000_000_000)
+    }
 }
 
 /// On-disk conversation archive usage aligned with ``ConversationArchiveStore`` retention caps.

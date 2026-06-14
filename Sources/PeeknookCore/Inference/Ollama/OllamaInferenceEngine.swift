@@ -75,9 +75,7 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
             req.timeoutInterval = 4
             let (data, response) = try await session.data(for: req)
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-                throw InferenceError.ollamaUnreachable(
-                    "Start Ollama: run `ollama serve` in Terminal."
-                )
+                throw InferenceError.ollamaUnreachable(OllamaUnreachableCopy.notRunning)
             }
             return data
         }

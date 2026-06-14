@@ -11,6 +11,11 @@ public enum SetupStepState: Sendable, Equatable {
     /// nothing to do on this row. Distinct from `.failed` (an actionable problem) and never equal to
     /// `.complete`, so it can NEVER make setup "ready" — do not add `.blocked` to any readiness OR.
     case blocked(String)
+    /// Can't determine the state yet — e.g. Ollama is down, so `/api/tags` can't be read and we have
+    /// no cached install list. Non-actionable like `.blocked`, but means "not looked" rather than
+    /// "installed, waiting": it must NOT show an affirmative "Download model" CTA from a state where
+    /// we provably can't know. Never equal to `.complete`; NEVER feeds readiness.
+    case unknown(String)
     case failed(String)
 }
 
@@ -24,6 +29,11 @@ public final class SetupCoordinator {
     public private(set) var isRefreshing = false
     public private(set) var isPullingModel = false
     public private(set) var pullStatusLine: String?
+    /// 0–1 download progress aggregated across layers; nil before any total is known (then the bar is
+    /// indeterminate — we never fake a determinate value).
+    public private(set) var pullFraction: Double?
+    /// Friendly remaining-time estimate (e.g. "about 4 min left"), only once progress is meaningful.
+    public private(set) var pullETA: String?
     public private(set) var installedModelNames: [String] = []
 
     public var settings: PeeknookSettings
@@ -40,19 +50,24 @@ public final class SetupCoordinator {
     private let probeCache: OllamaProbeCache?
     /// Live TCC status, injectable so readiness is testable without the real Privacy database.
     private let permissionStatusProvider: @MainActor () -> CapturePermissionStatus
+    /// Injectable free-disk probe for the model-download pre-check (default reads the real volume).
+    private let storageProbe: ModelStorageProbe
     private var pullTask: Task<Void, Never>?
     private var refreshTask: Task<Void, Never>?
+    private var pullStartedAt: Date?
 
     public init(
         settings: PeeknookSettings,
         defaults: UserDefaults,
         probeCache: OllamaProbeCache? = nil,
+        storageProbe: ModelStorageProbe = FileManagerModelStorageProbe(),
         permissionStatus: @escaping @MainActor () -> CapturePermissionStatus = { CapturePermissionStatus.current() }
     ) {
         self.settings = settings
         self.defaults = defaults
         self.probeCache = probeCache
         self.ollama = OllamaSetupClient(probeCache: probeCache)
+        self.storageProbe = storageProbe
         self.permissionStatusProvider = permissionStatus
         // Seed the known-installed set from the last reachable probe so an offline first paint (e.g. a
         // relaunch with Ollama quit) can report the model as installed-but-blocked, not missing.
@@ -64,6 +79,10 @@ public final class SetupCoordinator {
 
     public static let smokeTestKey = "peeknook.setup.smokeTest.v1"
     public static let onboardingCompleteKey = "peeknook.setup.onboardingComplete.v1"
+    /// First-run welcome was shown once. Standalone `peeknook.*` defaults key (NOT part of
+    /// PeeknookSettings Codable — invariant #3 safe); a missing key reads false, so the welcome
+    /// shows exactly once on a fresh install.
+    public static let welcomeSeenKey = "peeknook.setup.welcomeSeen.v1"
     /// Last installed-model tags seen on a reachable probe, persisted so a relaunch while Ollama is
     /// offline still knows the model is there (the model row stays "installed", not "download me").
     /// Read tolerantly (`?? []`); standalone key, never part of PeeknookSettings Codable; never feeds readiness.
@@ -76,6 +95,11 @@ public final class SetupCoordinator {
     /// User finished or skipped past the first-run setup drill-in (persisted).
     public var hasCompletedOnboarding: Bool {
         defaults.bool(forKey: Self.onboardingCompleteKey)
+    }
+
+    /// The one-time welcome screen has been shown (persisted). False on a fresh install.
+    public var welcomeSeen: Bool {
+        defaults.bool(forKey: Self.welcomeSeenKey)
     }
 
     public var isReady: Bool { readiness(for: resolvedActiveProfile) }
@@ -108,6 +132,18 @@ public final class SetupCoordinator {
             id: settings.activeProfileID,
             in: profileStore?.catalog.profiles ?? []
         )
+    }
+
+    /// The active profile's required permissions that are NOT currently granted, sorted stably.
+    /// The testable seam capture routing keys off to distinguish "only a permission is missing"
+    /// (→ the typed permission card) from "install side also incomplete" (→ the blanket
+    /// "Finish setup first" card). Reuses the SAME injectable `permissionStatusProvider` and
+    /// `resolvedActiveProfile` that ``readiness(for:)`` depends on, so it generalizes past
+    /// `screen.default` and is testable without the live Privacy database.
+    public var missingActivePermissions: [CapturePermission] {
+        resolvedActiveProfile.requiredPermissions
+            .filter { !permissionStatusProvider().grants($0) }
+            .sorted { $0.rawValue < $1.rawValue }
     }
 
     public func permissionChecklist(for profile: GroundProfile) -> [PermissionRequirement] {
@@ -154,6 +190,7 @@ public final class SetupCoordinator {
         captureStep = .complete
         installedModelNames = [settings.textModel]
         markOnboardingComplete()
+        markWelcomeSeen()
     }
 
     public func refresh() async {
@@ -195,9 +232,18 @@ public final class SetupCoordinator {
                 if installedModelNames.isEmpty {
                     installedModelNames = Self.loadLastInstalledModels(from: defaults)
                 }
-                modelStep = isModelInstalled(settings.textModel)
-                    ? .blocked("Installed. Waiting for Ollama to come back online.")
-                    : .pending
+                if isModelInstalled(settings.textModel) {
+                    // We have a cached reachable probe that saw this tag → it's installed, just waiting.
+                    modelStep = .blocked("Installed. Waiting for Ollama to come back online.")
+                } else if installedModelNames.isEmpty {
+                    // Never connected, so the install set is unknown — don't assert "not installed"
+                    // and don't invite a needless re-download. Gate on starting Ollama instead.
+                    modelStep = .unknown("Start Ollama to check what's installed.")
+                } else {
+                    // We DID look (non-empty cached list) and this tag genuinely isn't there → the
+                    // legitimate Download CTA.
+                    modelStep = .pending
+                }
                 captureStep = evaluateCaptureStep()
             }
             return
@@ -215,9 +261,13 @@ public final class SetupCoordinator {
 
     public func pullRecommendedModel() {
         guard !isPullingModel else { return }
+        guard passesDiskCheck() else { return }   // sets a sized .failed and bails when space is short
         isPullingModel = true
-        modelStep = .inProgress("Starting download…")
-        pullStatusLine = "Connecting to Ollama…"
+        modelStep = .inProgress("Getting ready to download…")
+        pullStatusLine = "Getting ready to download…"
+        pullFraction = nil
+        pullETA = nil
+        pullStartedAt = Date()
 
         pullTask?.cancel()
         pullTask = Task {
@@ -229,21 +279,33 @@ public final class SetupCoordinator {
                 ) {
                     if Task.isCancelled { break }
                     switch event {
-                    case .status(let line):
+                    case .progress(let progress):
+                        let line = Self.phaseLabel(progress.phase)
                         pullStatusLine = line
                         modelStep = .inProgress(line)
+                        pullFraction = progress.fraction
+                        updateETA(progress)
                     case .completed:
                         modelStep = .complete
                         pullStatusLine = nil
+                        pullFraction = nil
+                        pullETA = nil
                     }
                 }
             } catch {
                 if !Task.isCancelled {
-                    modelStep = .complete
+                    // Honest failure (was wrongly `.complete`): `.failed` re-shows the Download button for
+                    // a free retry. The post-pull refresh below still re-evaluates against Ollama.
+                    let message = (error as? LocalizedError)?.errorDescription
+                        ?? "Download stopped. Check your connection and Ollama, then try again."
+                    modelStep = .failed(message)
                     pullStatusLine = nil
+                    pullFraction = nil
+                    pullETA = nil
                 }
             }
             isPullingModel = false
+            pullStartedAt = nil
             // The pull changed the installed-model set; drop the cached `/api/tags` so the refresh
             // below (and any concurrent consumer) sees the newly installed tag, not a stale list.
             await probeCache?.invalidate(baseURL: settings.ollamaBaseURL)
@@ -251,11 +313,66 @@ public final class SetupCoordinator {
         }
     }
 
+    /// Free-space pre-check before a multi-GB pull. Returns true (no block) for remote Ollama (we
+    /// can't and must not read a remote disk), an unknown model size, or an unresolvable probe;
+    /// otherwise blocks with a sized `.failed` message when free space is below the estimate plus
+    /// working headroom (manifest + temp blobs).
+    private func passesDiskCheck() -> Bool {
+        guard !settings.usesRemoteOllama,
+              let option = TextModelCatalog.option(for: settings.textModel, custom: settings.customModels),
+              let estimate = option.estimatedDownloadBytes,
+              let available = storageProbe.availableBytesForModelStore() else {
+            return true
+        }
+        let required = estimate + max(2_000_000_000, estimate / 10)
+        guard available < required else { return true }
+        modelStep = .failed(
+            "Needs about \(ByteFormat.storage(required)) free, but only \(ByteFormat.storage(available)) is available. Free up some space and try again."
+        )
+        pullFraction = nil
+        pullETA = nil
+        return false
+    }
+
+    /// Plain-English phase label (the view localizes it via `Text(peek:)`); also feeds the shared
+    /// `pullStatusLine` the Model Library and Settings rows read.
+    private static func phaseLabel(_ phase: PullPhase) -> String {
+        switch phase {
+        case .preparing: return "Getting ready to download…"
+        case .downloading: return "Pulling the model…"
+        case .verifying: return "Checking the download…"
+        case .finishing: return "Finishing up…"
+        }
+    }
+
+    private func updateETA(_ progress: PullProgress) {
+        guard let fraction = progress.fraction, fraction >= 0.03,
+              let total = progress.totalBytes, let done = progress.completedBytes, done > 0,
+              let started = pullStartedAt else {
+            pullETA = nil
+            return
+        }
+        let elapsed = Date().timeIntervalSince(started)
+        guard elapsed >= 5 else { pullETA = nil; return }
+        let throughput = Double(done) / elapsed
+        guard throughput > 0 else { pullETA = nil; return }
+        pullETA = Self.formatETA(Double(total - done) / throughput)
+    }
+
+    static func formatETA(_ seconds: Double) -> String? {
+        guard seconds.isFinite, seconds > 0 else { return nil }
+        if seconds < 90 { return "about \(max(1, Int(seconds.rounded()))) sec left" }
+        return "about \(Int((seconds / 60).rounded())) min left"
+    }
+
     public func cancelPull() {
         pullTask?.cancel()
         pullTask = nil
         isPullingModel = false
         pullStatusLine = nil
+        pullFraction = nil
+        pullETA = nil
+        pullStartedAt = nil
     }
 
     public func markSmokeTestPassed() {
@@ -265,6 +382,11 @@ public final class SetupCoordinator {
 
     public func markOnboardingComplete() {
         defaults.set(true, forKey: Self.onboardingCompleteKey)
+    }
+
+    /// Records that the first-run welcome was shown, so it never reappears.
+    public func markWelcomeSeen() {
+        defaults.set(true, forKey: Self.welcomeSeenKey)
     }
 
     public func applyRecommendedModelIfNeeded() {
@@ -309,7 +431,7 @@ public final class SetupCoordinator {
         if missing.isEmpty { return .complete }
         // Preserve the legacy copy for the shipped screen profile.
         if missing == [.screenRecording] {
-            return .failed("Screen Recording is required so the model can see your screen.")
+            return .failed("Screen Recording is required so the model can see your screen. If the row stays orange after you enable it, quit and reopen Peeknook.")
         }
         let names = missing.map(\.displayName).joined(separator: " and ")
         return .failed("\(names) \(missing.count == 1 ? "is" : "are") required for the active profile.")
@@ -320,6 +442,14 @@ public final class SetupCoordinator {
 import AppKit
 
 public extension SetupCoordinator {
+    /// Whether the Ollama app is installed (LaunchServices resolves its bundle id). Drives the setup
+    /// row's primary action: lead with "Get Ollama app" when it's absent, instead of a misleading
+    /// "Open Ollama" that silently bounces to the download page.
+    @MainActor
+    var isOllamaAppInstalled: Bool {
+        NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.ollama.ollama") != nil
+    }
+
     @MainActor
     static func openOllamaDownload() {
         if let url = URL(string: "https://ollama.com/download") {
