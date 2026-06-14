@@ -220,10 +220,18 @@ public struct OllamaHTTPClient: Sendable {
 
     static func friendlyChatFailure(status: Int, ollamaError: String?) -> String {
         guard let raw = ollamaError, !raw.isEmpty else {
+            #if DEBUG
             return "Ollama request failed (HTTP \(status)). Make sure `ollama serve` is running and the model is pulled."
+            #else
+            return "Couldn't reach Ollama (error \(status)). Open the Ollama app and make sure your model is downloaded, then try again."
+            #endif
         }
         if raw.contains("llama-server binary not found") || raw.contains("llama runner") {
-            return "Ollama is running but its model runner is missing (no llama-server). Reinstall Ollama from ollama.com (or `brew reinstall ollama`), then `ollama serve` and try again."
+            #if DEBUG
+            return "Your Ollama install is missing its model runner (no llama-server). Reinstall the Ollama app from ollama.com, or `brew reinstall ollama`, then run `ollama serve` and try again."
+            #else
+            return "Your Ollama install is missing its model runner. Reinstall the Ollama app from ollama.com, then try again."
+            #endif
         }
         return "Ollama error: \(raw.prefix(300))"
     }

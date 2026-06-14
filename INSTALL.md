@@ -23,10 +23,11 @@ Peeknook is local-first AI in your MacBook notch. You trigger capture with **⌘
 
 ### If macOS blocks the app
 
-On first launch, Gatekeeper may say the app is from an unidentified developer:
+The download is signed and notarized, so this should be rare — it usually only appears on a copy moved
+by AirDrop or USB. If Gatekeeper says the app is from an unidentified developer:
 
-- Open **System Settings → Privacy & Security**, scroll down, and click **Open Anyway**, **or**
-- Right-click **Peeknook** in Applications → **Open** → confirm **Open**.
+- Right-click **Peeknook** in Applications → **Open** → confirm **Open** (the most reliable path), **or**
+- Open **System Settings → Privacy & Security**, scroll down, and click **Open Anyway**.
 
 You only need to do this once.
 

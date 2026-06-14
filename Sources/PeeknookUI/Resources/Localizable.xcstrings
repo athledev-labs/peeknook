@@ -1520,6 +1520,86 @@
     "Live session armed, auto-respond on, seeing latest screen": {
       "comment": "Live chip accessibility label: armed, auto-respond on, a frame is parked.",
       "extractionState": "manual"
+    },
+    "Welcome to Peeknook": {
+      "comment": "Setup welcome: title.",
+      "extractionState": "manual"
+    },
+    "Local AI that reads your screen and answers, right from the notch.": {
+      "comment": "Setup welcome: subtitle.",
+      "extractionState": "manual"
+    },
+    "press to capture your screen and ask about it": {
+      "comment": "Setup welcome: trails the capture-hotkey keycaps.",
+      "extractionState": "manual"
+    },
+    "One-time setup takes a few minutes: a free helper app and a model download. You only do this once.": {
+      "comment": "Setup welcome: what to expect (one-time).",
+      "extractionState": "manual"
+    },
+    "Your screen stays on your Mac. Nothing is uploaded unless you turn on web lookup or a remote server.": {
+      "comment": "Setup welcome: privacy line.",
+      "extractionState": "manual"
+    },
+    "Set up Peeknook": {
+      "comment": "Setup welcome: primary CTA into the checklist.",
+      "extractionState": "manual"
+    },
+    "Three quick steps and a test, then you're ready to capture.": {
+      "comment": "Setup: Get-ready header.",
+      "extractionState": "manual"
+    },
+    "Ollama (the local AI engine)": {
+      "comment": "Setup: Ollama step title.",
+      "extractionState": "manual"
+    },
+    "Getting ready to download…": {
+      "comment": "Setup: model download phase (preparing).",
+      "extractionState": "manual"
+    },
+    "Pulling the model…": {
+      "comment": "Setup: model download phase (downloading).",
+      "extractionState": "manual"
+    },
+    "Checking the download…": {
+      "comment": "Setup: model download phase (verifying).",
+      "extractionState": "manual"
+    },
+    "Finishing up…": {
+      "comment": "Setup: model download phase (finishing).",
+      "extractionState": "manual"
+    },
+    "Download stopped. Check your connection and Ollama, then try again.": {
+      "comment": "Setup: model download failed fallback.",
+      "extractionState": "manual"
+    },
+    "Ollama isn't running yet. Open the Ollama app and Peeknook will connect automatically.": {
+      "comment": "Shown when Ollama isn't running; tells the user to open the app.",
+      "extractionState": "manual"
+    },
+    "Start Ollama to check what's installed.": {
+      "comment": "Setup: model row when Ollama is off and the install state is unknown.",
+      "extractionState": "manual"
+    },
+    "Leave Ollama running and come back — Peeknook checks every few seconds.": {
+      "comment": "Setup: Ollama row reassurance about the 3s auto-detect.",
+      "extractionState": "manual"
+    },
+    "Need help?": {
+      "comment": "Setup: link to the install guide.",
+      "extractionState": "manual"
+    },
+    "Optional": {
+      "comment": "Setup: lead-in for the optional Accessibility link.",
+      "extractionState": "manual"
+    },
+    "Add selected text": {
+      "comment": "Setup: optional Accessibility affordance.",
+      "extractionState": "manual"
+    },
+    "Open Privacy settings to grant Accessibility (optional)": {
+      "comment": "Setup: hint for the optional Accessibility link.",
+      "extractionState": "manual"
     }
   },
   "version": "1.0"

@@ -169,6 +169,9 @@ final class SessionOrchestratorTests: XCTestCase {
     }
 
     func testBeginCaptureWithoutReadySetupFailsWithSetupIncomplete() {
+        // RESERVED for the genuinely-multi-missing case: a fresh coordinator has ollamaStep .pending
+        // (the install side isn't done), so routeUnready falls back to the blanket "Finish setup first"
+        // card rather than a single typed permission card.
         let defaults = UserDefaults(suiteName: "peeknook.tests.setup-incomplete")!
         defaults.removePersistentDomain(forName: "peeknook.tests.setup-incomplete")
         let setup = SetupCoordinator(settings: .default, defaults: defaults)
@@ -185,6 +188,43 @@ final class SessionOrchestratorTests: XCTestCase {
             XCTFail("Expected setupIncomplete failure, got \(orchestrator.phase)")
             return
         }
+    }
+
+    func testBeginCaptureWithOnlyScreenRecordingMissingRoutesToTypedPermissionCard() async {
+        let suite = "peeknook.tests.only-screen-missing"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.removePersistentDomain(forName: suite)
+        // The OpenAI-compatible backend forces ollamaStep + modelStep to .complete without a probe, so
+        // the ONLY gap is the denied Screen Recording permission — exactly the disaggregation case the
+        // hotkey card must surface specifically (matching the smarter Home banner) instead of the
+        // blanket "Finish setup first".
+        var settings = PeeknookSettings.default
+        settings.answerBackend = .openAICompatible
+        settings.ollamaBaseURL = "http://127.0.0.1:1"
+        let setup = SetupCoordinator(
+            settings: settings,
+            defaults: defaults,
+            permissionStatus: { CapturePermissionStatus(accessibilityTrusted: false, screenRecordingGranted: false) }
+        )
+        await setup.refresh()
+        XCTAssertFalse(setup.isReady, "Screen Recording denied → not ready even with the install side complete.")
+
+        let orchestrator = SessionOrchestrator(
+            settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b"),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "hello")]),
+            inference: MockInferenceEngine(tokens: ["ok"])
+        )
+        orchestrator.setup = setup
+
+        orchestrator.beginCapture()
+
+        guard case .failed(let failure) = orchestrator.phase else {
+            XCTFail("Expected a failed phase, got \(orchestrator.phase)")
+            return
+        }
+        XCTAssertEqual(failure.kind, .permissionRequired(name: "Screen Recording"))
+        XCTAssertEqual(failure.primaryRecovery, .openScreenRecordingSettings)
+        XCTAssertEqual(failure.secondaryRecovery, .tryAgain)
     }
 
     func testIncompleteInferenceStreamTransitionsToFailed() async {

@@ -64,9 +64,9 @@ final class SetupCoordinatorOfflineModelTests: XCTestCase {
         )
     }
 
-    // MARK: - A-2 first-run offline is genuinely pending (byte-identical download path)
+    // MARK: - A-2 first-run offline can't KNOW the install state → neutral .unknown, not "download me"
 
-    func testFirstRunOfflineStaysPendingAndForgetsNothing() async {
+    func testFirstRunOfflineShowsUnknownNotDownload() async {
         var settings = PeeknookSettings()
         settings.textModel = "gemma4:e4b"
         settings.ollamaBaseURL = deadURL
@@ -74,8 +74,14 @@ final class SetupCoordinatorOfflineModelTests: XCTestCase {
 
         await setup.refresh()
 
-        XCTAssertEqual(setup.modelStep, .pending, "A genuine never-installed model keeps the first-run Download CTA.")
+        // Ollama is down and we have never connected (empty cached set), so we provably can't know
+        // whether the model is installed — show the neutral, non-actionable .unknown line instead of an
+        // affirmative "Download model" that could trigger a needless multi-GB re-download.
+        guard case .unknown = setup.modelStep else {
+            return XCTFail("A never-seen model offline must be .unknown (not .pending), got \(setup.modelStep).")
+        }
         XCTAssertTrue(setup.installedModelNames.isEmpty)
+        XCTAssertFalse(setup.isReady, ".unknown must never count toward readiness.")
     }
 
     // MARK: - A-3 readiness invariant (offline never ready, even when remembered installed)
@@ -203,12 +209,11 @@ final class SetupCoordinatorOfflineModelTests: XCTestCase {
         }
 
         XCTAssertFalse(setup.isPullingModel, "The failed pull should have finished.")
-        // The catch sets `.failed`, then the post-pull refresh runs against the still-dead URL and
-        // settles a never-installed model to the actionable Download CTA. Assert that settled end state
-        // positively — merely excluding `.inProgress` would also wrongly accept `.complete`/`.blocked`.
-        XCTAssertEqual(
-            setup.modelStep, .pending,
-            "A failed offline pull on a never-installed model must settle to .pending (Download), never stick at .inProgress."
-        )
+        // The post-pull refresh runs against the still-dead URL with an empty installed set, so a
+        // never-seen model settles to the neutral .unknown line ("Start Ollama to check what's
+        // installed.") — never stuck at .inProgress, and never a false "download me" we can't justify.
+        guard case .unknown = setup.modelStep else {
+            return XCTFail("A failed offline pull on a never-seen model must settle to .unknown, got \(setup.modelStep).")
+        }
     }
 }

@@ -14,8 +14,40 @@ public struct OllamaSetupStatus: Sendable, Equatable {
 }
 
 public enum OllamaPullEvent: Sendable, Equatable {
-    case status(String)
+    case progress(PullProgress)
     case completed
+}
+
+/// One structured download-progress sample. `fraction` is the share of bytes pulled across ALL
+/// layers (nil before any total is known), so a bar driven by it advances monotonically instead of
+/// resetting per blob.
+public struct PullProgress: Sendable, Equatable {
+    public var phase: PullPhase
+    public var fraction: Double?
+    public var completedBytes: Int64?
+    public var totalBytes: Int64?
+
+    public init(phase: PullPhase, fraction: Double? = nil, completedBytes: Int64? = nil, totalBytes: Int64? = nil) {
+        self.phase = phase
+        self.fraction = fraction
+        self.completedBytes = completedBytes
+        self.totalBytes = totalBytes
+    }
+}
+
+/// Friendly phase mapped from Ollama's raw `/api/pull` status verbs, so the UI never shows a sha256
+/// digest. The single point to extend if Ollama changes its wording.
+public enum PullPhase: Sendable, Equatable {
+    case preparing, downloading, verifying, finishing
+
+    public static func from(ollamaStatus status: String) -> PullPhase {
+        let s = status.lowercased()
+        if s.contains("manifest"), s.contains("pulling") { return .preparing }
+        if s.hasPrefix("pulling") || s.contains("downloading") { return .downloading }
+        if s.contains("verifying") { return .verifying }
+        if s.contains("writing") || s.contains("removing") || s.contains("success") { return .finishing }
+        return .preparing
+    }
 }
 
 /// Ollama install / health / model pull for the setup wizard.
@@ -118,9 +150,7 @@ public struct OllamaSetupClient: Sendable {
             req.timeoutInterval = 4
             let (data, response) = try await session.data(for: req)
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-                throw InferenceError.ollamaUnreachable(
-                    "Ollama is not running. Install from ollama.com, then open the Ollama app or run `ollama serve`."
-                )
+                throw InferenceError.ollamaUnreachable(OllamaUnreachableCopy.notRunning)
             }
             return data
         }
@@ -178,25 +208,31 @@ public struct OllamaSetupClient: Sendable {
             fallbackMessage: "Model download failed. Is Ollama running?"
         )
 
+        // Aggregate byte progress across ALL layers so the bar advances monotonically rather than
+        // resetting per blob. Ollama sends `digest` + `total` + `completed` on each "pulling <digest>".
+        var layers: [String: (total: Int64, completed: Int64)] = [:]
         for try await line in bytes.lines {
             if Task.isCancelled { return }
             guard !line.isEmpty, let data = line.data(using: .utf8) else { continue }
             let chunk = try JSONDecoder().decode(OllamaPullChunk.self, from: data)
-            if let status = chunk.status {
-                if status == "success" {
-                    continuation.yield(.completed)
-                    continuation.finish()
-                    return
-                }
-                let detail: String
-                if let completed = chunk.completed, let total = chunk.total, total > 0 {
-                    let pct = Int((Double(completed) / Double(total)) * 100)
-                    detail = "\(status) (\(pct)%)"
-                } else {
-                    detail = status
-                }
-                continuation.yield(.status(detail))
+            guard let status = chunk.status else { continue }
+            if status == "success" {
+                continuation.yield(.completed)
+                continuation.finish()
+                return
             }
+            if let digest = chunk.digest, let total = chunk.total, total > 0 {
+                layers[digest] = (total: total, completed: chunk.completed ?? 0)
+            }
+            let sumTotal = layers.values.reduce(Int64(0)) { $0 + $1.total }
+            let sumCompleted = layers.values.reduce(Int64(0)) { $0 + $1.completed }
+            let fraction = sumTotal > 0 ? Double(sumCompleted) / Double(sumTotal) : nil
+            continuation.yield(.progress(PullProgress(
+                phase: PullPhase.from(ollamaStatus: status),
+                fraction: fraction,
+                completedBytes: sumTotal > 0 ? sumCompleted : nil,
+                totalBytes: sumTotal > 0 ? sumTotal : nil
+            )))
         }
         continuation.yield(.completed)
         continuation.finish()
@@ -252,6 +288,7 @@ struct OllamaPsResponse: Decodable, Sendable {
 
 private struct OllamaPullChunk: Decodable, Sendable {
     let status: String?
-    let completed: Int?
-    let total: Int?
+    let digest: String?
+    let completed: Int64?
+    let total: Int64?
 }

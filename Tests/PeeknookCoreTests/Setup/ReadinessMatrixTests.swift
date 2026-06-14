@@ -81,7 +81,10 @@ final class ReadinessMatrixTests: XCTestCase {
         guard case .failed(let screenMessage) = screenSetup.captureStep else {
             return XCTFail("Expected a failed capture step for screen.default")
         }
-        XCTAssertEqual(screenMessage, "Screen Recording is required so the model can see your screen.")
+        XCTAssertTrue(screenMessage.hasPrefix("Screen Recording is required so the model can see your screen."),
+                      "got: \(screenMessage)")
+        XCTAssertTrue(screenMessage.contains("quit and reopen Peeknook"),
+                      "the screen-recording capture step should carry the relaunch hint")
     }
 
     // MARK: readiness(for:) integration
@@ -127,6 +130,49 @@ final class ReadinessMatrixTests: XCTestCase {
         let list = setup.permissionChecklist(for: camera)
         XCTAssertEqual(list.map(\.permission), [.camera])
         XCTAssertEqual(list.map(\.isGranted), [false], "Injected status has no camera grant.")
+    }
+
+    // MARK: missingActivePermissions (the capture-routing seam — keys off requiredPermissions, not a literal)
+
+    func testMissingActivePermissionsTracksTheActiveProfile() {
+        let denied = makeCoordinator(
+            suite: "peeknook.tests.missing-perms-denied",
+            permissionStatus: { CapturePermissionStatus(accessibilityTrusted: false, screenRecordingGranted: false) }
+        )
+        XCTAssertEqual(denied.missingActivePermissions, [.screenRecording],
+                       "screen.default has exactly one required permission; only Screen Recording is missing.")
+
+        let granted = makeCoordinator(
+            suite: "peeknook.tests.missing-perms-granted",
+            permissionStatus: { CapturePermissionStatus(accessibilityTrusted: false, screenRecordingGranted: true) }
+        )
+        XCTAssertEqual(granted.missingActivePermissions, [], "Nothing missing once Screen Recording is granted.")
+    }
+
+    func testMissingActivePermissionsCountsEveryUngrantedPermissionForMultiGroundProfiles() {
+        // A two-permission profile must report BOTH gaps, so routeUnready keeps the blanket
+        // "Finish setup first" card (count != 1) — proving the routing keys off requiredPermissions,
+        // not a Screen-Recording literal, and generalizes to future profiles.
+        let suite = "peeknook.tests.missing-perms-multi"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.removePersistentDomain(forName: suite)
+        let profile = GroundProfile(
+            id: "test.screen-camera", displayNameKey: "Screen+Camera", symbol: "rectangle.on.rectangle",
+            primaryGround: .screen, activeGrounds: [.screen, .camera], isBuiltIn: false
+        )
+        let catalog = ProfileCatalog(profiles: [profile])
+        defaults.set(try! JSONEncoder().encode(catalog), forKey: ProfileCatalog.defaultsKey)
+        var settings = PeeknookSettings.default
+        settings.activeProfileID = profile.id
+        let setup = SetupCoordinator(
+            settings: settings,
+            defaults: defaults,
+            permissionStatus: {
+                CapturePermissionStatus(accessibilityTrusted: false, screenRecordingGranted: false, cameraGranted: false)
+            }
+        )
+        setup.profileStore = ProfileStore(defaults: defaults)
+        XCTAssertEqual(Set(setup.missingActivePermissions), [.screenRecording, .camera])
     }
 
     private func makeCoordinator(
