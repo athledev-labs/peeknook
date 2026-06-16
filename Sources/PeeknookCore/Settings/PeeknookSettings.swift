@@ -27,6 +27,10 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     /// Opt-in: run a live web search from capture context and show results alongside the answer.
     /// Queries leave this Mac via DuckDuckGo HTML. Off by default.
     public var webLookupEnabled: Bool
+    /// Opt-in: let a capture "hear the screen" — record a SHORT, user-triggered window of system
+    /// audio and transcribe it on-device into a text leg. Off by default; never continuous, never
+    /// over the network. Distinct from `voiceInputEnabled` (the user's microphone dictation).
+    public var systemAudioEnabled: Bool
     /// User-added models (any Ollama tag) shown alongside the curated catalog in the picker.
     public var customModels: [CustomModelEntry]
     /// User reorder/hide deltas for the notch command bars, keyed by a scope token. v1 only ever reads
@@ -116,6 +120,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         captureHotkey: CaptureHotkey = .default,
         persistConversation: Bool = false,
         webLookupEnabled: Bool = false,
+        systemAudioEnabled: Bool = false,
         customModels: [CustomModelEntry] = [],
         commandOverrides: [String: [CommandOverride]] = [:],
         displayName: String = "",
@@ -156,6 +161,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.captureHotkey = captureHotkey
         self.persistConversation = persistConversation
         self.webLookupEnabled = webLookupEnabled
+        self.systemAudioEnabled = systemAudioEnabled
         self.customModels = customModels
         self.commandOverrides = commandOverrides
         self.displayName = displayName
@@ -220,7 +226,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, customModels, commandOverrides, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, highlightSpeechWhileReading, speechVoiceIdentifier, briefHotkey, inferenceImageReplay, captureQuality, acceptInsecureRemoteOllama, activeProfileID, cameraHotkey, answerBackend, openAICompatibleBaseURL, openAICompatibleModelTag, acceptInsecureRemoteOpenAICompatible, fastTextFollowUps, textOnlyBackend, textOnlyModelTag, compositeCaptureEnabled, liveEnabled, liveRefreshTriggerRaw, liveAutoRespond, liveTimerIntervalSeconds, liveRateCapSeconds, livePersistAcrossDone
+        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, systemAudioEnabled, customModels, commandOverrides, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, highlightSpeechWhileReading, speechVoiceIdentifier, briefHotkey, inferenceImageReplay, captureQuality, acceptInsecureRemoteOllama, activeProfileID, cameraHotkey, answerBackend, openAICompatibleBaseURL, openAICompatibleModelTag, acceptInsecureRemoteOpenAICompatible, fastTextFollowUps, textOnlyBackend, textOnlyModelTag, compositeCaptureEnabled, liveEnabled, liveRefreshTriggerRaw, liveAutoRespond, liveTimerIntervalSeconds, liveRateCapSeconds, livePersistAcrossDone
     }
 
     // Tolerant decode, a saved blob missing a newer key keeps the rest of the user's
@@ -238,6 +244,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.captureHotkey = try c.decodeIfPresent(CaptureHotkey.self, forKey: .captureHotkey) ?? .default
         self.persistConversation = try c.decodeIfPresent(Bool.self, forKey: .persistConversation) ?? false
         self.webLookupEnabled = try c.decodeIfPresent(Bool.self, forKey: .webLookupEnabled) ?? false
+        self.systemAudioEnabled = try c.decodeIfPresent(Bool.self, forKey: .systemAudioEnabled) ?? false
         self.customModels = try c.decodeIfPresent([CustomModelEntry].self, forKey: .customModels) ?? []
         // Primitives-only ``CommandOverride`` (String/Int?/Bool) cannot throw on an unknown raw value,
         // so this decode can never trip the full-reset bomb; a stale command id is dropped at apply time.

@@ -69,6 +69,10 @@ public struct PeeknookDependencies {
                 .camera: CameraCaptureProvider(),
                 // File import: resolved via the registry's FileImporting arm, never the capture path.
                 .file: FileImportCaptureProvider(),
+                // System audio ("hear the screen"): gated behind the off-by-default
+                // `systemAudioEnabled` opt-in and its Screen Recording + Speech Recognition
+                // permissions before any capture resolves to it.
+                .systemAudio: SystemAudioCaptureProvider(),
             ]),
             inferenceRegistry: InferenceBackendRegistry([
                 .ollama: OllamaInferenceEngine(probeCache: probeCache),
@@ -111,6 +115,8 @@ public struct PeeknookDependencies {
         var providers: [Ground: any CaptureProviding] = [.screen: capture]
         if let cameraSession { providers[.camera] = cameraSession }
         providers[.file] = FileImportCaptureProvider()  // real, pure decoder — deterministic in tests
+        // Stub-backed so the registry wiring is present and deterministic — no hardware in tests.
+        providers[.systemAudio] = SystemAudioCaptureProvider(transcriber: StubSystemAudioTranscriber())
         var engines: [InferenceBackend: any InferenceEngine] = Dictionary(
             uniqueKeysWithValues: InferenceBackend.allCases.map { ($0, inference) }
         )

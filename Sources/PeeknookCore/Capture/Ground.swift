@@ -15,6 +15,11 @@ public enum Ground: String, Codable, Sendable, CaseIterable, Hashable {
     /// file-primary profile would dead-end ⌘⇧P the way a camera-primary one would). The open panel
     /// grants file access, so it requires no TCC permission.
     case file
+    /// What is currently playing through the Mac (meeting, video, call) — heard via a SHORT,
+    /// user-triggered ScreenCaptureKit system-audio window and transcribed on-device. Distinct from
+    /// `voiceInput` (the user's microphone dictation): this ground hears the *screen's* output, not
+    /// the user's voice. Produces a TEXT leg (the transcript), never an image.
+    case systemAudio
 
     /// Permissions that must be granted before this ground can capture. Drives the per-profile
     /// readiness matrix. `selectedText` deliberately returns an empty set: Accessibility is a
@@ -26,6 +31,9 @@ public enum Ground: String, Codable, Sendable, CaseIterable, Hashable {
         case .screen:       return [.screenRecording]
         case .camera:       return [.camera]
         case .voiceInput:   return [.microphone, .speechRecognition]
+        // ScreenCaptureKit system-audio capture needs Screen Recording; on-device transcription needs
+        // Speech Recognition. No Microphone — this ground never opens the mic input.
+        case .systemAudio:  return [.screenRecording, .speechRecognition]
         case .selectedText: return []
         case .agent:        return []
         case .file:         return []   // the open panel grants file access; no TCC gate

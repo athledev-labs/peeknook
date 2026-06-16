@@ -180,6 +180,8 @@ enum PromptBuilder {
             lines.append("Ground: camera — the attached image is a photo from the Mac's camera (paper, whiteboard, book, or a physical object), not a screenshot of the display.")
         case .file:
             lines.append("Ground: imported file — the attached image is a page or image from a file the user opened from disk (e.g. a PDF page or a saved image), not a live capture of the current screen.")
+        case .systemAudio:
+            lines.append("Ground: system audio — the text below is an on-device transcript of what was playing through the Mac (a meeting, video, or call). There is NO image; answer from the transcript.")
         default:
             break
         }
@@ -194,13 +196,24 @@ enum PromptBuilder {
             }
         }
         if let text = capture.text, !text.isEmpty {
-            lines.append("""
-            Supplementary extracted text (may be incomplete; prefer the screenshot when they disagree):
-            ---
-            \(text)
-            ---
-            """)
-        } else {
+            // An audio leg carries no image — its text IS the content, not a supplement to a
+            // screenshot, so it is labelled as the transcript and never told to "prefer the image".
+            if capture.ground == .systemAudio {
+                lines.append("""
+                Transcript of system audio:
+                ---
+                \(text)
+                ---
+                """)
+            } else {
+                lines.append("""
+                Supplementary extracted text (may be incomplete; prefer the screenshot when they disagree):
+                ---
+                \(text)
+                ---
+                """)
+            }
+        } else if capture.hasVision {
             lines.append("No reliable extracted text — rely on the screenshot.")
         }
         if let webLookup, !webLookup.results.isEmpty {
@@ -231,7 +244,17 @@ enum PromptBuilder {
         }
         lines.append("Use ALL of the images together — they describe the same situation from several views.")
         for leg in payloads {
-            if let text = leg.capture.text, !text.isEmpty {
+            guard let text = leg.capture.text, !text.isEmpty else { continue }
+            // A transcript leg carries no image, so its text is primary content (the audio), not a
+            // supplement to be overridden by the images.
+            if leg.kind == .transcript {
+                lines.append("""
+                Transcript of \(groundShortLabel(leg.ground)):
+                ---
+                \(text)
+                ---
+                """)
+            } else {
                 lines.append("""
                 Supplementary extracted text from \(groundShortLabel(leg.ground)) (may be incomplete; prefer the images when they disagree):
                 ---
@@ -264,6 +287,7 @@ enum PromptBuilder {
         case .camera:       return "the camera photo"
         case .file:         return "the imported file"
         case .selectedText: return "the selected text"
+        case .systemAudio:  return "the system audio"
         default:            return "the screenshot"
         }
     }

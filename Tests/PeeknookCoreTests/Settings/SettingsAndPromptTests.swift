@@ -341,6 +341,20 @@ final class SettingsAndPromptTests: XCTestCase {
         XCTAssertTrue(back.livePersistAcrossDone, "the field round-trips through encode/decode")
     }
 
+    func testSystemAudioSettingDefaultsOffAndRoundTrips() throws {
+        // A legacy blob missing the key keeps its siblings and defaults "hear the screen" to off —
+        // tolerant decode, adding the field must not reset saved state.
+        let legacy = Data(#"{"mode":"general","textModel":"gemma4:e4b","webLookupEnabled":true}"#.utf8)
+        let decoded = try JSONDecoder().decode(PeeknookSettings.self, from: legacy)
+        XCTAssertFalse(decoded.systemAudioEnabled, "a missing key defaults off")
+        XCTAssertTrue(decoded.webLookupEnabled, "the sibling opt-in is preserved")
+        XCTAssertEqual(decoded.textModel, "gemma4:e4b")
+
+        let on = PeeknookSettings(textModel: "gemma4:e4b", systemAudioEnabled: true)
+        let back = try JSONDecoder().decode(PeeknookSettings.self, from: JSONEncoder().encode(on))
+        XCTAssertTrue(back.systemAudioEnabled, "the field round-trips through encode/decode")
+    }
+
     func testSpeechVoiceOptionMenuLabelIncludesQuality() {
         let enhanced = SpeechVoiceOption(identifier: "x", displayName: "Ava", qualityLabel: "Enhanced")
         XCTAssertEqual(enhanced.menuLabel, "Ava · Enhanced")
