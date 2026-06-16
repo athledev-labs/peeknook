@@ -40,10 +40,15 @@ final class MultiGroundProfileCaptureTests: XCTestCase {
     private func makeOrchestrator(
         engine: any InferenceEngine,
         profile: GroundProfile,
-        previewBeforeInfer: Bool = false
+        previewBeforeInfer: Bool = false,
+        systemAudioEnabled: Bool = true
     ) -> SessionOrchestrator {
         let orchestrator = SessionOrchestrator(
-            settings: PeeknookSettings(previewBeforeInfer: previewBeforeInfer, textModel: "gemma4:e4b"),
+            settings: PeeknookSettings(
+                previewBeforeInfer: previewBeforeInfer,
+                textModel: "gemma4:e4b",
+                systemAudioEnabled: systemAudioEnabled
+            ),
             captureRegistry: GroundRegistry([
                 .screen: StubCaptureProvider(sampleText: "screen text", appName: "Keynote"),
                 .systemAudio: SystemAudioCaptureProvider(
@@ -113,6 +118,47 @@ final class MultiGroundProfileCaptureTests: XCTestCase {
         XCTAssertNil(images.first?.compositeGroupID, "a standalone capture has no group id")
     }
 
+    // MARK: - systemAudio opt-in gate
+
+    func testSystemAudioOptInOffCapturesOnlyTheScreenLeg() async {
+        // THE safety gate: a profile that lists screen + system audio captures ONLY the screen leg
+        // while `systemAudioEnabled` is off (the default) — the live audio tap is never reached, and
+        // the fan-out collapses to the single one-shot screen path (no group).
+        let profile = screenAudioProfile()
+        let engine = ScriptedEngine(responsesPerCall: [["a"]])
+        let o = makeOrchestrator(engine: engine, profile: profile, systemAudioEnabled: false)
+
+        o.beginCapture()
+        _ = await o.waitForResult("a")
+
+        let images = o.conversation.filter(\.isImage)
+        XCTAssertEqual(images.count, 1, "opt-in off: only the screen leg is captured")
+        guard case .image(let only)? = images.first?.kind else { return XCTFail("missing leg") }
+        XCTAssertEqual(only.ground, .screen, "the kept leg is the primary screen ground")
+        XCTAssertNil(images.first?.compositeGroupID, "a single leg is not a group")
+    }
+
+    func testSystemAudioOptInOnCapturesBothLegsKeepingPrimary() async {
+        // With the opt-in on, the same profile fans out to BOTH legs — the primary (screen) ground is
+        // always present and leads, and the audio leg follows.
+        let profile = screenAudioProfile()
+        let o = makeOrchestrator(
+            engine: MockInferenceEngine(tokens: ["a"], declaredCapabilities: ["vision"]),
+            profile: profile,
+            systemAudioEnabled: true
+        )
+
+        o.beginCapture()
+        _ = await o.waitForResult("a")
+
+        let captured = o.conversation.compactMap { turn -> Ground? in
+            if case .image(let capture) = turn.kind { return capture.ground }
+            return nil
+        }
+        XCTAssertEqual(captured, [.screen, .systemAudio], "opt-in on: primary screen leg leads, audio follows")
+        XCTAssertTrue(captured.contains(profile.primaryGround), "the primary ground is always captured")
+    }
+
     // MARK: - Interactive grounds are NOT fanned out
 
     func testCameraInActiveGroundsIsNotAutoFannedOut() async {
@@ -173,7 +219,7 @@ final class MultiGroundProfileCaptureTests: XCTestCase {
     func testFailingAudioLegFailsTheWholeTurnNoPartialCommit() async {
         let profile = screenAudioProfile()
         let o = SessionOrchestrator(
-            settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b"),
+            settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b", systemAudioEnabled: true),
             captureRegistry: GroundRegistry([
                 .screen: StubCaptureProvider(sampleText: "hi"),
                 .systemAudio: SystemAudioCaptureProvider(

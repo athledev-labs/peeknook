@@ -39,6 +39,14 @@ public enum Ground: String, Codable, Sendable, CaseIterable, Hashable {
         case .file:         return []   // the open panel grants file access; no TCC gate
         }
     }
+
+    /// The grounds a multi-ground profile may hold — the ones the ⌘⇧P fan-out can one-shot capture
+    /// and fold into a single question. `.camera`/`.file` are interactive (live preview / open panel)
+    /// and drive their own flows, so the fan-out already excludes them; `.voiceInput` is the user's
+    /// dictation (not a screen ground) and `.agent` is the reserved sidecar — neither is a capture leg.
+    /// The profile editor offers only this set, and ``ProfileStore/setActiveGrounds(_:for:)`` sanitizes
+    /// against it regardless of what a caller passes.
+    public static let multiGroundEligible: Set<Ground> = [.screen, .selectedText, .systemAudio]
 }
 
 /// A macOS TCC permission a ground may require. Completed at endgame shape so the readiness matrix

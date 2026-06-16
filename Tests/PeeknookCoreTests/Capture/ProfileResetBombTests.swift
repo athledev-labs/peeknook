@@ -56,6 +56,32 @@ final class ProfileResetBombTests: XCTestCase {
         XCTAssertEqual(decoded, profile)
     }
 
+    func testMultiGroundUserProfileActiveGroundsRoundTrips() throws {
+        // A user profile carrying an edited multi-ground set persists and reloads intact — and an
+        // unknown ground mixed in still degrades (drops) instead of throwing and nuking the profile.
+        let profile = GroundProfile(
+            id: "B6E4A23F-0000-0000-0000-000000000003",
+            displayNameKey: "Screen",
+            symbol: "macwindow",
+            primaryGround: .screen,
+            activeGrounds: [.screen, .selectedText, .systemAudio],
+            isBuiltIn: false,
+            displayName: "Hear + see"
+        )
+        let decoded = try JSONDecoder().decode(GroundProfile.self, from: JSONEncoder().encode(profile))
+        XCTAssertEqual(decoded.activeGrounds, [.screen, .selectedText, .systemAudio])
+
+        let withUnknownGround = """
+        {"id":"u1","displayNameKey":"Screen","symbol":"macwindow",
+         "primaryGround":"screen","activeGrounds":["screen","systemAudio","warpDrive"],"isBuiltIn":false}
+        """
+        let tolerant = try decode(GroundProfile.self, withUnknownGround)
+        XCTAssertEqual(
+            tolerant.activeGrounds, [.screen, .systemAudio],
+            "an unknown active ground drops; known ones and the primary survive"
+        )
+    }
+
     func testPromptTemplateTrimmedAndCappedOnDecode() throws {
         let long = String(repeating: "t", count: 9_000)
         let blob = """

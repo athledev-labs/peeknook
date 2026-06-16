@@ -144,6 +144,27 @@ public final class ProfileStore {
         ))
     }
 
+    /// Sets a USER profile's active grounds, persisting immediately. No-op for built-ins and unknown
+    /// ids (built-ins resolve through ``GroundProfile/all``, never this catalog, so `first(where:)`
+    /// already excludes them — `with`/`update` refuse them again as a second net). The passed set is
+    /// sanitized regardless of the caller: anything outside ``Ground/multiGroundEligible`` (camera,
+    /// file, voice input, agent) is dropped, and `primaryGround` is always kept so the profile can
+    /// still capture its lead ground. The fan-out at capture time applies the further `systemAudio`
+    /// opt-in gate (see ``CaptureCoordinator``), so storing `.systemAudio` here never arms the live tap.
+    public func setActiveGrounds(_ grounds: Set<Ground>, for id: String) {
+        guard let existing = catalog.profiles.first(where: { $0.id == id }) else { return }
+        var sanitized = grounds.intersection(Ground.multiGroundEligible)
+        sanitized.insert(existing.primaryGround)
+        update(existing.with(
+            displayName: existing.displayName,
+            instruction: existing.instruction,
+            promptTemplate: existing.promptTemplate,
+            modelBinding: existing.modelBinding,
+            moduleOverrides: existing.moduleOverrides,
+            activeGrounds: sanitized
+        ))
+    }
+
     // MARK: - Import / export presets
 
     /// Portable preset bytes for the user's own profiles (built-ins are dropped by ``ProfilePreset``).

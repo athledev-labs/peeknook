@@ -171,22 +171,37 @@ public extension GroundProfile {
             ?? .screenDefault
     }
 
-    /// Copy with edited user-profile fields (identity, grounds, and `isBuiltIn` are never
-    /// editable). For ``ProfileStore`` and the profile editor. Every editable field is explicit so a
-    /// caller can never silently drop one (e.g. wipe `promptTemplate` by forgetting it).
+    /// Copy with edited user-profile fields (identity and `isBuiltIn` are never editable). For
+    /// ``ProfileStore`` and the profile editor. Every editable field is explicit so a caller can never
+    /// silently drop one (e.g. wipe `promptTemplate` by forgetting it).
+    ///
+    /// `activeGrounds` defaults to `nil` ("keep what's there") so the existing edit paths stay
+    /// unchanged. It is honored only for USER profiles — a built-in's grounds are part of its identity
+    /// and never change (a built-in always keeps its own `activeGrounds`). When honored, `primaryGround`
+    /// is re-inserted so a profile can never lose the ground its captures lead with; the broader
+    /// eligibility sanitize lives in ``ProfileStore/setActiveGrounds(_:for:)``.
     func with(
         displayName: String?,
         instruction: String?,
         promptTemplate: String?,
         modelBinding: ProfileModelBinding?,
-        moduleOverrides: ModuleOverrides
+        moduleOverrides: ModuleOverrides,
+        activeGrounds: Set<Ground>? = nil
     ) -> GroundProfile {
-        GroundProfile(
+        let resolvedGrounds: Set<Ground>
+        if let activeGrounds, !isBuiltIn {
+            var grounds = activeGrounds
+            grounds.insert(primaryGround)   // the primary ground is always active
+            resolvedGrounds = grounds
+        } else {
+            resolvedGrounds = self.activeGrounds   // built-ins (and no-op edits) keep their grounds
+        }
+        return GroundProfile(
             id: id,
             displayNameKey: displayNameKey,
             symbol: symbol,
             primaryGround: primaryGround,
-            activeGrounds: activeGrounds,
+            activeGrounds: resolvedGrounds,
             isBuiltIn: isBuiltIn,
             displayName: displayName,
             instruction: instruction,

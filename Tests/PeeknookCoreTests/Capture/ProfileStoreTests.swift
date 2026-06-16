@@ -171,4 +171,48 @@ final class ProfileStoreTests: XCTestCase {
         store.clearModuleOverrides(id: copy.id)
         XCTAssertEqual(store.profile(id: copy.id).moduleOverrides, .none)
     }
+
+    // MARK: - Active grounds
+
+    func testSetActiveGroundsPersistsAndKeepsPrimary() throws {
+        let store = makeStore()
+        let copy = try XCTUnwrap(store.duplicate(.screenDefault, name: "Mine"))   // primary .screen
+        store.setActiveGrounds([.systemAudio], for: copy.id)   // primary deliberately omitted
+        XCTAssertEqual(
+            store.profile(id: copy.id).activeGrounds, [.screen, .systemAudio],
+            "primaryGround is always kept even when the caller omits it"
+        )
+        XCTAssertEqual(
+            ProfileStore(defaults: defaults).profile(id: copy.id).activeGrounds, [.screen, .systemAudio],
+            "the new ground set persists across a reload"
+        )
+    }
+
+    func testSetActiveGroundsSanitizesOutIneligibleGrounds() throws {
+        let store = makeStore()
+        let copy = try XCTUnwrap(store.duplicate(.screenDefault, name: "Mine"))
+        // camera/file are interactive and voiceInput/agent are not capture legs — all must drop.
+        store.setActiveGrounds([.screen, .selectedText, .systemAudio, .camera, .file, .voiceInput, .agent], for: copy.id)
+        XCTAssertEqual(
+            store.profile(id: copy.id).activeGrounds, [.screen, .selectedText, .systemAudio],
+            "only foldable grounds survive; camera/file/voiceInput/agent are sanitized out"
+        )
+    }
+
+    func testSetActiveGroundsIsNoOpOnBuiltIn() {
+        let store = makeStore()
+        store.setActiveGrounds([.screen, .systemAudio], for: GroundProfile.screenDefault.id)
+        XCTAssertEqual(store.catalog.profiles, [], "a built-in id never enters the catalog")
+        XCTAssertEqual(
+            store.profile(id: GroundProfile.screenDefault.id).activeGrounds,
+            GroundProfile.screenDefault.activeGrounds,
+            "the built-in's grounds are unchanged"
+        )
+    }
+
+    func testSetActiveGroundsIsNoOpOnUnknownID() {
+        let store = makeStore()
+        store.setActiveGrounds([.screen, .systemAudio], for: "does.not.exist")
+        XCTAssertEqual(store.catalog.profiles, [])
+    }
 }

@@ -115,10 +115,19 @@ final class CaptureCoordinator {
     /// provider (it is folded into the screen capture), so it never appears here. The result always
     /// leads with `primaryGround` when it is itself one-shot-capturable, so the prompt names the legs
     /// in a stable order (screen first), mirroring the composite convention.
+    ///
+    /// THE systemAudio opt-in gate: `.systemAudio` is excluded UNLESS `settings.systemAudioEnabled`
+    /// is on. This is the real precondition for reaching the (unit-untestable) live ScreenCaptureKit
+    /// audio tap — a profile can list `.systemAudio`, but the leg is only captured once the user turns
+    /// the opt-in on. With the opt-in off, behavior is exactly as today: `.systemAudio` is never
+    /// captured, so a screen+audio profile falls back to its single screen leg.
     private func oneShotCaptureGrounds(for profile: GroundProfile) -> [Ground] {
         guard let session else { return [] }
         let registry = session.captureRegistry
+        let systemAudioEnabled = session.settings.systemAudioEnabled
         func isOneShot(_ ground: Ground) -> Bool {
+            // The live system-audio tap stays unreachable until the user enables the opt-in.
+            if ground == .systemAudio, !systemAudioEnabled { return false }
             guard let provider = registry.provider(for: ground) else { return false }
             // Interactive providers are NOT one-shot — they drive their own arm/shutter or panel flow.
             return !(provider is any CameraSessionControlling) && !(provider is any FileImporting)

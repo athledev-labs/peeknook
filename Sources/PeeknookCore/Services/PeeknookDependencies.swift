@@ -69,9 +69,12 @@ public struct PeeknookDependencies {
                 .camera: CameraCaptureProvider(),
                 // File import: resolved via the registry's FileImporting arm, never the capture path.
                 .file: FileImportCaptureProvider(),
-                // System audio ("hear the screen"): gated behind the off-by-default
-                // `systemAudioEnabled` opt-in and its Screen Recording + Speech Recognition
-                // permissions before any capture resolves to it.
+                // System audio ("hear the screen") is REGISTERED but only resolves to a capture when a
+                // user profile includes the `.systemAudio` ground AND the off-by-default
+                // `systemAudioEnabled` opt-in is on — both checked at capture time in
+                // `CaptureCoordinator.oneShotCaptureGrounds`. With the opt-in off (the default) the live
+                // tap is unreachable. Its permissions (Screen Recording + Speech Recognition) are
+                // requested through the active profile's `requiredPermissions`.
                 .systemAudio: SystemAudioCaptureProvider(),
             ]),
             inferenceRegistry: InferenceBackendRegistry([

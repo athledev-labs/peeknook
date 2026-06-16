@@ -110,4 +110,49 @@ final class GroundProfileTests: XCTestCase {
             GroundProfile.resolve(id: "screen.default", in: [masquerader]), .screenDefault
         )
     }
+
+    // MARK: Eligible grounds + with(activeGrounds:)
+
+    func testMultiGroundEligibleIsTheFoldableSet() {
+        // Only the one-shot, foldable grounds — never the interactive (camera/file) or non-capture
+        // (voiceInput/agent) ones the fan-out can't commit.
+        XCTAssertEqual(Ground.multiGroundEligible, [.screen, .selectedText, .systemAudio])
+        for ineligible in [Ground.camera, .file, .voiceInput, .agent] {
+            XCTAssertFalse(Ground.multiGroundEligible.contains(ineligible), "\(ineligible) is not foldable")
+        }
+    }
+
+    func testWithActiveGroundsEditsUserProfileAndKeepsPrimary() {
+        let user = GroundProfile(
+            id: "u1", displayNameKey: "Screen", symbol: "macwindow",
+            primaryGround: .screen, activeGrounds: [.screen], isBuiltIn: false, displayName: "Mine"
+        )
+        // Editing drops the primary from the passed set, but `with` re-inserts it.
+        let edited = user.with(
+            displayName: user.displayName, instruction: nil, promptTemplate: nil,
+            modelBinding: nil, moduleOverrides: .none, activeGrounds: [.systemAudio]
+        )
+        XCTAssertEqual(edited.activeGrounds, [.screen, .systemAudio], "primaryGround is always present")
+    }
+
+    func testWithNilActiveGroundsKeepsExistingGrounds() {
+        let user = GroundProfile(
+            id: "u1", displayNameKey: "Screen", symbol: "macwindow",
+            primaryGround: .screen, activeGrounds: [.screen, .selectedText], isBuiltIn: false
+        )
+        let edited = user.with(
+            displayName: "New", instruction: nil, promptTemplate: nil, modelBinding: nil, moduleOverrides: .none
+        )
+        XCTAssertEqual(edited.activeGrounds, [.screen, .selectedText], "an unspecified ground set is unchanged")
+    }
+
+    func testWithActiveGroundsIsIgnoredForBuiltIns() {
+        // A built-in's grounds are part of its identity — `with(activeGrounds:)` can never change them.
+        let edited = GroundProfile.screenDefault.with(
+            displayName: nil, instruction: nil, promptTemplate: nil,
+            modelBinding: nil, moduleOverrides: .none, activeGrounds: [.screen, .systemAudio]
+        )
+        XCTAssertEqual(edited.activeGrounds, GroundProfile.screenDefault.activeGrounds)
+        XCTAssertTrue(edited.isBuiltIn)
+    }
 }
