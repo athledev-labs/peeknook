@@ -16,11 +16,13 @@ final class LiveRefreshPolicyTests: XCTestCase {
         pressure: SessionOrchestrator.ContextPressure = .normal,
         interval: TimeInterval = 5,
         sinceSeconds: TimeInterval,
-        nowSeconds: TimeInterval
+        nowSeconds: TimeInterval,
+        deadlineSeconds: TimeInterval? = nil
     ) -> LiveRefreshPolicy.Decision {
         LiveRefreshPolicy.decide(
             armed: armed, trigger: trigger, pressure: pressure, interval: interval,
-            since: t0.addingTimeInterval(sinceSeconds), now: t0.addingTimeInterval(nowSeconds)
+            since: t0.addingTimeInterval(sinceSeconds), now: t0.addingTimeInterval(nowSeconds),
+            deadline: deadlineSeconds.map { t0.addingTimeInterval($0) }
         )
     }
 
@@ -108,6 +110,95 @@ final class LiveRefreshPolicyTests: XCTestCase {
         XCTAssertTrue(
             LiveRefreshPolicy.autoResponseDue(last: t0, cap: 5, now: t0.addingTimeInterval(6)),
             "overdue → eligible"
+        )
+    }
+
+    // MARK: Mandatory auto-disarm deadline (`.expire`) — the WS-2 cap, kept pure with injected times
+
+    func testNoDeadlineNeverExpiresByteIdentical() {
+        // The default (no cap, deadline == nil): the policy never returns .expire — proving the cap=0
+        // path is byte-identical. A normal due tick still parks; a not-due tick still sleeps.
+        XCTAssertEqual(decide(interval: 5, sinceSeconds: 0, nowSeconds: 5, deadlineSeconds: nil), .park)
+        XCTAssertEqual(decide(interval: 5, sinceSeconds: 0, nowSeconds: 3, deadlineSeconds: nil), .sleep(2))
+    }
+
+    func testExpiresWhenDeadlinePassedForTimerTrigger() {
+        XCTAssertEqual(
+            decide(interval: 5, sinceSeconds: 0, nowSeconds: 100, deadlineSeconds: 60),
+            .expire,
+            "now (100) is past the deadline (60) → auto-disarm"
+        )
+    }
+
+    func testDeadlineBoundaryIsInclusive() {
+        XCTAssertEqual(
+            decide(interval: 5, sinceSeconds: 0, nowSeconds: 60, deadlineSeconds: 60),
+            .expire,
+            "now == deadline expires (>= boundary, matching the rest of the policy)"
+        )
+    }
+
+    func testDoesNotExpireBeforeTheDeadline() {
+        // Not yet at the deadline and the interval isn't due either → a normal sleep, never .expire.
+        XCTAssertEqual(decide(interval: 5, sinceSeconds: 0, nowSeconds: 3, deadlineSeconds: 60), .sleep(2))
+    }
+
+    func testExpireOverridesParkWhenBothAreDue() {
+        // The refresh interval is overdue (would .park) AND the deadline has passed — the cap wins, so
+        // the loop disarms instead of grabbing one more frame after the timeout.
+        XCTAssertEqual(
+            decide(interval: 5, sinceSeconds: 0, nowSeconds: 100, deadlineSeconds: 60),
+            .expire
+        )
+    }
+
+    func testExpireOverridesPauseAtCritical() {
+        // A passed deadline must end the session even while paused at full context — the cap is the
+        // backstop that guarantees a session can never silently outlive its limit, pressure or not.
+        XCTAssertEqual(
+            decide(pressure: .critical, interval: 5, sinceSeconds: 0, nowSeconds: 100, deadlineSeconds: 60),
+            .expire
+        )
+    }
+
+    func testExpireAppliesToManualTriggerToo() {
+        // The cap bounds a MANUAL session as well: with a deadline set, decide() runs for the loop that
+        // watches it, and a passed deadline expires a manual-trigger session (not .stop).
+        XCTAssertEqual(
+            decide(trigger: .manual, sinceSeconds: 0, nowSeconds: 100, deadlineSeconds: 60),
+            .expire
+        )
+    }
+
+    func testManualTriggerWithLiveDeadlineSleepsUntilItNotStop() {
+        // A manual session WITH a cap must keep the loop alive to watch the deadline: before the deadline
+        // it sleeps toward it (not .stop). Without a cap a manual session still .stops (no loop).
+        XCTAssertEqual(
+            decide(trigger: .manual, sinceSeconds: 0, nowSeconds: 10, deadlineSeconds: 60),
+            .sleep(50),
+            "sleeps the remaining 50s toward the deadline"
+        )
+        XCTAssertEqual(
+            decide(trigger: .manual, sinceSeconds: 0, nowSeconds: 10, deadlineSeconds: nil),
+            .stop,
+            "no cap → a manual session runs no loop, byte-identical"
+        )
+    }
+
+    func testTimerSleepIsShortenedToANearerDeadline() {
+        // The next refresh is 2s away but the deadline is only 1s away — the loop must wake at the
+        // deadline to .expire on time, so the sleep shortens to 1s rather than over-sleeping the interval.
+        XCTAssertEqual(
+            decide(interval: 5, sinceSeconds: 0, nowSeconds: 3, deadlineSeconds: 4),
+            .sleep(1)
+        )
+    }
+
+    func testNotArmedBeatsExpire() {
+        // A disarm mid-window tears the loop down rather than emitting .expire (which would re-disarm).
+        XCTAssertEqual(
+            decide(armed: false, sinceSeconds: 0, nowSeconds: 100, deadlineSeconds: 60),
+            .stop
         )
     }
 }

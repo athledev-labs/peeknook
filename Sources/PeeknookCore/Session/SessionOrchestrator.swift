@@ -77,6 +77,15 @@ public final class SessionOrchestrator {
     public internal(set) var livePolicy: LivePolicy?
     /// True while a live session is armed.
     public var isLiveArmed: Bool { livePolicy != nil }
+
+    /// Seconds left before the mandatory auto-disarm timeout, or `nil` when no cap is set (the
+    /// `liveMaxArmedSeconds == 0` default — byte-identical to today, no countdown shown). Floored at 0
+    /// so a just-passed deadline reads as 0 rather than negative. Pure given an injected `now`, so the
+    /// chip's "N min left" copy is unit-testable without a real clock. See ``LivePolicy/expiresAt``.
+    public func liveRemainingSeconds(at now: Date = Date()) -> TimeInterval? {
+        guard let expiresAt = livePolicy?.expiresAt else { return nil }
+        return max(0, expiresAt.timeIntervalSince(now))
+    }
     /// When the last live refresh landed — drives the armed chip's "Last refresh …". Transient.
     public internal(set) var lastLiveRefreshAt: Date?
     /// The issue-stamp of the last auto-response (the rate-cap clock), SEPARATE from `lastLiveRefreshAt`:

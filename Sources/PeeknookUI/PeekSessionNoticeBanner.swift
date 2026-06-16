@@ -65,6 +65,7 @@ struct PeekSessionNoticeBanner: View {
         case .contextFull: "sparkles"
         case .threadUnavailable: "exclamationmark.triangle"
         case .liveRefreshFailed: "arrow.clockwise"
+        case .liveEnded: "antenna.radiowaves.left.and.right.slash"
         }
     }
 
@@ -73,6 +74,7 @@ struct PeekSessionNoticeBanner: View {
         case .contextFull: "Started a new chat"
         case .threadUnavailable: "Couldn't open that chat"
         case .liveRefreshFailed: "Couldn't refresh"
+        case .liveEnded: "Live ended"
         }
     }
 
@@ -86,6 +88,8 @@ struct PeekSessionNoticeBanner: View {
             "That saved chat is missing or unreadable, so it was removed from your history."
         case .liveRefreshFailed:
             "Peeknook couldn't capture the latest screen. The live chat is still on, so you can try Refresh again."
+        case .liveEnded:
+            "The live session reached its time limit and turned off. Tap Go live to start watching again."
         }
     }
 }

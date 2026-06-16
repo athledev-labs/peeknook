@@ -150,6 +150,15 @@ public final class PeekSettingsController {
         update { $0.liveRateCapSeconds = clamped }
     }
 
+    /// The mandatory Live auto-disarm cap (max armed lifetime), in seconds. `0` = off (no cap — today's
+    /// behavior). Clamped to ≥ 0. A change is a preference only; the deadline is snapshot at the NEXT
+    /// arm (the snapshot-at-arm model, like the interval), so an in-flight session keeps its deadline.
+    public func setLiveMaxArmedSeconds(_ seconds: Double) {
+        let clamped = max(0, seconds)
+        guard settings.liveMaxArmedSeconds != clamped else { return }
+        update { $0.liveMaxArmedSeconds = clamped }
+    }
+
     public func setInferenceImageReplay(_ replay: InferenceImageReplay) {
         guard settings.inferenceImageReplay != replay else { return }
         update { $0.inferenceImageReplay = replay }

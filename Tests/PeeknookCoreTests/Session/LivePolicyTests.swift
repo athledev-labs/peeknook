@@ -39,11 +39,33 @@ final class LivePolicyTests: XCTestCase {
         s.liveRefreshTriggerRaw = "timer"
         s.liveTimerIntervalSeconds = 12
         s.liveRateCapSeconds = 8
+        s.liveMaxArmedSeconds = 1800
         let back = try JSONDecoder().decode(PeeknookSettings.self, from: JSONEncoder().encode(s))
         XCTAssertTrue(back.liveAutoRespond)
         XCTAssertEqual(back.liveRefreshTrigger, .timer)
         XCTAssertEqual(back.liveTimerIntervalSeconds, 12)
         XCTAssertEqual(back.liveRateCapSeconds, 8)
+        XCTAssertEqual(back.liveMaxArmedSeconds, 1800)
+    }
+
+    // MARK: Mandatory auto-disarm cap (`liveMaxArmedSeconds`) — default 0, tolerant, clamped at read
+
+    func testLiveMaxArmedDefaultsToZeroByteIdentical() {
+        let s = PeeknookSettings()
+        XCTAssertEqual(s.liveMaxArmedSeconds, 0, "default is no cap — byte-identical to pre-WS-2")
+        XCTAssertEqual(s.liveMaxArmedClamped, 0)
+    }
+
+    func testLiveMaxArmedClampsNegativeAtReadNotDecode() throws {
+        // A hand-edited negative persists as-is (no reset bomb) but reads as 0 (no cap).
+        let json = """
+        {"textModel":"gemma4:e4b","liveMaxArmedSeconds":-5,"webLookupEnabled":true}
+        """.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(PeeknookSettings.self, from: json)
+        XCTAssertEqual(decoded.liveMaxArmedSeconds, -5, "stored as-is; clamped only at read time")
+        XCTAssertEqual(decoded.liveMaxArmedClamped, 0, "a negative reads as no cap")
+        XCTAssertEqual(decoded.textModel, "gemma4:e4b", "surrounding settings survive")
+        XCTAssertTrue(decoded.webLookupEnabled)
     }
 
     // MARK: Tolerant decode (must never reset the rest of settings)
@@ -57,6 +79,7 @@ final class LivePolicyTests: XCTestCase {
         XCTAssertEqual(decoded.liveRefreshTrigger, .manual)
         XCTAssertEqual(decoded.liveTimerIntervalSeconds, 5)
         XCTAssertEqual(decoded.liveRateCapSeconds, 5)
+        XCTAssertEqual(decoded.liveMaxArmedSeconds, 0, "a blob predating the cap reads as no cap")
         XCTAssertEqual(decoded.textModel, "gemma4:e2b")
         XCTAssertTrue(decoded.webLookupEnabled)
     }

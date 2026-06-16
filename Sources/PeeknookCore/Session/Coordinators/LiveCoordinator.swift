@@ -47,9 +47,28 @@ final class LiveCoordinator {
             refresh: session.settings.liveRefreshTrigger,
             autoRespond: session.settings.liveAutoRespond,
             rateCap: max(1, session.settings.liveRateCapSeconds),
-            timerInterval: max(1, session.settings.liveTimerIntervalSeconds)   // snapshot + clamp at arm, like rateCap
+            timerInterval: max(1, session.settings.liveTimerIntervalSeconds),  // snapshot + clamp at arm, like rateCap
+            expiresAt: armedDeadline(from: Date())   // mandatory auto-disarm deadline (nil when no cap)
         )
-        startTimerLoopIfNeeded()   // no-op unless the snapshot's trigger is .timer
+        startTimerLoopIfNeeded()   // runs when the trigger is .timer OR a cap is set (to watch the deadline)
+    }
+
+    /// The mandatory auto-disarm deadline for a fresh arm, or `nil` when no cap is set
+    /// (`liveMaxArmedSeconds == 0`) — in which case the whole feature is byte-identical to today.
+    /// Snapshotted at arm like `timerInterval`, so a mid-session Settings edit can't perturb it.
+    private func armedDeadline(from now: Date) -> Date? {
+        guard let session else { return nil }
+        let cap = session.settings.liveMaxArmedClamped
+        return cap > 0 ? now.addingTimeInterval(cap) : nil
+    }
+
+    /// Push the auto-disarm deadline forward by the full cap on a user interaction — the countdown
+    /// resets whenever the user refreshes, answers, or asks. A no-op when no cap is set (`expiresAt`
+    /// stays nil) or when not armed, so it is byte-identical when the cap is off. Called from the armed
+    /// user-interaction paths (`refresh`/`answerFromPending`/`updateAndAsk`).
+    private func bumpArmedDeadline() {
+        guard let session, session.isLiveArmed, session.livePolicy?.expiresAt != nil else { return }
+        session.livePolicy?.expiresAt = armedDeadline(from: Date())
     }
 
     /// Disarm via the orchestrator's single teardown choke point (idempotent, no-op when not armed).
@@ -74,6 +93,10 @@ final class LiveCoordinator {
     /// (one in-flight grab per interval), so the guard is load-bearing, not defensive.
     func refresh(trigger: RefreshTrigger = .manual) {
         guard let session, case .result = session.phase, session.isLiveArmed else { return }
+        // A user-pressed Refresh (`.manual`) resets the auto-disarm countdown; an automatic `.timer`
+        // park is NOT a user interaction, so it must NOT extend the deadline (the cap is an inactivity
+        // timeout, and a timer left running unattended is exactly the inactivity it must end).
+        if trigger == .manual { bumpArmedDeadline() }
         session.setup?.refreshCapturePermission()
         if let setup = session.setup, !setup.isReady { return }   // disabled button already guards; defensive
         let ground = session.resolvedActiveProfile.primaryGround
@@ -150,6 +173,7 @@ final class LiveCoordinator {
         guard let session, case .result = session.phase, session.isLiveArmed else { return }
         guard !session.isContextBlocked else { session.emitNotice(.contextFull); return }
         guard let capture = session.takePendingLiveFrame() else { return }
+        bumpArmedDeadline()   // "Answer now" is a user interaction → reset the auto-disarm countdown
         promote(capture, note: note)
     }
 
@@ -159,6 +183,7 @@ final class LiveCoordinator {
     func updateAndAsk(note: String?) {
         guard let session, case .result = session.phase, session.isLiveArmed else { return }
         guard !session.isContextBlocked else { session.emitNotice(.contextFull); return }
+        bumpArmedDeadline()   // "Update & ask" is a user interaction → reset the auto-disarm countdown
         session.setup?.refreshCapturePermission()
         if let setup = session.setup, !setup.isReady { return }   // disabled button already guards; defensive
         let ground = session.resolvedActiveProfile.primaryGround
@@ -196,7 +221,8 @@ final class LiveCoordinator {
     /// `.result` with the loop dead, leaving the Live chip on a thread whose timer never fires again. Calling
     /// this at turn completion restarts it. Idempotent and cheap: a no-op when the loop is already running (a
     /// normal in-result Add image / Retake never stopped it, so its cadence is untouched — while armed the
-    /// loop only ends via cancellation/disarm, which nils `timerTask`), when not armed, or for a manual session.
+    /// loop only ends via cancellation/disarm, which nils `timerTask`), when not armed, or for a manual
+    /// session with no auto-disarm cap (a capped manual session restarts the loop too, to watch its deadline).
     func ensureTimerLoopRunning() {
         guard timerTask == nil else { return }
         startTimerLoopIfNeeded()
@@ -208,7 +234,11 @@ final class LiveCoordinator {
     /// model, like `rateCap`). Internal, not private, so a test can drive the real loop with a fast
     /// interval by assigning `session.livePolicy` directly (bypassing arm's >= 1 clamp) and calling this.
     func startTimerLoopIfNeeded() {
-        guard let session, session.isLiveArmed, session.livePolicy?.refresh == .timer else { return }
+        guard let session, session.isLiveArmed, let policy = session.livePolicy else { return }
+        // The loop runs for a `.timer` trigger (to refresh) OR whenever a mandatory deadline is set
+        // (to auto-disarm it on time) — a capped MANUAL session has no refresh cadence but still needs
+        // the loop purely to watch its deadline. With neither, this is a no-op (byte-identical to today).
+        guard policy.refresh == .timer || policy.expiresAt != nil else { return }
         timerTask?.cancel()
         timerTask = Task { [weak self] in
             // The loop OWNS its pacing clock. `reference` is seeded at arm so the first auto-park lands
@@ -231,9 +261,19 @@ final class LiveCoordinator {
                     pressure: session.contextPressure,
                     interval: policy.timerInterval,
                     since: reference,
-                    now: Date()
+                    now: Date(),
+                    deadline: policy.expiresAt   // nil when no cap → never .expire (byte-identical)
                 ) {
                 case .stop:
+                    return
+                case .expire:
+                    // The mandatory auto-disarm timeout fired. Funnel through the SINGLE disarm choke
+                    // point (no new teardown path), then surface a one-shot notice so the chip's
+                    // disappearance is explained. `stopLiveSession()` nils `livePolicy`, so the next loop
+                    // guard would return anyway — but returning here ends the loop immediately.
+                    guard !Task.isCancelled, session.isLiveArmed else { return }
+                    session.stopLiveSession()
+                    session.emitNotice(.liveEnded)
                     return
                 case .sleep(let delay):
                     try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))

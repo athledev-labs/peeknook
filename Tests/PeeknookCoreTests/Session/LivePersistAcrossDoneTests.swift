@@ -22,11 +22,13 @@ final class LivePersistAcrossDoneTests: XCTestCase {
 
     private func makeOrchestrator(
         persist: Bool = false,
+        maxArmedSeconds: Double = 0,
         provider: any CaptureProviding = StubCaptureProvider(sampleText: "s")
     ) -> SessionOrchestrator {
         var settings = PeeknookSettings(textModel: "x")
         settings.liveEnabled = true
         settings.livePersistAcrossDone = persist
+        settings.liveMaxArmedSeconds = maxArmedSeconds
         return SessionOrchestrator(
             settings: settings,
             captureRegistry: GroundRegistry([.screen: provider]),
@@ -44,11 +46,16 @@ final class LivePersistAcrossDoneTests: XCTestCase {
     }
 
     /// Arm a fast `.timer` loop (arm() clamps the interval to >= 1s, so assign the policy directly).
-    private func armedTimer(persist: Bool, interval: TimeInterval = 0.05) async -> SessionOrchestrator {
+    /// `expiresAt` injects a WS-2 auto-disarm deadline (nil = no cap, today's behavior).
+    private func armedTimer(
+        persist: Bool,
+        interval: TimeInterval = 0.05,
+        expiresAt: Date? = nil
+    ) async -> SessionOrchestrator {
         let o = makeOrchestrator(persist: persist)
         o.beginCapture()
         _ = await o.waitForResult("a")
-        o.livePolicy = LivePolicy(refresh: .timer, timerInterval: interval)
+        o.livePolicy = LivePolicy(refresh: .timer, timerInterval: interval, expiresAt: expiresAt)
         o.liveCoordinator.startTimerLoopIfNeeded()
         return o
     }
@@ -304,6 +311,57 @@ final class LivePersistAcrossDoneTests: XCTestCase {
         // A hostile hidden-override on the idle Stop is ignored at the apply seam (non-customizable).
         let hostile = layout.forPlacement(.idle, applying: [CommandOverride(id: "idle.stopLive", hidden: true)])
         XCTAssertTrue(hostile.map(\.id).contains("idle.stopLive"), "a hand-edited hide cannot strip the idle Stop")
+    }
+
+    // MARK: WS-2 — the auto-disarm cap composes with persist-across-Done without weakening either rule
+
+    /// The load-bearing privacy guarantee, re-verified WITH a cap set: an armed session quiesced across
+    /// Done still captures nothing at the idle home (the cap extends lifetime, it does not add idle capture).
+    func testIdleArmedSessionDoesNotCaptureWithCapOn() async {
+        let o = await armedTimer(persist: true, expiresAt: Date().addingTimeInterval(3600))
+        _ = await o.waitUntil { o.hasPendingLiveFrame }
+        _ = o.takePendingLiveFrame()
+        o.finishChat()
+        XCTAssertTrue(o.isLiveArmed, "persist + cap keeps it armed at idle")
+        let imagesBefore = o.conversation.filter(\.isImage).count
+        o.refreshLive()
+        o.answerLive()
+        o.updateAndAskLive()
+        let captured = await o.waitUntil(timeout: 0.4) {
+            o.hasPendingLiveFrame || o.conversation.filter(\.isImage).count != imagesBefore
+        }
+        XCTAssertFalse(captured, "no capture or inference runs while idle, even with a cap set")
+        XCTAssertNil(o.lifecycle.pendingLiveCapture)
+        if case .idle = o.phase {} else { XCTFail("still idle, got \(o.phase)") }
+    }
+
+    /// Host collapse / hide / switch-away stay FULL disarms with a cap on — the cap extends ONLY Done.
+    /// This keeps the existing host kill-path contract intact (the design's explicit non-exemption).
+    func testHostCollapseStillFullyDisarmsWithCapOn() async {
+        let o = await armedTimer(persist: true, expiresAt: Date().addingTimeInterval(3600))
+        _ = await o.waitUntil { o.hasPendingLiveFrame }
+        o.stopLiveSession()   // the exact call onCompact / onHide / prepareForSwitchAway make
+        XCTAssertNil(o.livePolicy, "collapse/hide disarms regardless of the cap")
+        XCTAssertFalse(o.hasPendingLiveFrame)
+        let parkedAfter = await o.waitUntil(timeout: 0.4) { o.hasPendingLiveFrame }
+        XCTAssertFalse(parkedAfter, "the timer is cancelled on disarm")
+    }
+
+    /// A session extended past Done is still BOUNDED by the deadline: resuming after it has passed
+    /// auto-disarms at once (the loop's first decide() returns .expire). Proves the extended lifetime
+    /// can never become indefinite. Built deterministically: arm with a FUTURE deadline, quiesce (which
+    /// cancels the loop), then wind the deadline into the past while idle and resume.
+    func testResumeAfterDeadlineAutoDisarms() async {
+        let o = await armedTimer(persist: true, expiresAt: Date().addingTimeInterval(3600))
+        _ = await o.waitUntil { o.hasPendingLiveFrame }
+        _ = o.takePendingLiveFrame()
+        o.finishChat()                 // quiesce at idle (timer cancelled), still armed
+        XCTAssertTrue(o.isLiveArmed, "persist keeps it armed at idle until the deadline is re-checked")
+        o.livePolicy?.expiresAt = Date().addingTimeInterval(-1)   // the cap elapsed while sitting idle
+        o.resumeChat()                 // restarts the loop, which immediately sees now >= deadline
+        let disarmed = await o.waitUntil(timeout: 2) { !o.isLiveArmed }
+        XCTAssertTrue(disarmed, "resuming past the deadline auto-disarms — the extension is bounded, never indefinite")
+        XCTAssertEqual(o.lastNotice, .liveEnded)
     }
 }
 

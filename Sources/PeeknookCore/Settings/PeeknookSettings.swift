@@ -108,6 +108,13 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     /// MVP rule). Every OTHER exit (New chat, switch/delete chat, purge, collapse/hide) still disarms
     /// regardless. See ``SessionOrchestrator/finishChat()``.
     public var livePersistAcrossDone: Bool
+    /// Maximum seconds an armed Live session may stay armed before a mandatory auto-disarm the user
+    /// cannot turn off (15/30/60 min in the UI, i.e. 900/1800/3600). `0` = no cap (today's behavior,
+    /// byte-identical): no deadline is snapshot at arm and the session disarms only on the existing
+    /// user/host exits. When > 0 a deadline is snapshot at arm (``LivePolicy/expiresAt``), pushed
+    /// forward on every user interaction, and — together with `livePersistAcrossDone` — lets the
+    /// session run past Done bounded by that deadline. Clamped to ≥ 0 at read time, never at decode.
+    public var liveMaxArmedSeconds: Double
 
     public init(
         mode: PracticeMode = .general,
@@ -149,7 +156,8 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         liveAutoRespond: Bool = false,
         liveTimerIntervalSeconds: Double = 5,
         liveRateCapSeconds: Double = 5,
-        livePersistAcrossDone: Bool = false
+        livePersistAcrossDone: Bool = false,
+        liveMaxArmedSeconds: Double = 0
     ) {
         self.mode = mode
         self.previewBeforeInfer = previewBeforeInfer
@@ -191,6 +199,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.liveTimerIntervalSeconds = liveTimerIntervalSeconds
         self.liveRateCapSeconds = liveRateCapSeconds
         self.livePersistAcrossDone = livePersistAcrossDone
+        self.liveMaxArmedSeconds = liveMaxArmedSeconds
     }
 
     /// True when inference is configured to a host other than the default local Ollama loopback.
@@ -226,7 +235,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, systemAudioEnabled, customModels, commandOverrides, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, highlightSpeechWhileReading, speechVoiceIdentifier, briefHotkey, inferenceImageReplay, captureQuality, acceptInsecureRemoteOllama, activeProfileID, cameraHotkey, answerBackend, openAICompatibleBaseURL, openAICompatibleModelTag, acceptInsecureRemoteOpenAICompatible, fastTextFollowUps, textOnlyBackend, textOnlyModelTag, compositeCaptureEnabled, liveEnabled, liveRefreshTriggerRaw, liveAutoRespond, liveTimerIntervalSeconds, liveRateCapSeconds, livePersistAcrossDone
+        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, systemAudioEnabled, customModels, commandOverrides, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, highlightSpeechWhileReading, speechVoiceIdentifier, briefHotkey, inferenceImageReplay, captureQuality, acceptInsecureRemoteOllama, activeProfileID, cameraHotkey, answerBackend, openAICompatibleBaseURL, openAICompatibleModelTag, acceptInsecureRemoteOpenAICompatible, fastTextFollowUps, textOnlyBackend, textOnlyModelTag, compositeCaptureEnabled, liveEnabled, liveRefreshTriggerRaw, liveAutoRespond, liveTimerIntervalSeconds, liveRateCapSeconds, livePersistAcrossDone, liveMaxArmedSeconds
     }
 
     // Tolerant decode, a saved blob missing a newer key keeps the rest of the user's
@@ -286,6 +295,9 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.liveTimerIntervalSeconds = try c.decodeIfPresent(Double.self, forKey: .liveTimerIntervalSeconds) ?? 5
         self.liveRateCapSeconds = try c.decodeIfPresent(Double.self, forKey: .liveRateCapSeconds) ?? 5
         self.livePersistAcrossDone = try c.decodeIfPresent(Bool.self, forKey: .livePersistAcrossDone) ?? false
+        // Default 0 = no cap (byte-identical to today). Clamped to >= 0 at read time, never here, so a
+        // hand-edited negative can't trip the full-reset bomb (mirrors the interval/rate-cap rule).
+        self.liveMaxArmedSeconds = try c.decodeIfPresent(Double.self, forKey: .liveMaxArmedSeconds) ?? 0
     }
 
     public static let `default` = PeeknookSettings(

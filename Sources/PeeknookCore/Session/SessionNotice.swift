@@ -15,4 +15,8 @@ public enum SessionNotice: Equatable, Sendable {
     /// A manual live-session refresh failed to capture the screen. The session stays armed (no
     /// `.failed` recovery card, which would drop the armed state) and the user is told to retry.
     case liveRefreshFailed
+    /// The mandatory Live auto-disarm timeout fired: an armed session reached its maximum armed lifetime
+    /// (the "Keep watching" cap the user cannot turn off) and disarmed itself. A one-shot cue so the
+    /// Live chip's disappearance is explained ("Live ended — tap Go live to continue").
+    case liveEnded
 }

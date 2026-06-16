@@ -36,17 +36,27 @@ public struct LivePolicy: Sendable, Equatable {
     /// Settings edit can't perturb an in-flight sleep (it takes effect on the next arm). Ignored unless
     /// `refresh == .timer`.
     public var timerInterval: TimeInterval
+    /// The mandatory auto-disarm deadline: the wall-clock instant after which the armed session must
+    /// disarm even with no user interaction. Snapshotted at arm from `liveMaxArmedSeconds` (like
+    /// `timerInterval`) and **pushed forward** on every user interaction (`refresh`/`answerFromPending`/
+    /// `updateAndAsk`). `nil` = no cap — exactly today's behavior, so the whole feature is byte-identical
+    /// when `liveMaxArmedSeconds == 0`. Read by the pure ``LiveRefreshPolicy/decide(...)`` via an injected
+    /// `now`/`deadline`; on expiry the timer loop disarms through the single ``SessionOrchestrator/stopLiveSession()``
+    /// choke point. Transient like the rest of the policy (never persisted).
+    public var expiresAt: Date?
 
     public init(
         refresh: RefreshTrigger = .manual,
         autoRespond: Bool = false,
         rateCap: TimeInterval = 5,
-        timerInterval: TimeInterval = 5
+        timerInterval: TimeInterval = 5,
+        expiresAt: Date? = nil
     ) {
         self.refresh = refresh
         self.autoRespond = autoRespond
         self.rateCap = rateCap
         self.timerInterval = timerInterval
+        self.expiresAt = expiresAt
     }
 }
 
@@ -55,5 +65,11 @@ public extension PeeknookSettings {
     /// stored value reads as `.manual`).
     var liveRefreshTrigger: RefreshTrigger {
         RefreshTrigger(rawValue: liveRefreshTriggerRaw) ?? .manual
+    }
+
+    /// The mandatory auto-disarm cap, clamped to ≥ 0 at read time (never at decode, so a hand-edited
+    /// negative can't reset settings). `0` = no cap (today's behavior — no deadline snapshot at arm).
+    var liveMaxArmedClamped: TimeInterval {
+        max(0, liveMaxArmedSeconds)
     }
 }

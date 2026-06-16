@@ -185,13 +185,29 @@ struct PeekHomeResultView: View {
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(Color.orange)
             }
+            if let remaining = liveRemainingLabel {
+                Text(verbatim: "·").foregroundStyle(theme.tertiaryLabel).peekDecorative()
+                Text(remaining)
+                    .font(.system(size: 11))
+                    .foregroundStyle(theme.secondaryLabel)
+            }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 5)
         .background(theme.accent.opacity(0.14), in: Capsule())
         .overlay(Capsule().strokeBorder(theme.accent.opacity(0.28), lineWidth: 1))
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text(peek: liveChipAccessibilityLabel))
+        .accessibilityLabel(Text(verbatim: liveChipSpokenLabel))
+    }
+
+    /// The full spoken label: the base state key (resolved through the catalog) plus, when a cap is set,
+    /// the localized "N min left" remaining. Composed at the VoiceOver seam — the base stays a whole
+    /// `Localizable.xcstrings` key; the remaining is a separate localized phrase, never concatenated into
+    /// a non-key. When no cap is set this is byte-identical to resolving `liveChipAccessibilityLabel`.
+    private var liveChipSpokenLabel: String {
+        let base = PeekLocalized(.init(liveChipAccessibilityLabel))
+        guard let remaining = liveRemainingLabel else { return base }
+        return "\(base), \(remaining)"
     }
 
     /// One spoken label for the chip — each branch is a WHOLE `Localizable.xcstrings` key (so
@@ -231,6 +247,13 @@ struct PeekHomeResultView: View {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .abbreviated
         return formatter.localizedString(for: at, relativeTo: Date())
+    }
+
+    /// Compact "N min left" for the mandatory auto-disarm countdown, or nil when no cap is set (the
+    /// default — byte-identical, no countdown). Derived from observable state so the chip re-renders on a
+    /// refresh/park. See ``LiveRemainingLabel`` for the shared formatting.
+    private var liveRemainingLabel: String? {
+        orchestrator.liveRemainingSeconds().map(LiveRemainingLabel.compact)
     }
 
     private var resultCommandBar: some View {

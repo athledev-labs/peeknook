@@ -205,6 +205,29 @@ enum PeekPreflightMenuContent {
             .buttonStyle(.plain)
         }
     }
+
+    /// The mandatory Live auto-disarm cap: Off / 15 / 30 / 60 minutes. "Off" is today's behavior (no
+    /// cap); the others bound the armed lifetime by an inactivity timeout the user cannot disable.
+    @ViewBuilder
+    static func liveMaxArmedHomeMenu(
+        current: Double,
+        onSelect: @escaping (Double) -> Void,
+        close: @escaping () -> Void
+    ) -> some View {
+        ForEach(LiveRemainingLabel.presetSeconds, id: \.self) { seconds in
+            Button {
+                onSelect(seconds)
+                close()
+            } label: {
+                ValueMenuRow(
+                    title: LiveRemainingLabel.maxArmedMenuKey(seconds),
+                    subtitle: nil,
+                    selected: abs(current - seconds) < 0.001
+                )
+            }
+            .buttonStyle(.plain)
+        }
+    }
 }
 
 /// Display copy for the live-session refresh controls. Kept in the UI layer (not Core) so `RefreshTrigger`
@@ -234,5 +257,45 @@ enum LiveRefreshLabels {
     /// The compact pill value for the Settings row (e.g. "5s").
     static func intervalPillLabel(_ seconds: Double) -> String {
         "\(Int(seconds))s"
+    }
+}
+
+/// Display copy for the mandatory Live auto-disarm countdown (the "Keep watching" cap). Kept in the UI
+/// layer like ``LiveRefreshLabels`` so `LivePolicy` stays a pure model. The verbatim form mirrors the
+/// established numeric-label idiom (`intervalPillLabel`): a number plus a short unit, rendered with
+/// `Text(verbatim:)` rather than a per-value catalog key. The Settings menu uses whole-sentence
+/// localized keys (`maxArmedMenuKey`).
+enum LiveRemainingLabel {
+    /// Off / 15 / 30 / 60 minutes, in seconds. `0` = off (no cap — today's behavior).
+    static let presetSeconds: [Double] = [0, 900, 1800, 3600]
+
+    /// The chip's compact "N min left" / "N sec left" (e.g. "12 min left"). Coarse on purpose — the
+    /// countdown is a reassurance, not a stopwatch — so anything ≥ 1 minute rounds UP to whole minutes
+    /// (so "1 min left" never silently undercounts to "0 min left" while seconds remain).
+    static func compact(_ remaining: TimeInterval) -> String {
+        let secs = max(0, remaining)
+        if secs < 60 {
+            return "\(Int(secs.rounded())) sec left"
+        }
+        let minutes = Int((secs / 60).rounded(.up))
+        return "\(minutes) min left"
+    }
+
+    /// The Settings menu row label for a cap preset (a whole-sentence catalog key).
+    static func maxArmedMenuKey(_ seconds: Double) -> String {
+        switch Int(seconds) {
+        case 0: return "Off"
+        case 900: return "15 minutes"
+        case 1800: return "30 minutes"
+        case 3600: return "60 minutes"
+        default:
+            let minutes = Int((seconds / 60).rounded())
+            return "\(minutes) minutes"
+        }
+    }
+
+    /// The compact Settings pill value for the chosen cap (e.g. "30 min", or "Off").
+    static func maxArmedPillLabel(_ seconds: Double) -> String {
+        seconds <= 0 ? "Off" : "\(Int((seconds / 60).rounded())) min"
     }
 }

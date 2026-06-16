@@ -126,6 +126,7 @@ struct PeekSettingsCaptureSection: View {
                         liveRateCapRow
                     }
                 }
+                liveMaxArmedRow
                 livePersistAcrossDoneRow
             }
         }
@@ -334,6 +335,26 @@ struct PeekSettingsCaptureSection: View {
             PeekPreflightMenuContent.liveRateCapHomeMenu(
                 current: seconds,
                 onSelect: { settings.setLiveRateCap($0) },
+                close: close
+            )
+        }
+    }
+
+    /// The mandatory auto-disarm cap ("Keep watching for up to …"). Independent of the refresh trigger
+    /// (it bounds the armed lifetime in both manual and timer modes), so it sits at the Live block level.
+    /// "Off" is today's behavior; a chosen limit auto-disarms the session after that much idle time and
+    /// is shown counting down in the Live indicator — it cannot be turned off mid-session.
+    private var liveMaxArmedRow: some View {
+        let seconds = orchestrator.settings.liveMaxArmedClamped
+        return PeekSettingsMenuRow(
+            icon: "clock.arrow.circlepath",
+            title: "Keep watching for up to",
+            detail: "A maximum time a live chat stays armed before turning itself off. The Live indicator counts down; any refresh, answer, or question resets it.",
+            value: LiveRemainingLabel.maxArmedPillLabel(seconds)
+        ) { close in
+            PeekPreflightMenuContent.liveMaxArmedHomeMenu(
+                current: seconds,
+                onSelect: { settings.setLiveMaxArmedSeconds($0) },
                 close: close
             )
         }

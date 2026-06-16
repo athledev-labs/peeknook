@@ -529,6 +529,14 @@
       "comment": "Settings: persist-live-across-Done toggle title.",
       "extractionState": "manual"
     },
+    "Keep watching for up to": {
+      "comment": "Settings: live-session mandatory auto-disarm cap row title.",
+      "extractionState": "manual"
+    },
+    "A maximum time a live chat stays armed before turning itself off. The Live indicator counts down; any refresh, answer, or question resets it.": {
+      "comment": "Settings: live-session mandatory auto-disarm cap row detail.",
+      "extractionState": "manual"
+    },
     "Keep this chat live so it stays in context across captures": {
       "comment": "Command-bar help: arm a live session.",
       "extractionState": "manual"
@@ -551,6 +559,26 @@
     },
     "Live": {
       "comment": "Live chip: armed indicator.",
+      "extractionState": "manual"
+    },
+    "Live ended": {
+      "comment": "Notice title: the live session reached its mandatory auto-disarm time limit and turned off.",
+      "extractionState": "manual"
+    },
+    "The live session reached its time limit and turned off. Tap Go live to start watching again.": {
+      "comment": "Notice message: the live session auto-disarmed at its time limit.",
+      "extractionState": "manual"
+    },
+    "15 minutes": {
+      "comment": "Settings menu: live auto-disarm cap option.",
+      "extractionState": "manual"
+    },
+    "30 minutes": {
+      "comment": "Settings menu: live auto-disarm cap option.",
+      "extractionState": "manual"
+    },
+    "60 minutes": {
+      "comment": "Settings menu: live auto-disarm cap option.",
       "extractionState": "manual"
     },
     "Live session": {
