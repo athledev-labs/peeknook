@@ -103,12 +103,12 @@ enum PromptBuilder {
         return sections.joined(separator: "\n\n")
     }
 
-    /// One user message for a composite turn: a screenshot AND a camera photo asked as a single
-    /// question. The two images ride this message together (screen first, camera second); the text
-    /// names each so the model never confuses the display capture with the physical-world photo.
-    static func compositeUserMessage(
-        screen: CaptureResult,
-        camera: CaptureResult,
+    /// One user message for a multi-ground turn: several grounds (screenshot, camera photo, imported
+    /// file, …) asked as a single question. Every image leg rides this message in order; the text
+    /// names each in turn so the model never confuses a display capture with a physical-world photo or
+    /// an imported page. Generalizes the old fixed screen+camera pair to an ordered list of legs.
+    static func multiGroundUserMessage(
+        payloads: [MediaPayload],
         assembly: PromptAssembly,
         webLookup: WebLookupSnapshot? = nil
     ) -> String {
@@ -118,7 +118,7 @@ enum PromptBuilder {
             sections.append(sessionBriefSection(brief))
         }
 
-        sections.append(compositeContextSection(screen: screen, camera: camera, webLookup: webLookup))
+        sections.append(multiGroundContextSection(payloads: payloads, webLookup: webLookup))
         sections.append(depthSection(assembly.answerDepth))
 
         if assembly.continuingSession {
@@ -129,7 +129,7 @@ enum PromptBuilder {
             """)
         }
 
-        sections.append("## Task\nAnswer the single question using BOTH the screenshot and the camera photo above, together.")
+        sections.append("## Task\nAnswer the single question using ALL of the attached views above, together.")
         return sections.joined(separator: "\n\n")
     }
 
@@ -209,33 +209,63 @@ enum PromptBuilder {
         return lines.joined(separator: "\n")
     }
 
-    private static func compositeContextSection(
-        screen: CaptureResult,
-        camera: CaptureResult,
+    /// The grounded "## Capture" block for a multi-ground turn: numbers each image leg in order and
+    /// names its ground (screenshot / camera photo / imported file), then folds any leg's
+    /// supplementary text. Arity-agnostic — two legs read like the old composite block, three+ extend
+    /// the same way, and a non-image leg (e.g. a future audio transcript) contributes only its text.
+    private static func multiGroundContextSection(
+        payloads: [MediaPayload],
         webLookup: WebLookupSnapshot?
     ) -> String {
+        let imageLegs = payloads.filter { $0.kind == .image }
         var lines = [
-            "## Capture (two views, one question)",
-            "Two images are attached for ONE question, in this order:",
-            "Image 1 is a SCREENSHOT of the Mac display (source: \(screen.sourceLabel)).",
+            "## Capture (\(imageLegs.count) views, one question)",
+            "\(imageLegs.count) images are attached for ONE question, in this order:",
         ]
-        if screen.appName != nil || screen.windowTitle != nil {
-            lines.append("Screenshot target: \(screen.targetLabel).")
+        for (index, leg) in imageLegs.enumerated() {
+            let n = index + 1
+            lines.append("Image \(n) is \(groundImageDescription(leg.ground)) (source: \(leg.capture.sourceLabel)).")
+            if leg.ground == .screen, leg.capture.appName != nil || leg.capture.windowTitle != nil {
+                lines.append("Image \(n) target: \(leg.capture.targetLabel).")
+            }
         }
-        lines.append("Image 2 is a CAMERA PHOTO from the Mac's camera (paper, whiteboard, book, or a physical object), NOT a screenshot of the display.")
-        lines.append("Use BOTH images together — they describe the same situation from two views.")
-        if let text = screen.text, !text.isEmpty {
-            lines.append("""
-            Supplementary extracted text from the screenshot (may be incomplete; prefer the images when they disagree):
-            ---
-            \(text)
-            ---
-            """)
+        lines.append("Use ALL of the images together — they describe the same situation from several views.")
+        for leg in payloads {
+            if let text = leg.capture.text, !text.isEmpty {
+                lines.append("""
+                Supplementary extracted text from \(groundShortLabel(leg.ground)) (may be incomplete; prefer the images when they disagree):
+                ---
+                \(text)
+                ---
+                """)
+            }
         }
         if let webLookup, !webLookup.results.isEmpty {
             lines.append(WebSearchClient.promptContext(from: webLookup))
         }
         return lines.joined(separator: "\n")
+    }
+
+    /// How a leg's image is described in a multi-ground prompt, keyed by its ground.
+    private static func groundImageDescription(_ ground: Ground) -> String {
+        switch ground {
+        case .camera:
+            return "a CAMERA PHOTO from the Mac's camera (paper, whiteboard, book, or a physical object), NOT a screenshot of the display"
+        case .file:
+            return "an image from an imported FILE (e.g. a PDF page or a saved image), not a live capture of the current screen"
+        default:
+            return "a SCREENSHOT of the Mac display"
+        }
+    }
+
+    /// Short noun phrase naming a leg's source, for the supplementary-text label.
+    private static func groundShortLabel(_ ground: Ground) -> String {
+        switch ground {
+        case .camera:       return "the camera photo"
+        case .file:         return "the imported file"
+        case .selectedText: return "the selected text"
+        default:            return "the screenshot"
+        }
     }
 
     private static func depthSection(_ depth: AnswerDepth) -> String {

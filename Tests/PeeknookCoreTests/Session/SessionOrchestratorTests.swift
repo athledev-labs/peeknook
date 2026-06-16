@@ -68,6 +68,37 @@ final class SessionOrchestratorTests: XCTestCase {
         XCTAssertEqual(captures.first?.ground, .screen)
     }
 
+    func testWebLookupRunsForCompositeUsingTheScreenLeg() async {
+        // A composite turn runs inference on the CAMERA leg (the new image), but web lookup must
+        // still fire off the SCREEN leg's text — the multi-ground gate keys on a screen leg in the
+        // turn group, not the single capturedNow ground. (Before WS-0 this silently skipped lookup.)
+        let webLookup = RecordingWebLookup()
+        let camera = StubCameraSession()
+        var settings = PeeknookSettings(textModel: "gemma4:e4b", webLookupEnabled: true)
+        settings.compositeCaptureEnabled = true
+        let orchestrator = SessionOrchestrator(
+            settings: settings,
+            captureRegistry: GroundRegistry([
+                .screen: StubCaptureProvider(sampleText: "a screen with searchable text"),
+                .camera: camera,
+            ]),
+            inference: MockInferenceEngine(tokens: ["a"]),
+            webLookup: webLookup
+        )
+
+        orchestrator.beginComposite()
+        _ = await orchestrator.waitUntil { orchestrator.phase == .cameraLive && camera.isPreviewing }
+        orchestrator.shutter()
+        _ = await orchestrator.waitForResult("a")
+
+        let captures = await webLookup.captures
+        XCTAssertEqual(captures.count, 1, "web lookup fires once for a composite turn")
+        XCTAssertEqual(
+            captures.first?.ground, .screen,
+            "it queries the screen leg, not the camera leg the turn ran on"
+        )
+    }
+
     func testPreviewThenInferStreamsTokens() async {
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: true, textModel: "gemma4:e4b"),

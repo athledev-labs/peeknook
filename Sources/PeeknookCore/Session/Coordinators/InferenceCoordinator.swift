@@ -106,15 +106,23 @@ final class InferenceCoordinator {
             }
         }
 
-        // Web lookup is gated on the ground explicitly, never on incidental nils: a camera frame
-        // must not become a search query even once composite turns carry screen text alongside it.
-        if let capture, capture.ground == .screen,
-           session.moduleEnabled(.webLookup, for: session.gatingProfile(forTurnGround: capture.ground)) {
-            session.isFetchingWebLookup = true
-            let snapshot = await session.webLookup.lookup(capture: capture)
-            session.isFetchingWebLookup = false
-            guard session.lifecycle.isCurrentSession(sessionGen), !Task.isCancelled else { return }
-            session.webLookupSnapshot = snapshot
+        // Web lookup gates on a SCREEN leg of THIS turn's group, never on incidental nils: a camera
+        // frame must not become a search query, yet a multi-ground turn that ran on its camera leg
+        // must still search its screen text. Prefer the just-captured leg when it is itself the
+        // screen (the common single-screen path stays byte-identical); otherwise reach into the
+        // turn's group for a screen leg. The query and the module gate both key on that leg.
+        if let capture {
+            let lookupLeg: CaptureResult? = capture.ground == .screen
+                ? capture
+                : latestTurnLegs().first { $0.ground == .screen }
+            if let lookupLeg,
+               session.moduleEnabled(.webLookup, for: session.gatingProfile(forTurnGround: lookupLeg.ground)) {
+                session.isFetchingWebLookup = true
+                let snapshot = await session.webLookup.lookup(capture: lookupLeg)
+                session.isFetchingWebLookup = false
+                guard session.lifecycle.isCurrentSession(sessionGen), !Task.isCancelled else { return }
+                session.webLookupSnapshot = snapshot
+            }
         }
 
         guard session.lifecycle.isCurrentSession(sessionGen), !Task.isCancelled else { return }
@@ -225,9 +233,26 @@ final class InferenceCoordinator {
         )
     }
 
-    /// Groups image turns into replay units: a composite group's legs (consecutive turns sharing a
+    /// The image legs of the turn just committed: the trailing run of image turns sharing the final
+    /// image turn's `compositeGroupID` (a standalone capture is a one-leg group). Lets the web-lookup
+    /// gate find a screen leg even when the turn ran on a non-screen leg (e.g. a composite's camera
+    /// leg). A `compositeGroupID` is a fresh UUID per group, so filtering by it never crosses groups.
+    private func latestTurnLegs() -> [CaptureResult] {
+        guard let session else { return [] }
+        let imageTurns = session.conversation.filter(\.isImage)
+        guard let last = imageTurns.last else { return [] }
+        let legs = last.compositeGroupID.map { group in
+            imageTurns.filter { $0.compositeGroupID == group }
+        } ?? [last]
+        return legs.compactMap { turn in
+            if case .image(let capture) = turn.kind { return capture }
+            return nil
+        }
+    }
+
+    /// Groups image turns into replay units: a multi-ground group's legs (consecutive turns sharing a
     /// `compositeGroupID`) form ONE unit; standalone images are their own unit. Order preserved, so
-    /// `maxImagePayloads` budgets whole questions and never replays half a composite.
+    /// `maxImagePayloads` budgets whole questions and never replays half a group.
     private func imagePayloadUnits(_ imageTurns: [ChatTurn]) -> [[ChatTurn]] {
         var units: [[ChatTurn]] = []
         var previousGroup: UUID?
@@ -243,9 +268,10 @@ final class InferenceCoordinator {
     }
 
     /// Maps the display conversation to the model's message list: each image unit becomes one
-    /// grounded user message. A composite unit (screen + camera) folds its two legs into a single
-    /// message carrying both images; standalone images are byte-identical to before. Only the latest
-    /// `policy.maxImagePayloads` units ride as base64 payloads; older ones keep text grounding.
+    /// grounded user message. A multi-ground unit (e.g. screen + camera, or any N grounds) folds all
+    /// its legs into a single message carrying every leg's image, in order; standalone images are
+    /// byte-identical to before. Only the latest `policy.maxImagePayloads` units ride as base64
+    /// payloads; older ones keep text grounding.
     private func inferenceMessages(
         from conversation: [ChatTurn],
         webLookup: WebLookupSnapshot? = nil,
@@ -276,25 +302,21 @@ final class InferenceCoordinator {
                 let unit = units[unitIndex].sorted { $0.id < $1.id }
 
                 if unit.count > 1 {
-                    // Composite: fold both legs into one message; replay is group-atomic, so the
-                    // images ride only when the whole unit is in the replay window.
-                    let captures = unit.compactMap { leg -> CaptureResult? in
-                        if case .image(let c) = leg.kind { return c }
-                        return nil
-                    }
-                    let screen = captures.first { $0.ground == .screen } ?? captures[0]
-                    let camera = captures.first { $0.ground == .camera } ?? captures[captures.count > 1 ? 1 : 0]
+                    // Multi-ground turn: project each leg into a MediaPayload and fold them into one
+                    // message, named in order. Replay is group-atomic, so the images ride only when
+                    // the whole unit is in the replay window (otherwise the legs keep text grounding).
                     let includeImages = unit.allSatisfy { replayImageIDs.contains($0.id) }
-                    let images: [String] = includeImages ? unit.compactMap { leg in
+                    let payloads: [MediaPayload] = unit.compactMap { leg in
                         guard case .image(let c) = leg.kind else { return nil }
-                        return imageBase64ByTurnID[leg.id] ?? c.screenshotBase64
-                    } : []
+                        let base64 = includeImages ? (imageBase64ByTurnID[leg.id] ?? c.screenshotBase64) : nil
+                        return MediaPayload(capture: c, kind: .image, imageBase64: base64)
+                    }
                     messages.append(InferenceMessage(
                         role: .user,
-                        text: PromptBuilder.compositeUserMessage(
-                            screen: screen, camera: camera, assembly: assembly, webLookup: lookup
+                        text: PromptBuilder.multiGroundUserMessage(
+                            payloads: payloads, assembly: assembly, webLookup: lookup
                         ),
-                        imagesBase64: images
+                        imagesBase64: payloads.compactMap(\.imageBase64)
                     ))
                 } else {
                     let includeImage = replayImageIDs.contains(turn.id)

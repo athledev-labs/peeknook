@@ -228,27 +228,38 @@ final class CaptureCoordinator {
         }
     }
 
-    /// Commit a composite's two legs as one question and run a single turn. Screen leg first (lower
-    /// `id`), camera second — the order downstream folding relies on. Each leg's archive write gates
-    /// on its OWN ground inside `storedCapture`, preserving the per-ground rule. Runs the turn on the
-    /// camera capture (the new image), which the role router resolves to the vision model.
+    /// Commit a composite's screen + camera legs as one question (screen first, camera second — the
+    /// order downstream folding relies on). A thin wrapper over the general N-leg ``commitGroup``.
     func commitGroupAtShutter(
         screen: CaptureResult,
         camera: CaptureResult,
         groupID: UUID,
         intent: SessionOrchestrator.CaptureIntent
     ) {
-        guard let session else { return }
+        commitGroup([screen, camera], groupID: groupID, intent: intent)
+    }
+
+    /// Commit an ordered group of capture legs as ONE multi-ground question and run a single turn.
+    /// Each leg becomes its own `.image` turn sharing `groupID` (ascending `id` preserves the order
+    /// the prompt fold names them in); each leg's archive write gates on its OWN ground inside
+    /// `storedCapture`, preserving the per-ground rule. The turn runs on the LAST leg (the newest
+    /// image), which the role router resolves to the vision model. This is the producer half of the
+    /// combination engine: the screen+camera shutter is the one caller today, but any future ground
+    /// (an imported file, an audio leg) commits through the same N-leg path.
+    func commitGroup(
+        _ legs: [CaptureResult],
+        groupID: UUID,
+        intent: SessionOrchestrator.CaptureIntent
+    ) {
+        guard let session, let primary = legs.last else { return }
         if intent == .fresh { session.resetConversation() }
-        session.turnCounter += 1
-        session.conversation.append(ChatTurn(
-            id: session.turnCounter, kind: .image(session.storedCapture(screen)), compositeGroupID: groupID
-        ))
-        session.turnCounter += 1
-        session.conversation.append(ChatTurn(
-            id: session.turnCounter, kind: .image(session.storedCapture(camera)), compositeGroupID: groupID
-        ))
-        session.lifecycle.inferenceTask = Task { await session.runTurn(capturedNow: camera) }
+        for leg in legs {
+            session.turnCounter += 1
+            session.conversation.append(ChatTurn(
+                id: session.turnCounter, kind: .image(session.storedCapture(leg)), compositeGroupID: groupID
+            ))
+        }
+        session.lifecycle.inferenceTask = Task { await session.runTurn(capturedNow: primary) }
     }
 
     // MARK: - Shared capture spine

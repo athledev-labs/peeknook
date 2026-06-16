@@ -73,6 +73,46 @@ final class CompositeFoldingTests: XCTestCase {
         XCTAssertEqual(msgs.first { $0.imagesBase64.count == 2 }?.imagesBase64, ["SCRb64", "CAMb64"])
     }
 
+    func testThreeGroundGroupFoldsIntoOneMessageNamingEachLeg() async {
+        // The combination engine generalizes past screen+camera: a three-ground group (screen +
+        // camera + imported file) folds into ONE user message carrying all three images, in id order,
+        // each named by its ground, and still counts as a SINGLE replay unit.
+        let engine = ScriptedEngine(responsesPerCall: [["a1"], ["a2"]])
+        let o = makeOrchestrator(engine)
+        o.beginCapture()
+        _ = await o.waitForResult("a1")
+
+        let gid = UUID()
+        let legs: [(String?, String, String, Ground)] = [
+            ("screen text", "screen", "SCRb64", .screen),
+            (nil, "camera", "CAMb64", .camera),
+            (nil, "file", "FILEb64", .file),
+        ]
+        for (text, label, base64, ground) in legs {
+            o.turnCounter += 1
+            o.conversation.append(ChatTurn(
+                id: o.turnCounter,
+                kind: .image(CaptureResult(text: text, sourceLabel: label, screenshotBase64: base64, ground: ground)),
+                compositeGroupID: gid
+            ))
+        }
+        o.sendFollowUp("compare all three")
+        _ = await o.waitForResult("a2")
+
+        let msgs = engine.requests.last?.messages ?? []
+        let group = msgs.first { $0.imagesBase64.count == 3 }
+        XCTAssertNotNil(group, "three legs fold into ONE user message carrying three images")
+        XCTAssertEqual(group?.imagesBase64, ["SCRb64", "CAMb64", "FILEb64"], "legs ride in id order")
+        XCTAssertTrue(group?.text.contains("3 views, one question") ?? false, "the block counts all three views")
+        XCTAssertTrue(group?.text.contains("SCREENSHOT") ?? false, "the screenshot leg is named")
+        XCTAssertTrue(group?.text.contains("CAMERA PHOTO") ?? false, "the camera leg is named")
+        XCTAssertTrue(group?.text.contains("imported FILE") ?? false, "the imported-file leg is named")
+        XCTAssertEqual(
+            msgs.filter { !$0.imagesBase64.isEmpty }.count, 1,
+            "an N-ground group still counts as ONE replay unit"
+        )
+    }
+
     // MARK: - Group-atomic context trim (pure)
 
     private func image(_ id: Int, group: UUID? = nil, ground: Ground = .screen) -> ChatTurn {
