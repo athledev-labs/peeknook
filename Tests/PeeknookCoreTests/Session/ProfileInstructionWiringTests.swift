@@ -48,6 +48,7 @@ final class ProfileInstructionWiringTests: XCTestCase {
         store.update(copy.with(
             displayName: copy.displayName,
             instruction: "  You are a patient chess coach.  ",
+            promptTemplate: nil,
             modelBinding: nil,
             moduleOverrides: .none
         ))
@@ -92,6 +93,7 @@ final class ProfileInstructionWiringTests: XCTestCase {
         store.update(copy.with(
             displayName: copy.displayName,
             instruction: "Be terse.",
+            promptTemplate: nil,
             modelBinding: nil,
             moduleOverrides: .none
         ))

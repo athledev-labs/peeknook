@@ -108,6 +108,7 @@ final class ModuleOverrideGatingTests: XCTestCase {
         store.update(copy.with(
             displayName: copy.displayName,
             instruction: nil,
+            promptTemplate: nil,
             modelBinding: nil,
             moduleOverrides: ModuleOverrides([.suggestFollowUps: false, .speakAnswers: false])
         ))
@@ -155,6 +156,7 @@ final class ModuleOverrideGatingTests: XCTestCase {
         store.update(copy.with(
             displayName: copy.displayName,
             instruction: nil,
+            promptTemplate: nil,
             modelBinding: nil,
             moduleOverrides: ModuleOverrides([.saveConversation: false])
         ))

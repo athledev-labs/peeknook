@@ -21,6 +21,7 @@ final class ProfileResetBombTests: XCTestCase {
         let profile = try decode(GroundProfile.self, legacy)
         XCTAssertNil(profile.displayName)
         XCTAssertNil(profile.instruction)
+        XCTAssertNil(profile.promptTemplate)
         XCTAssertNil(profile.modelBinding)
         XCTAssertEqual(profile.moduleOverrides, .none)
     }
@@ -47,11 +48,42 @@ final class ProfileResetBombTests: XCTestCase {
             isBuiltIn: false,
             displayName: "Chess coach",
             instruction: "You are a patient chess coach.",
+            promptTemplate: "Answer with the move, then one line of reasoning.",
             modelBinding: ProfileModelBinding(backend: .openAICompatible, tag: "qwen2-vl"),
             moduleOverrides: ModuleOverrides([.webLookup: true, .speakAnswers: false])
         )
         let decoded = try JSONDecoder().decode(GroundProfile.self, from: JSONEncoder().encode(profile))
         XCTAssertEqual(decoded, profile)
+    }
+
+    func testPromptTemplateTrimmedAndCappedOnDecode() throws {
+        let long = String(repeating: "t", count: 9_000)
+        let blob = """
+        {"id":"u1","displayNameKey":"Screen","symbol":"macwindow",
+         "primaryGround":"screen","activeGrounds":["screen"],"isBuiltIn":false,
+         "promptTemplate":"  \(long)  "}
+        """
+        let profile = try decode(GroundProfile.self, blob)
+        XCTAssertEqual(profile.promptTemplate?.count, ProfileTemplate.maxLength)
+
+        let whitespaceOnly = """
+        {"id":"u2","displayNameKey":"Screen","symbol":"macwindow",
+         "primaryGround":"screen","activeGrounds":["screen"],"isBuiltIn":false,
+         "promptTemplate":"   \\n  "}
+        """
+        XCTAssertNil(try decode(GroundProfile.self, whitespaceOnly).promptTemplate)
+    }
+
+    func testGarbageNonStringTemplateDoesNotNukeProfile() throws {
+        // A type-mismatched template degrades to nil instead of throwing and stranding the profile.
+        let blob = """
+        {"id":"u1","displayNameKey":"Screen","symbol":"macwindow",
+         "primaryGround":"screen","activeGrounds":["screen"],"isBuiltIn":false,
+         "displayName":"Mine","promptTemplate":{"not":"a string"}}
+        """
+        let profile = try decode(GroundProfile.self, blob)
+        XCTAssertEqual(profile.displayName, "Mine")
+        XCTAssertNil(profile.promptTemplate, "a non-string template degrades, never throws")
     }
 
     func testGroundProfileGarbageBindingDoesNotNukeProfile() throws {

@@ -13,6 +13,12 @@ extension SessionOrchestrator {
         ProfileInstruction.sanitized(resolvedActiveProfile.instruction)
     }
 
+    /// The active profile's prompt template, sanitized, for `InferenceRequest`'s `profileTemplate`.
+    /// Nil unless the user wrote one — requests stay byte-identical to the pre-template behavior.
+    var activeProfileTemplate: String? {
+        ProfileTemplate.sanitized(resolvedActiveProfile.promptTemplate)
+    }
+
     /// The model the next turn answers with: the active profile's binding, else global.
     var activeAnswerModel: ModelReference {
         settings.answerModel(for: resolvedActiveProfile)

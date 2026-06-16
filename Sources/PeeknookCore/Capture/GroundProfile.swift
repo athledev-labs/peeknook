@@ -26,6 +26,11 @@ public struct GroundProfile: Equatable, Sendable, Identifiable {
     /// Free-text persona the profile injects into the system prompt (via `agentSystemAppendix`).
     /// Nil/empty = none. Sanitized (trim + cap) on decode; see ``ProfileInstruction``.
     public let instruction: String?
+    /// Optional free-form prompt template the profile folds into the system prompt as its OWN fenced
+    /// section, BEYOND the standing `instruction`. Nil/empty = none (behavior byte-identical to before).
+    /// Sanitized (trim + cap) on decode and fenced when built so user text can never break the stable
+    /// system-prompt contract; see ``ProfileTemplate``. NOT a mode — free text, never a curated list.
+    public let promptTemplate: String?
     /// Optional answer-model override; nil = the global `answerModel`/`activeEndpoint`.
     public let modelBinding: ProfileModelBinding?
     /// Sparse per-profile module forcing; `.none` = pure global read-through.
@@ -40,6 +45,7 @@ public struct GroundProfile: Equatable, Sendable, Identifiable {
         isBuiltIn: Bool,
         displayName: String? = nil,
         instruction: String? = nil,
+        promptTemplate: String? = nil,
         modelBinding: ProfileModelBinding? = nil,
         moduleOverrides: ModuleOverrides = .none
     ) {
@@ -51,6 +57,7 @@ public struct GroundProfile: Equatable, Sendable, Identifiable {
         self.isBuiltIn = isBuiltIn
         self.displayName = displayName
         self.instruction = instruction
+        self.promptTemplate = promptTemplate
         self.modelBinding = modelBinding
         self.moduleOverrides = moduleOverrides
     }
@@ -67,7 +74,7 @@ public struct GroundProfile: Equatable, Sendable, Identifiable {
 extension GroundProfile: Codable {
     private enum CodingKeys: String, CodingKey {
         case id, displayNameKey, symbol, primaryGround, activeGrounds, isBuiltIn
-        case displayName, instruction, modelBinding, moduleOverrides
+        case displayName, instruction, promptTemplate, modelBinding, moduleOverrides
     }
 
     public init(from decoder: Decoder) throws {
@@ -90,6 +97,9 @@ extension GroundProfile: Codable {
         instruction = ProfileInstruction.sanitized(
             (try? container.decodeIfPresent(String.self, forKey: .instruction)) ?? nil
         )
+        promptTemplate = ProfileTemplate.sanitized(
+            (try? container.decodeIfPresent(String.self, forKey: .promptTemplate)) ?? nil
+        )
         modelBinding = ((try? container.decodeIfPresent(ProfileModelBinding.self, forKey: .modelBinding)) ?? nil)
         moduleOverrides = ((try? container.decodeIfPresent(ModuleOverrides.self, forKey: .moduleOverrides)) ?? nil) ?? .none
     }
@@ -102,9 +112,10 @@ extension GroundProfile: Codable {
         try container.encode(primaryGround.rawValue, forKey: .primaryGround)
         try container.encode(activeGrounds.map(\.rawValue).sorted(), forKey: .activeGrounds)
         try container.encode(isBuiltIn, forKey: .isBuiltIn)
-        // Conditional: a built-in (all four at their defaults) encodes exactly the six legacy keys.
+        // Conditional: a built-in (every optional field at its default) encodes exactly the six legacy keys.
         try container.encodeIfPresent(displayName, forKey: .displayName)
         try container.encodeIfPresent(instruction, forKey: .instruction)
+        try container.encodeIfPresent(promptTemplate, forKey: .promptTemplate)
         try container.encodeIfPresent(modelBinding, forKey: .modelBinding)
         if moduleOverrides != .none {
             try container.encode(moduleOverrides, forKey: .moduleOverrides)
@@ -161,10 +172,12 @@ public extension GroundProfile {
     }
 
     /// Copy with edited user-profile fields (identity, grounds, and `isBuiltIn` are never
-    /// editable). For ``ProfileStore`` and the profile editor.
+    /// editable). For ``ProfileStore`` and the profile editor. Every editable field is explicit so a
+    /// caller can never silently drop one (e.g. wipe `promptTemplate` by forgetting it).
     func with(
         displayName: String?,
         instruction: String?,
+        promptTemplate: String?,
         modelBinding: ProfileModelBinding?,
         moduleOverrides: ModuleOverrides
     ) -> GroundProfile {
@@ -177,6 +190,7 @@ public extension GroundProfile {
             isBuiltIn: isBuiltIn,
             displayName: displayName,
             instruction: instruction,
+            promptTemplate: promptTemplate,
             modelBinding: modelBinding,
             moduleOverrides: moduleOverrides
         )

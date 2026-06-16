@@ -104,7 +104,7 @@ final class GroundProfileTests: XCTestCase {
         XCTAssertEqual(GroundProfile.resolve(id: "u1", in: [user]), user)
         // A user entry reusing a built-in id can never shadow the built-in.
         let masquerader = user.with(
-            displayName: "Fake screen", instruction: nil, modelBinding: nil, moduleOverrides: .none
+            displayName: "Fake screen", instruction: nil, promptTemplate: nil, modelBinding: nil, moduleOverrides: .none
         )
         XCTAssertEqual(
             GroundProfile.resolve(id: "screen.default", in: [masquerader]), .screenDefault

@@ -87,6 +87,14 @@ final class CaptureCoordinator {
             routeUnready(setup: setup)
             return
         }
+        // A profile can declare MORE than one one-shot-capturable ground (e.g. screen + system audio):
+        // capture each on the one hotkey and commit them as ONE multi-ground question. A single
+        // capturable ground stays byte-identical to the pre-fan-out path (the common case).
+        let grounds = oneShotCaptureGrounds(for: session.resolvedActiveProfile)
+        if grounds.count > 1 {
+            startMultiGroundCapture(grounds: grounds, intent: intent)
+            return
+        }
         guard beginCapturePhase(intent: intent) else { return }
         let registry = session.captureRegistry
         let ground = session.resolvedActiveProfile.primaryGround
@@ -97,6 +105,72 @@ final class CaptureCoordinator {
             let provider = try registry.resolve(ground)
             let encoding = CaptureEncodingPolicy.resolve(scope: scope, quick: quick, quality: quality)
             return try await provider.capture(scope: scope, quick: quick, encoding: encoding)
+        }
+    }
+
+    /// The active profile's grounds that can be captured one-shot on the ⌘⇧P hotkey, in commit order
+    /// (primary first). One-shot-capturable means the registry has a plain ``CaptureProviding`` that is
+    /// NOT an interactive surface: camera (live preview) and file (open panel) are deliberately
+    /// excluded — fanning them in would hijack their own flows. `.selectedText` has no standalone
+    /// provider (it is folded into the screen capture), so it never appears here. The result always
+    /// leads with `primaryGround` when it is itself one-shot-capturable, so the prompt names the legs
+    /// in a stable order (screen first), mirroring the composite convention.
+    private func oneShotCaptureGrounds(for profile: GroundProfile) -> [Ground] {
+        guard let session else { return [] }
+        let registry = session.captureRegistry
+        func isOneShot(_ ground: Ground) -> Bool {
+            guard let provider = registry.provider(for: ground) else { return false }
+            // Interactive providers are NOT one-shot — they drive their own arm/shutter or panel flow.
+            return !(provider is any CameraSessionControlling) && !(provider is any FileImporting)
+        }
+        let primary = profile.primaryGround
+        // Stable order: primary first (when capturable), then the rest of the active grounds by their
+        // declaration order in `Ground.allCases` so the leg order is deterministic across launches.
+        let rest = Ground.allCases.filter {
+            $0 != primary && profile.activeGrounds.contains($0) && isOneShot($0)
+        }
+        let leading = isOneShot(primary) ? [primary] : []
+        return leading + rest
+    }
+
+    /// Capture every one-shot ground of a multi-ground profile and commit them as ONE group.
+    /// Like the composite path, this commits directly (no per-leg preview): previewing a single image
+    /// would misrepresent a turn that also folds in, say, an audio transcript, and the legs are not
+    /// individually confirmable. A partial failure (any leg throws) fails the whole turn — a
+    /// multi-ground question that silently drops a leg would answer from less than the user asked.
+    private func startMultiGroundCapture(grounds: [Ground], intent: SessionOrchestrator.CaptureIntent) {
+        guard let session else { return }
+        guard beginCapturePhase(intent: intent) else { return }
+        let groupID = UUID()
+        let registry = session.captureRegistry
+        let scope = session.settings.captureScope
+        let quick = session.settings.quickMode
+        let quality = session.settings.captureQuality
+        let generation = session.lifecycle.snapshotCapture()
+        session.lifecycle.inferenceTask = Task {
+            do {
+                let encoding = CaptureEncodingPolicy.resolve(scope: scope, quick: quick, quality: quality)
+                var legs: [CaptureResult] = []
+                for ground in grounds {
+                    let provider = try registry.resolve(ground)
+                    let leg = try await provider.capture(scope: scope, quick: quick, encoding: encoding)
+                    guard session.lifecycle.isCurrentCapture(generation), !Task.isCancelled else { return }
+                    legs.append(leg)
+                }
+                guard !legs.isEmpty else {
+                    _ = session.applyPhaseEvent(.captureFailed(.generic(message: "Nothing was captured.")))
+                    return
+                }
+                self.commitGroup(legs, groupID: groupID, intent: intent)
+            } catch is CancellationError {
+                return
+            } catch let error as CaptureError {
+                guard session.lifecycle.isCurrentCapture(generation) else { return }
+                _ = session.applyPhaseEvent(.captureFailed(.from(captureError: error)))
+            } catch {
+                guard session.lifecycle.isCurrentCapture(generation) else { return }
+                _ = session.applyPhaseEvent(.captureFailed(.generic(message: error.localizedDescription)))
+            }
         }
     }
 
@@ -242,16 +316,20 @@ final class CaptureCoordinator {
     /// Commit an ordered group of capture legs as ONE multi-ground question and run a single turn.
     /// Each leg becomes its own `.image` turn sharing `groupID` (ascending `id` preserves the order
     /// the prompt fold names them in); each leg's archive write gates on its OWN ground inside
-    /// `storedCapture`, preserving the per-ground rule. The turn runs on the LAST leg (the newest
-    /// image), which the role router resolves to the vision model. This is the producer half of the
-    /// combination engine: the screen+camera shutter is the one caller today, but any future ground
-    /// (an imported file, an audio leg) commits through the same N-leg path.
+    /// `storedCapture`, preserving the per-ground rule. The turn runs on the last VISION-bearing leg
+    /// (so the role router resolves to the vision model and the vision gate engages on a screen/camera
+    /// leg even when a non-image leg — an audio transcript — was captured last); a group with no image
+    /// runs on its last leg. The screen+camera shutter and the screen+audio fan-out both commit here.
     func commitGroup(
         _ legs: [CaptureResult],
         groupID: UUID,
         intent: SessionOrchestrator.CaptureIntent
     ) {
-        guard let session, let primary = legs.last else { return }
+        guard let session, !legs.isEmpty else { return }
+        // Prefer the last image leg so the vision gate/model routing key on a real screenshot/photo
+        // (a screen+audio group's audio leg has no image); fall back to the last leg for an all-text
+        // group. For composite (screen + camera, both images) this is the camera leg, as before.
+        let primary = legs.last(where: \.hasVision) ?? legs[legs.count - 1]
         if intent == .fresh { session.resetConversation() }
         for leg in legs {
             session.turnCounter += 1

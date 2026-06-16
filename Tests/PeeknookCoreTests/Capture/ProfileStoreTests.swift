@@ -102,6 +102,7 @@ final class ProfileStoreTests: XCTestCase {
         store.update(copy.with(
             displayName: copy.displayName,
             instruction: "Be brief.",
+            promptTemplate: nil,
             modelBinding: ProfileModelBinding(backend: .ollama, tag: "gemma4:e2b"),
             moduleOverrides: ModuleOverrides([.webLookup: true])
         ))

@@ -146,16 +146,24 @@ final class InferenceCoordinator {
         )
         // Budget replay by payload UNIT: a composite group (screen + camera legs) counts as ONE unit,
         // so the latest question replays whole — never half a composite (the group-atomic guard).
-        let imageTurnIDs = budgeted.filter(\.isImage).map(\.id)
         let imageUnits = imagePayloadUnits(budgeted.filter(\.isImage))
         let replayImageIDs = Set(imageUnits.suffix(inferencePolicy.maxImagePayloads).flatMap { $0.map(\.id) })
         var imageBase64ByTurnID = session.preloadImageBase64(for: budgeted, replayIDs: replayImageIDs)
-        if let capture, let latestImageID = imageTurnIDs.last, let base64 = capture.screenshotBase64 {
-            imageBase64ByTurnID[latestImageID] = base64
+        // Splice the just-captured leg's fresh base64 into ITS OWN turn slot (the freshest copy, in case
+        // the blob hasn't flushed yet). It must land on the captured leg's turn — the LAST image turn
+        // *that carries vision* — not blindly the last image turn: a screen+audio group ends on the
+        // text-only audio turn, which must never receive an image payload.
+        if let capture, let base64 = capture.screenshotBase64,
+           let latestVisionImageID = budgeted.last(where: { turn in
+               guard case .image(let c) = turn.kind else { return false }
+               return c.hasVision
+           })?.id {
+            imageBase64ByTurnID[latestVisionImageID] = base64
         }
         let request = InferenceRequest(
             mode: session.settings.mode,
             agentSystemAppendix: session.activeAgentAppendix,
+            profileTemplate: session.activeProfileTemplate,
             messages: inferenceMessages(
                 from: budgeted,
                 webLookup: session.webLookupSnapshot,
@@ -308,8 +316,12 @@ final class InferenceCoordinator {
                     let includeImages = unit.allSatisfy { replayImageIDs.contains($0.id) }
                     let payloads: [MediaPayload] = unit.compactMap { leg in
                         guard case .image(let c) = leg.kind else { return nil }
-                        let base64 = includeImages ? (imageBase64ByTurnID[leg.id] ?? c.screenshotBase64) : nil
-                        return MediaPayload(capture: c, kind: .image, imageBase64: base64)
+                        // A transcript leg (e.g. system audio) carries no image — its text is folded in
+                        // by the prompt builder, so it never gets a base64 payload even inside the budget.
+                        let kind = MediaPayload.Kind.resolved(for: c.ground)
+                        let base64 = (kind == .image && includeImages)
+                            ? (imageBase64ByTurnID[leg.id] ?? c.screenshotBase64) : nil
+                        return MediaPayload(capture: c, kind: kind, imageBase64: base64)
                     }
                     messages.append(InferenceMessage(
                         role: .user,
@@ -364,6 +376,7 @@ final class InferenceCoordinator {
         let request = InferenceRequest(
             mode: session.settings.mode,
             agentSystemAppendix: session.activeAgentAppendix,
+            profileTemplate: session.activeProfileTemplate,
             messages: inferenceMessages(from: session.conversation, policy: .suggestions),
             model: session.activeAnswerModel.tag,
             endpoint: session.activeInferenceEndpoint,

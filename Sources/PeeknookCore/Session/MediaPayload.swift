@@ -22,6 +22,13 @@ public struct MediaPayload: Sendable, Equatable {
         case image
         /// On-device transcript of an audio leg. Rides as supplementary text, contributes no image.
         case transcript
+
+        /// The modality a capture leg belongs to, keyed off its ground. An audio ground (`.systemAudio`)
+        /// is a transcript; every other ground rides as an image. Centralized here so the fan-out and
+        /// the inference message folder can never disagree about whether a leg carries an image or text.
+        public static func resolved(for ground: Ground) -> Kind {
+            ground == .systemAudio ? .transcript : .image
+        }
     }
 
     /// The source leg: provenance (`sourceLabel` / `appName` / `windowTitle`), supplementary `text`,

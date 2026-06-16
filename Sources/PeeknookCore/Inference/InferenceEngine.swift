@@ -6,6 +6,9 @@ public struct InferenceRequest: Sendable, Equatable {
     public var mode: PracticeMode
     /// Optional system-prompt appendix for future user-defined agents.
     public var agentSystemAppendix: String?
+    /// Optional per-profile prompt template, folded into the system prompt as its own fenced section
+    /// (distinct from `agentSystemAppendix`). Nil = no template (requests stay byte-identical).
+    public var profileTemplate: String?
     /// Full user/assistant sequence for this turn (oldest first), images attached to the user
     /// messages that introduced them. The engine prepends the system prompt.
     public var messages: [InferenceMessage]
@@ -16,6 +19,7 @@ public struct InferenceRequest: Sendable, Equatable {
     public init(
         mode: PracticeMode,
         agentSystemAppendix: String? = nil,
+        profileTemplate: String? = nil,
         messages: [InferenceMessage],
         model: String,
         endpoint: InferenceEndpoint,
@@ -23,6 +27,7 @@ public struct InferenceRequest: Sendable, Equatable {
     ) {
         self.mode = mode
         self.agentSystemAppendix = agentSystemAppendix
+        self.profileTemplate = profileTemplate
         self.messages = messages
         self.model = model
         self.endpoint = endpoint
@@ -33,6 +38,7 @@ public struct InferenceRequest: Sendable, Equatable {
     public init(
         mode: PracticeMode,
         agentSystemAppendix: String? = nil,
+        profileTemplate: String? = nil,
         messages: [InferenceMessage],
         model: String,
         ollamaBaseURL: String,
@@ -42,6 +48,7 @@ public struct InferenceRequest: Sendable, Equatable {
         self.init(
             mode: mode,
             agentSystemAppendix: agentSystemAppendix,
+            profileTemplate: profileTemplate,
             messages: messages,
             model: model,
             endpoint: .ollama(baseURL: ollamaBaseURL, acceptInsecureRemote: acceptInsecureRemoteOllama),

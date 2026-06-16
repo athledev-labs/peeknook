@@ -72,7 +72,7 @@ public struct OpenAICompatibleInferenceEngine: InferenceEngine, Sendable {
     ) async throws {
         let messages = Self.wireMessages(
             from: request,
-            systemPrompt: PromptBuilder.systemPrompt(agentAppendix: request.agentSystemAppendix)
+            systemPrompt: PromptBuilder.systemPrompt(agentAppendix: request.agentSystemAppendix, profileTemplate: request.profileTemplate)
         )
         #if DEBUG
         let imageCount = request.messages.reduce(0) { $0 + $1.imagesBase64.count }

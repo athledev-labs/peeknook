@@ -71,6 +71,7 @@ final class ProfileModelBindingWiringTests: XCTestCase {
         store.update(copy.with(
             displayName: copy.displayName,
             instruction: nil,
+            promptTemplate: nil,
             modelBinding: ProfileModelBinding(backend: .openAICompatible, tag: "qwen2-vl"),
             moduleOverrides: .none
         ))
@@ -102,6 +103,7 @@ final class ProfileModelBindingWiringTests: XCTestCase {
         store.update(copy.with(
             displayName: copy.displayName,
             instruction: nil,
+            promptTemplate: nil,
             modelBinding: ProfileModelBinding(backend: .ollama, tag: "llava:13b"),
             moduleOverrides: .none
         ))

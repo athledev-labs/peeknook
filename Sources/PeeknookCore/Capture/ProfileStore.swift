@@ -49,6 +49,7 @@ public final class ProfileStore {
             isBuiltIn: false,
             displayName: trimmed.isEmpty ? nil : trimmed,
             instruction: source.instruction,
+            promptTemplate: source.promptTemplate,
             modelBinding: source.modelBinding,
             moduleOverrides: source.moduleOverrides
         )
@@ -72,6 +73,7 @@ public final class ProfileStore {
         update(existing.with(
             displayName: trimmed,
             instruction: existing.instruction,
+            promptTemplate: existing.promptTemplate,
             modelBinding: existing.modelBinding,
             moduleOverrides: existing.moduleOverrides
         ))
@@ -85,6 +87,21 @@ public final class ProfileStore {
         update(existing.with(
             displayName: existing.displayName,
             instruction: capped,
+            promptTemplate: existing.promptTemplate,
+            modelBinding: existing.modelBinding,
+            moduleOverrides: existing.moduleOverrides
+        ))
+    }
+
+    /// Stores the prompt template capped at the limit (the read path fully sanitizes — see
+    /// `ProfileTemplate.sanitized`); empty clears it.
+    public func setPromptTemplate(id: String, _ text: String) {
+        guard let existing = catalog.profiles.first(where: { $0.id == id }) else { return }
+        let capped = text.isEmpty ? nil : String(text.prefix(ProfileTemplate.maxLength))
+        update(existing.with(
+            displayName: existing.displayName,
+            instruction: existing.instruction,
+            promptTemplate: capped,
             modelBinding: existing.modelBinding,
             moduleOverrides: existing.moduleOverrides
         ))
@@ -96,6 +113,7 @@ public final class ProfileStore {
         update(existing.with(
             displayName: existing.displayName,
             instruction: existing.instruction,
+            promptTemplate: existing.promptTemplate,
             modelBinding: binding,
             moduleOverrides: existing.moduleOverrides
         ))
@@ -109,6 +127,7 @@ public final class ProfileStore {
         update(existing.with(
             displayName: existing.displayName,
             instruction: existing.instruction,
+            promptTemplate: existing.promptTemplate,
             modelBinding: existing.modelBinding,
             moduleOverrides: overrides
         ))
@@ -119,9 +138,39 @@ public final class ProfileStore {
         update(existing.with(
             displayName: existing.displayName,
             instruction: existing.instruction,
+            promptTemplate: existing.promptTemplate,
             modelBinding: existing.modelBinding,
             moduleOverrides: .none
         ))
+    }
+
+    // MARK: - Import / export presets
+
+    /// Portable preset bytes for the user's own profiles (built-ins are dropped by ``ProfilePreset``).
+    /// Pass a subset (e.g. one profile to share) or omit to export the whole user catalog.
+    public func exportPreset(ids: [String]? = nil) throws -> Data {
+        let profiles: [GroundProfile]
+        if let ids {
+            let wanted = Set(ids)
+            profiles = catalog.profiles.filter { wanted.contains($0.id) }
+        } else {
+            profiles = catalog.profiles
+        }
+        return try ProfilePreset.export(profiles)
+    }
+
+    /// Import a shareable preset, ADDING its profiles to the catalog under fresh ids (so it can never
+    /// overwrite or strand an existing profile). Tolerant: hostile/malformed bytes import nothing.
+    /// Returns the profiles actually added (empty when the preset was unreadable or the catalog is at
+    /// capacity), so the caller can report the count or activate a freshly imported profile.
+    @discardableResult
+    public func importPreset(from data: Data) -> [GroundProfile] {
+        let preset = (try? JSONDecoder().decode(ProfilePreset.self, from: data)) ?? ProfilePreset(profiles: [])
+        let toAdd = preset.installable(into: catalog)
+        guard !toAdd.isEmpty else { return [] }
+        catalog.profiles.append(contentsOf: toAdd)
+        persist()
+        return toAdd
     }
 
     /// Removes a user profile. Returns true when the deleted profile was the active one, so the
