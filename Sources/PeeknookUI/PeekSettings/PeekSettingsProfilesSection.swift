@@ -3,11 +3,13 @@
 import PeeknookDesign
 import PeeknookCore
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Settings → Profiles: pick the active profile, duplicate the Screen built-in into an editable
-/// copy, and delete copies. Built-in names localize via `Text(peek:)`; user-typed names render
-/// verbatim (never through the catalog). The camera built-in is deliberately absent — camera
-/// capture stays ⌘⇧C/event-scoped, and a camera-primary ACTIVE profile would dead-end ⌘⇧P.
+/// copy, delete copies, and share/install profiles as portable presets. Built-in names localize via
+/// `Text(peek:)`; user-typed names render verbatim (never through the catalog). The camera built-in is
+/// deliberately absent — camera capture stays ⌘⇧C/event-scoped, and a camera-primary ACTIVE profile
+/// would dead-end ⌘⇧P.
 struct PeekSettingsProfilesSection: View {
     var orchestrator: SessionOrchestrator
     var settings: PeekSettingsController
@@ -15,6 +17,10 @@ struct PeekSettingsProfilesSection: View {
     @Environment(\.nookResolvedTheme) private var theme
     @State private var pendingDelete: GroundProfile?
     @State private var expandedProfileID: String?
+    @State private var exportDocument: ProfilePresetDocument?
+    @State private var isExporting = false
+    @State private var isImporting = false
+    @State private var importNotice: String?
 
     private var store: ProfileStore? { orchestrator.profileStore }
 
@@ -42,7 +48,7 @@ struct PeekSettingsProfilesSection: View {
                 }
             }
 
-            if store != nil {
+            if let store {
                 PeekSettingsCommandRow(
                     icon: "plus.square.on.square",
                     title: "New profile",
@@ -50,7 +56,49 @@ struct PeekSettingsProfilesSection: View {
                     trailing: .button("Duplicate"),
                     action: duplicateScreen
                 )
+
+                PeekSettingsCommandRow(
+                    icon: "square.and.arrow.down",
+                    title: "Import profiles",
+                    subtitle: "Install profiles from a shared preset file",
+                    trailing: .button("Import"),
+                    action: { importNotice = nil; isImporting = true }
+                )
+
+                if !store.catalog.profiles.isEmpty {
+                    PeekSettingsCommandRow(
+                        icon: "square.and.arrow.up",
+                        title: "Export profiles",
+                        subtitle: "Save your profiles as a shareable preset file",
+                        trailing: .button("Export"),
+                        action: beginExport
+                    )
+                }
+
+                if let importNotice {
+                    // Already localized in `handleImport` (the count case interpolates), so render
+                    // verbatim rather than re-routing through the catalog as a key.
+                    Text(verbatim: importNotice)
+                        .font(.system(size: 10, weight: .regular))
+                        .foregroundStyle(theme.tertiaryLabel)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
+        }
+        .fileExporter(
+            isPresented: $isExporting,
+            document: exportDocument,
+            contentType: .json,
+            defaultFilename: "Peeknook Profiles"
+        ) { _ in
+            exportDocument = nil
+        }
+        .fileImporter(
+            isPresented: $isImporting,
+            allowedContentTypes: [.json],
+            allowsMultipleSelection: false
+        ) { result in
+            handleImport(result)
         }
         .confirmationDialog(
             Text(peek: "Delete this profile?"),
@@ -161,5 +209,56 @@ struct PeekSettingsProfilesSection: View {
         guard let store else { return }
         let seedName = PeekLocalized("Copy of \(PeekLocalized(.init(GroundProfile.screenDefault.displayNameKey)))")
         _ = store.duplicate(.screenDefault, name: seedName)
+    }
+
+    // MARK: - Import / export
+
+    /// Export the user's whole catalog (built-ins never ship — `exportPreset` drops them).
+    private func beginExport() {
+        guard let store, let data = try? store.exportPreset() else { return }
+        exportDocument = ProfilePresetDocument(data: data)
+        isExporting = true
+    }
+
+    private func handleImport(_ result: Result<[URL], Error>) {
+        guard let store, case let .success(urls) = result, let url = urls.first else { return }
+        // The file lives outside the app sandbox; take the security scope for the read.
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        guard let data = try? Data(contentsOf: url) else {
+            importNotice = PeekLocalized("That file could not be read.")
+            return
+        }
+        // importPreset is tolerant: hostile or malformed bytes add nothing.
+        let added = store.importPreset(from: data)
+        switch added.count {
+        case 0:
+            importNotice = PeekLocalized("No profiles found in that file.")
+        case 1:
+            importNotice = PeekLocalized("Added 1 profile.")
+        default:
+            importNotice = PeekLocalized("Added \(added.count) profiles.")
+        }
+    }
+}
+
+/// A `FileDocument` wrapper so SwiftUI's `fileExporter` can write preset bytes produced by
+/// ``ProfileStore/exportPreset(ids:)``. Read is unused (import goes through `fileImporter` +
+/// ``ProfileStore/importPreset(from:)``), so it returns the bytes verbatim.
+struct ProfilePresetDocument: FileDocument {
+    static let readableContentTypes: [UTType] = [.json]
+
+    let data: Data
+
+    init(data: Data) {
+        self.data = data
+    }
+
+    init(configuration: ReadConfiguration) throws {
+        data = configuration.file.regularFileContents ?? Data()
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: data)
     }
 }

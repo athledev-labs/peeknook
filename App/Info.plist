@@ -39,6 +39,6 @@
     <key>NSMicrophoneUsageDescription</key>
     <string>Peeknook uses the microphone only when you turn on voice input to dictate session briefs and follow-ups.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
-    <string>Peeknook uses on-device speech recognition only when you turn on voice input. Audio is not sent to a cloud service.</string>
+    <string>Peeknook uses on-device speech recognition only when you turn on voice input to dictate, or when you turn on Hear system audio so a profile can transcribe what is playing. Audio is not sent to a cloud service.</string>
 </dict>
 </plist>

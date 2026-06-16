@@ -97,6 +97,18 @@
       "comment": "Settings → Layout: name of the result (answer) command bar.",
       "extractionState": "manual"
     },
+    "Added 1 profile.": {
+      "comment": "Settings → Profiles: import result when one profile was added.",
+      "extractionState": "manual"
+    },
+    "Added %lld profiles.": {
+      "comment": "Settings → Profiles: import result count when several profiles were added.",
+      "extractionState": "manual"
+    },
+    "Always captured by this profile": {
+      "comment": "Profile editor: a11y hint on the primary ground pill (always on).",
+      "extractionState": "manual"
+    },
     "Always shown — required": {
       "comment": "Settings → Layout: a11y hint for a protected command's toggle.",
       "extractionState": "manual"
@@ -389,6 +401,10 @@
       "comment": "Settings: new-profile row subtitle.",
       "extractionState": "manual"
     },
+    "Each selected ground is captured and folded into one question.": {
+      "comment": "Profile editor: note under the grounds selector.",
+      "extractionState": "manual"
+    },
     "Edit profile": {
       "comment": "A11y: profile edit chevron.",
       "extractionState": "manual"
@@ -415,6 +431,10 @@
     },
     "Export": {
       "comment": "Command-bar action: copy the whole conversation as Markdown.",
+      "extractionState": "manual"
+    },
+    "Export profiles": {
+      "comment": "Settings → Profiles: export-presets row title.",
       "extractionState": "manual"
     },
     "Fast follow-ups": {
@@ -477,6 +497,10 @@
       "comment": "Notice banner: dismiss button title.",
       "extractionState": "manual"
     },
+    "Hear system audio": {
+      "comment": "Settings → Capture: opt-in toggle to transcribe what is playing.",
+      "extractionState": "manual"
+    },
     "Hide this warning": {
       "comment": "Tier B localization",
       "extractionState": "manual"
@@ -501,8 +525,20 @@
       "comment": "Idle command: open a PDF/image from disk to ask about.",
       "extractionState": "manual"
     },
+    "Import profiles": {
+      "comment": "Settings → Profiles: import-presets row title.",
+      "extractionState": "manual"
+    },
+    "Include this ground in every capture": {
+      "comment": "Profile editor: a11y hint on a selectable ground pill.",
+      "extractionState": "manual"
+    },
     "Inference server": {
       "comment": "Settings: OpenAI-compatible status row title.",
+      "extractionState": "manual"
+    },
+    "Install profiles from a shared preset file": {
+      "comment": "Settings → Profiles: import-presets row subtitle.",
       "extractionState": "manual"
     },
     "Install, permissions, and a test capture": {
@@ -547,6 +583,10 @@
     },
     "Layout": {
       "comment": "Settings section title: command bar layout editor.",
+      "extractionState": "manual"
+    },
+    "Lets a profile capture what is playing (a meeting, video, or call) as a short on-device transcript alongside the screen. Add the system-audio ground to a profile to use it. Needs Screen Recording and Speech Recognition.": {
+      "comment": "Settings → Capture: Hear system audio toggle detail.",
       "extractionState": "manual"
     },
     "Licenses": {
@@ -761,6 +801,10 @@
       "comment": "Tier B localization",
       "extractionState": "manual"
     },
+    "No profiles found in that file.": {
+      "comment": "Settings → Profiles: import result when the file held no profiles.",
+      "extractionState": "manual"
+    },
     "No saved chats yet. Finished chats are filed here while “Save conversations” is on.": {
       "comment": "Tier B localization",
       "extractionState": "manual"
@@ -877,6 +921,10 @@
       "comment": "Tier B localization",
       "extractionState": "manual"
     },
+    "Optional format and ground rules folded into the prompt — e.g. “Answer in three bullet points.”": {
+      "comment": "Profile editor: note under the prompt-template field.",
+      "extractionState": "manual"
+    },
     "Overridden for this profile": {
       "comment": "Profile editor: overridden toggle detail.",
       "extractionState": "manual"
@@ -917,12 +965,20 @@
       "comment": "A11y: instruction text editor.",
       "extractionState": "manual"
     },
+    "Profile prompt template": {
+      "comment": "A11y: prompt-template text editor.",
+      "extractionState": "manual"
+    },
     "Profiles": {
       "comment": "Settings section title.",
       "extractionState": "manual"
     },
     "Prompt In": {
       "comment": "Tier B localization",
+      "extractionState": "manual"
+    },
+    "Prompt template": {
+      "comment": "Profile editor: prompt-template field label.",
       "extractionState": "manual"
     },
     "Propose next questions after each answer": {
@@ -1025,6 +1081,14 @@
       "comment": "Tier B localization",
       "extractionState": "manual"
     },
+    "Save your profiles as a shareable preset file": {
+      "comment": "Settings → Profiles: export-presets row subtitle.",
+      "extractionState": "manual"
+    },
+    "Screen": {
+      "comment": "Profile editor: screen ground pill label.",
+      "extractionState": "manual"
+    },
     "Screen + camera": {
       "comment": "Command-bar action: capture screen and camera as one question.",
       "extractionState": "manual"
@@ -1055,6 +1119,10 @@
     },
     "Select inference backend": {
       "comment": "A11y hint: backend pills.",
+      "extractionState": "manual"
+    },
+    "Selected text": {
+      "comment": "Profile editor: selected-text ground pill label.",
       "extractionState": "manual"
     },
     "Send a DuckDuckGo query from capture context (queries leave this Mac)": {
@@ -1149,6 +1217,10 @@
       "comment": "Tier B localization",
       "extractionState": "manual"
     },
+    "System audio": {
+      "comment": "Profile editor: system-audio ground pill label.",
+      "extractionState": "manual"
+    },
     "Tags": {
       "comment": "Tier B localization",
       "extractionState": "manual"
@@ -1167,6 +1239,10 @@
     },
     "Text-only, it won't read your screenshots. You can still add it to test.": {
       "comment": "Tier B localization",
+      "extractionState": "manual"
+    },
+    "That file could not be read.": {
+      "comment": "Settings → Profiles: import error when the chosen file is unreadable.",
       "extractionState": "manual"
     },
     "That saved chat is missing or unreadable, so it was removed from your history.": {
@@ -1199,6 +1275,14 @@
     },
     "Try again": {
       "comment": "Tier B localization",
+      "extractionState": "manual"
+    },
+    "Turn on Hear system audio in Capture first": {
+      "comment": "Profile editor: a11y hint on the disabled system-audio ground pill.",
+      "extractionState": "manual"
+    },
+    "Turn on Hear system audio in Capture to let a profile transcribe what is playing.": {
+      "comment": "Profile editor: note when the system-audio opt-in is off.",
       "extractionState": "manual"
     },
     "Type any Ollama tag. Peek pulls it if it isn't installed yet.": {
@@ -1271,6 +1355,10 @@
     },
     "No web results for \"%@\".": {
       "comment": "Web lookup table empty state for organic zero results.",
+      "extractionState": "manual"
+    },
+    "What it captures": {
+      "comment": "Profile editor: grounds selector label.",
       "extractionState": "manual"
     },
     "Working": {

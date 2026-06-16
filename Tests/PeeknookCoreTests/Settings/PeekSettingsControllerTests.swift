@@ -246,6 +246,20 @@ final class PeekSettingsControllerTests: XCTestCase {
     }
 
     @MainActor
+    func testSetSystemAudioEnabledRoundTrips() {
+        let stack = PeeknookServices.makeStack(settings: .default, defaults: defaults)
+        XCTAssertFalse(stack.orchestrator.settings.systemAudioEnabled, "Off by default.")
+
+        stack.settings.setSystemAudioEnabled(true)
+        XCTAssertTrue(stack.orchestrator.settings.systemAudioEnabled)
+        XCTAssertTrue(PeeknookSettings.load(from: defaults).systemAudioEnabled)
+
+        stack.settings.setSystemAudioEnabled(false)
+        XCTAssertFalse(stack.orchestrator.settings.systemAudioEnabled)
+        XCTAssertFalse(PeeknookSettings.load(from: defaults).systemAudioEnabled)
+    }
+
+    @MainActor
     func testInferenceHealthUsesInjectedEngine() async {
         let deps = PeeknookDependencies.testing(inference: MockInferenceEngine())
         let stack = PeeknookServices.makeStack(settings: .default, defaults: defaults, dependencies: deps)

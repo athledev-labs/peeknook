@@ -14,6 +14,7 @@ struct PeekProfileEditor: View {
 
     @Environment(\.nookResolvedTheme) private var theme
     @State private var instructionDraft = ""
+    @State private var templateDraft = ""
     @State private var didLoadDraft = false
     @State private var servedModels: [String] = []
 
@@ -30,6 +31,10 @@ struct PeekProfileEditor: View {
 
             instructionField
 
+            groundsField
+
+            templateField
+
             modelBindingRow
 
             moduleOverrideRows
@@ -37,6 +42,7 @@ struct PeekProfileEditor: View {
         .padding(.vertical, 4)
         .task(id: profileID) {
             instructionDraft = profile.instruction ?? ""
+            templateDraft = profile.promptTemplate ?? ""
             didLoadDraft = true
             if orchestrator.settings.answerBackend == .openAICompatible {
                 servedModels = await settings.openAICompatibleServedModels()
@@ -90,6 +96,137 @@ struct PeekProfileEditor: View {
                 instructionDraft = String(newValue.prefix(ProfileInstruction.maxLength))
                 guard didLoadDraft else { return }
                 store.setInstruction(id: profileID, instructionDraft)
+            }
+        )
+    }
+
+    // MARK: - Grounds
+
+    /// The grounds this profile captures, offered only over ``Ground/multiGroundEligible``. The
+    /// primary ground is always on and cannot be removed (the store re-inserts it anyway). The
+    /// system-audio ground is gated on the "Hear system audio" opt-in: when that is off the pill is
+    /// disabled with a hint, so a user sees why a profile carrying audio still only reads the screen.
+    private var groundsField: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Image(systemName: "square.stack.3d.up")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(theme.headerInactiveIcon)
+                    .frame(width: PeekSettingsRowMetrics.iconWidth)
+                Text(peek: "What it captures")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(theme.tertiaryLabel)
+            }
+            PeekWrappingPills {
+                ForEach(eligibleGrounds, id: \.self) { ground in
+                    groundPill(ground)
+                }
+            }
+            if !orchestrator.settings.systemAudioEnabled {
+                PeekSettingsNote(
+                    text: "Turn on Hear system audio in Capture to let a profile transcribe what is playing."
+                )
+            } else {
+                PeekSettingsNote(text: "Each selected ground is captured and folded into one question.")
+            }
+        }
+    }
+
+    /// Eligible grounds in a stable display order (primary first).
+    private var eligibleGrounds: [Ground] {
+        let primary = profile.primaryGround
+        let rest = [Ground.screen, .selectedText, .systemAudio]
+            .filter { Ground.multiGroundEligible.contains($0) && $0 != primary }
+        return [primary] + rest
+    }
+
+    @ViewBuilder
+    private func groundPill(_ ground: Ground) -> some View {
+        let isPrimary = ground == profile.primaryGround
+        let isAudio = ground == .systemAudio
+        let audioGated = isAudio && !orchestrator.settings.systemAudioEnabled
+        let selected = profile.activeGrounds.contains(ground)
+        PeekSurfaceFilterPill(
+            title: groundTitle(ground),
+            isSelected: selected,
+            hint: groundHint(ground, isPrimary: isPrimary, audioGated: audioGated),
+            action: { toggleGround(ground, currentlySelected: selected) }
+        )
+        // The primary ground is part of the profile's identity; audio is unavailable until the opt-in.
+        .disabled(isPrimary || audioGated)
+    }
+
+    private func toggleGround(_ ground: Ground, currentlySelected: Bool) {
+        var grounds = profile.activeGrounds
+        if currentlySelected {
+            grounds.remove(ground)
+        } else {
+            grounds.insert(ground)
+        }
+        // The store sanitizes to the eligible set and always re-inserts the primary ground.
+        store.setActiveGrounds(grounds, for: profileID)
+    }
+
+    /// Raw catalog KEYS — ``PeekSurfaceFilterPill`` localizes the title/hint itself (via `Text(peek:)`
+    /// and `peekAction`), matching every other filter-pill caller.
+    private func groundTitle(_ ground: Ground) -> String {
+        switch ground {
+        case .screen: "Screen"
+        case .selectedText: "Selected text"
+        case .systemAudio: "System audio"
+        default: "Screen"
+        }
+    }
+
+    private func groundHint(_ ground: Ground, isPrimary: Bool, audioGated: Bool) -> String {
+        if isPrimary {
+            return "Always captured by this profile"
+        }
+        if audioGated {
+            return "Turn on Hear system audio in Capture first"
+        }
+        return "Include this ground in every capture"
+    }
+
+    // MARK: - Prompt template
+
+    private var templateField: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Image(systemName: "doc.plaintext")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(theme.headerInactiveIcon)
+                    .frame(width: PeekSettingsRowMetrics.iconWidth)
+                Text(peek: "Prompt template")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(theme.tertiaryLabel)
+            }
+            // Self-bounded height (invariant: growable views cap themselves in the notch).
+            TextEditor(text: templateBinding)
+                .font(.system(size: 11))
+                .scrollContentBackground(.hidden)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 2)
+                .frame(minHeight: 44, maxHeight: 120)
+                .background(theme.subtleFill.opacity(0.45), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .stroke(theme.subtleStroke.opacity(0.3), lineWidth: 1)
+                )
+                .accessibilityLabel(Text(peek: "Profile prompt template"))
+            PeekSettingsNote(
+                text: "Optional format and ground rules folded into the prompt — e.g. “Answer in three bullet points.”"
+            )
+        }
+    }
+
+    private var templateBinding: Binding<String> {
+        Binding(
+            get: { templateDraft },
+            set: { newValue in
+                templateDraft = String(newValue.prefix(ProfileTemplate.maxLength))
+                guard didLoadDraft else { return }
+                store.setPromptTemplate(id: profileID, templateDraft)
             }
         )
     }

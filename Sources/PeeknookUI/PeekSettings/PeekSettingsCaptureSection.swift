@@ -111,6 +111,13 @@ struct PeekSettingsCaptureSection: View {
             )
 
             PeekSettingsToggleRow(
+                icon: orchestrator.settings.systemAudioEnabled ? "waveform.badge.mic" : "waveform.slash",
+                title: "Hear system audio",
+                detail: "Lets a profile capture what is playing (a meeting, video, or call) as a short on-device transcript alongside the screen. Add the system-audio ground to a profile to use it. Needs Screen Recording and Speech Recognition.",
+                isOn: systemAudioBinding
+            )
+
+            PeekSettingsToggleRow(
                 icon: orchestrator.settings.liveEnabled ? "dot.radiowaves.left.and.right" : "antenna.radiowaves.left.and.right.slash",
                 title: "Live session",
                 detail: "Adds a Go live command to an answered chat so it stays armed and keeps context across captures. You stay in control: a clear Live indicator with a Stop, and capture stays user-triggered.",
@@ -417,6 +424,13 @@ struct PeekSettingsCaptureSection: View {
         Binding(
             get: { orchestrator.settings.compositeCaptureEnabled },
             set: { settings.setCompositeCaptureEnabled($0) }
+        )
+    }
+
+    private var systemAudioBinding: Binding<Bool> {
+        Binding(
+            get: { orchestrator.settings.systemAudioEnabled },
+            set: { settings.setSystemAudioEnabled($0) }
         )
     }
 

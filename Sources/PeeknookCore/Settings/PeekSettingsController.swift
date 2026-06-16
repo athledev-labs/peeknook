@@ -108,6 +108,15 @@ public final class PeekSettingsController {
         update { $0.compositeCaptureEnabled = enabled }
     }
 
+    /// Opt in to hearing system audio: lets a profile add the system-audio ground so a capture also
+    /// includes a short, on-device transcript of what is playing. Off by default; the capture gate in
+    /// ``CaptureCoordinator`` still excludes `.systemAudio` until this is on, so a profile carrying the
+    /// ground keeps capturing only its screen legs until the user flips this.
+    public func setSystemAudioEnabled(_ enabled: Bool) {
+        guard settings.systemAudioEnabled != enabled else { return }
+        update { $0.systemAudioEnabled = enabled }
+    }
+
     // MARK: - Live session preferences
 
     /// Opt in to the live-session feature (surfaces the "Go live" command on the result bar).
