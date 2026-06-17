@@ -113,7 +113,7 @@ struct PeekSettingsCaptureSection: View {
             PeekSettingsToggleRow(
                 icon: orchestrator.settings.systemAudioEnabled ? "waveform.badge.mic" : "waveform.slash",
                 title: "Hear system audio",
-                detail: "Lets a profile capture what is playing (a meeting, video, or call) as a short on-device transcript alongside the screen. Add the system-audio ground to a profile to use it. Needs Screen Recording and Speech Recognition.",
+                detail: "Lets a profile capture what is playing (a meeting, video, or call) as a short on-device transcript alongside the screen. Add the system-audio ground to a profile to use it. Needs Screen Recording and Speech Recognition. The transcript is sent to your model like the rest of your prompt, so it goes to a remote or cloud endpoint if you point Peeknook at one.",
                 isOn: systemAudioBinding
             )
 
