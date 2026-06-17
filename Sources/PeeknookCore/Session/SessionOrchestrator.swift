@@ -530,7 +530,7 @@ public final class SessionOrchestrator {
     /// Begin a composite turn (screen + camera asked as one question). Opt-in via
     /// `compositeCaptureEnabled`; captures the screen leg, then opens the live camera for the second.
     public func beginComposite() {
-        captureCoordinator.beginComposite()
+        captureCoordinator.composite.beginComposite()
     }
 
     /// Commit a composite's screen + camera legs atomically and run one turn — the camera shutter's
@@ -538,7 +538,7 @@ public final class SessionOrchestrator {
     func commitGroupAtShutter(
         screen: CaptureResult, camera: CaptureResult, groupID: UUID, intent: CaptureIntent
     ) {
-        captureCoordinator.commitGroupAtShutter(screen: screen, camera: camera, groupID: groupID, intent: intent)
+        captureCoordinator.composite.commitGroupAtShutter(screen: screen, camera: camera, groupID: groupID, intent: intent)
     }
 
     /// Capture a new screenshot to **replace** the current chat (answer a different screen).

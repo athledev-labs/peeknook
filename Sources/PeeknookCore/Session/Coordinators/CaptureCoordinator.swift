@@ -10,8 +10,17 @@ import Foundation
 final class CaptureCoordinator {
     private weak var session: SessionOrchestrator?
 
+    /// Group-oriented capture (multi-ground fan-out + screen/camera composite). It reuses this
+    /// coordinator's spine (`beginCapturePhase` + `runGuardedCapture`); the single-leg paths stay here.
+    private(set) lazy var composite = CompositeCaptureCoordinator(session: requireSession(), spine: self)
+
     init(session: SessionOrchestrator) {
         self.session = session
+    }
+
+    private func requireSession() -> SessionOrchestrator {
+        guard let session else { preconditionFailure("CaptureCoordinator outlived its session") }
+        return session
     }
 
     /// Hotkey / compact affordance entry: capture → preview → infer. Starts a fresh chat only when
@@ -90,9 +99,9 @@ final class CaptureCoordinator {
         // A profile can declare MORE than one one-shot-capturable ground (e.g. screen + system audio):
         // capture each on the one hotkey and commit them as ONE multi-ground question. A single
         // capturable ground stays byte-identical to the pre-fan-out path (the common case).
-        let grounds = oneShotCaptureGrounds(for: session.resolvedActiveProfile)
+        let grounds = composite.oneShotCaptureGrounds(for: session.resolvedActiveProfile)
         if grounds.count > 1 {
-            startMultiGroundCapture(grounds: grounds, intent: intent)
+            composite.startMultiGroundCapture(grounds: grounds, intent: intent)
             return
         }
         guard beginCapturePhase(intent: intent) else { return }
@@ -105,82 +114,6 @@ final class CaptureCoordinator {
             let provider = try registry.resolve(ground)
             let encoding = CaptureEncodingPolicy.resolve(scope: scope, quick: quick, quality: quality)
             return try await provider.capture(scope: scope, quick: quick, encoding: encoding)
-        }
-    }
-
-    /// The active profile's grounds that can be captured one-shot on the ⌘⇧P hotkey, in commit order
-    /// (primary first). One-shot-capturable means the registry has a plain ``CaptureProviding`` that is
-    /// NOT an interactive surface: camera (live preview) and file (open panel) are deliberately
-    /// excluded — fanning them in would hijack their own flows. `.selectedText` has no standalone
-    /// provider (it is folded into the screen capture), so it never appears here. The result always
-    /// leads with `primaryGround` when it is itself one-shot-capturable, so the prompt names the legs
-    /// in a stable order (screen first), mirroring the composite convention.
-    ///
-    /// THE systemAudio opt-in gate: `.systemAudio` is excluded UNLESS `settings.systemAudioEnabled`
-    /// is on. This is the real precondition for reaching the (unit-untestable) live ScreenCaptureKit
-    /// audio tap — a profile can list `.systemAudio`, but the leg is only captured once the user turns
-    /// the opt-in on. With the opt-in off, behavior is exactly as today: `.systemAudio` is never
-    /// captured, so a screen+audio profile falls back to its single screen leg.
-    private func oneShotCaptureGrounds(for profile: GroundProfile) -> [Ground] {
-        guard let session else { return [] }
-        let registry = session.captureRegistry
-        let systemAudioEnabled = session.settings.systemAudioEnabled
-        func isOneShot(_ ground: Ground) -> Bool {
-            // The live system-audio tap stays unreachable until the user enables the opt-in.
-            if ground == .systemAudio, !systemAudioEnabled { return false }
-            guard let provider = registry.provider(for: ground) else { return false }
-            // Interactive providers are NOT one-shot — they drive their own arm/shutter or panel flow.
-            return !(provider is any CameraSessionControlling) && !(provider is any FileImporting)
-        }
-        let primary = profile.primaryGround
-        // Stable order: primary first (when capturable), then the rest of the active grounds by their
-        // explicit `captureLegOrder` rank so the leg order is intentional and deterministic across
-        // launches — reordering the `Ground` enum's cases must not silently reorder capture or prompt.
-        let rest = Ground.allCases
-            .filter { $0 != primary && profile.activeGrounds.contains($0) && isOneShot($0) }
-            .sorted { $0.captureLegOrder < $1.captureLegOrder }
-        let leading = isOneShot(primary) ? [primary] : []
-        return leading + rest
-    }
-
-    /// Capture every one-shot ground of a multi-ground profile and commit them as ONE group.
-    /// Like the composite path, this commits directly (no per-leg preview): previewing a single image
-    /// would misrepresent a turn that also folds in, say, an audio transcript, and the legs are not
-    /// individually confirmable. A partial failure (any leg throws) fails the whole turn — a
-    /// multi-ground question that silently drops a leg would answer from less than the user asked.
-    private func startMultiGroundCapture(grounds: [Ground], intent: SessionOrchestrator.CaptureIntent) {
-        guard let session else { return }
-        guard beginCapturePhase(intent: intent) else { return }
-        let groupID = UUID()
-        let registry = session.captureRegistry
-        let scope = session.settings.captureScope
-        let quick = session.settings.quickMode
-        let quality = session.settings.captureQuality
-        let generation = session.lifecycle.snapshotCapture()
-        session.lifecycle.inferenceTask = Task {
-            do {
-                let encoding = CaptureEncodingPolicy.resolve(scope: scope, quick: quick, quality: quality)
-                var legs: [CaptureResult] = []
-                for ground in grounds {
-                    let provider = try registry.resolve(ground)
-                    let leg = try await provider.capture(scope: scope, quick: quick, encoding: encoding)
-                    guard session.lifecycle.isCurrentCapture(generation), !Task.isCancelled else { return }
-                    legs.append(leg)
-                }
-                guard !legs.isEmpty else {
-                    _ = session.applyPhaseEvent(.captureFailed(.generic(message: "Nothing was captured.")))
-                    return
-                }
-                self.commitGroup(legs, groupID: groupID, intent: intent)
-            } catch is CancellationError {
-                return
-            } catch let error as CaptureError {
-                guard session.lifecycle.isCurrentCapture(generation) else { return }
-                _ = session.applyPhaseEvent(.captureFailed(.from(captureError: error)))
-            } catch {
-                guard session.lifecycle.isCurrentCapture(generation) else { return }
-                _ = session.applyPhaseEvent(.captureFailed(.generic(message: error.localizedDescription)))
-            }
         }
     }
 
@@ -245,116 +178,12 @@ final class CaptureCoordinator {
         }
     }
 
-    // MARK: - Composite (screen + camera in one question)
-
-    /// Begin a composite turn: capture the SCREEN leg first (in `.capturing`), then open the live
-    /// camera for the CAMERA leg. The two legs are committed ATOMICALLY at the shutter
-    /// (``commitGroupAtShutter``) — nothing reaches the conversation until both are in hand, so an
-    /// abort mid-flight leaves no partial turn. Gated on the composite opt-in + both grounds' readiness.
-    func beginComposite() {
-        guard let session else { return }
-        switch session.phase {
-        case .idle, .result: break
-        default: return
-        }
-        guard session.moduleEnabled(.parallelScreen, for: session.resolvedActiveProfile),
-              session.captureRegistry.sessionController(for: .camera) != nil else { return }
-
-        session.setup?.refreshCapturePermission()
-        if let setup = session.setup, !setup.isReady {
-            _ = session.applyPhaseEvent(.setupNotReady) // screen side (Ollama / model / Screen Recording)
-            return
-        }
-        if let setup = session.setup, !setup.readiness(for: .cameraStudy) {
-            // Screen readiness passed, so Ollama + model are fine: the gap is Camera TCC. Enter and
-            // immediately fail the live phase for the typed Camera recovery (mirrors openCameraLive).
-            guard case .applied = session.applyPhaseEvent(.openCameraLive) else { return }
-            _ = session.applyPhaseEvent(.cameraLiveFailed(.permissionRequired(.camera)))
-            return
-        }
-
-        var intent: SessionOrchestrator.CaptureIntent = session.hasConversation ? .addToChat : .fresh
-        if intent == .addToChat, session.isContextBlocked {
-            guard case .idle = session.phase else { return } // from a full result thread: bail like beginCapture
-            session.emitNotice(.contextFull)
-            intent = .fresh
-        }
-
-        guard beginCapturePhase(intent: intent) else { return } // idle/result → capturing (screen leg)
-        let groupID = UUID()
-        let registry = session.captureRegistry
-        let ground = session.resolvedActiveProfile.primaryGround
-        let scope = session.settings.captureScope
-        let quick = session.settings.quickMode
-        let quality = session.settings.captureQuality
-        let generation = session.lifecycle.snapshotCapture()
-        session.lifecycle.inferenceTask = Task {
-            do {
-                let provider = try registry.resolve(ground)
-                let encoding = CaptureEncodingPolicy.resolve(scope: scope, quick: quick, quality: quality)
-                let screen = try await provider.capture(scope: scope, quick: quick, encoding: encoding)
-                guard session.lifecycle.isCurrentCapture(generation), !Task.isCancelled else { return }
-                // Open the camera (this aborts/teardowns first — which clears pending composite), THEN
-                // stash the screen leg so the shutter can find it.
-                session.openCameraLive()
-                session.lifecycle.pendingCompositeScreen = screen
-                session.lifecycle.pendingCompositeGroupID = groupID
-                session.lifecycle.pendingCompositeIntent = intent
-            } catch is CancellationError {
-                return
-            } catch let error as CaptureError {
-                guard session.lifecycle.isCurrentCapture(generation) else { return }
-                _ = session.applyPhaseEvent(.captureFailed(.from(captureError: error)))
-            } catch {
-                guard session.lifecycle.isCurrentCapture(generation) else { return }
-                _ = session.applyPhaseEvent(.captureFailed(.generic(message: error.localizedDescription)))
-            }
-        }
-    }
-
-    /// Commit a composite's screen + camera legs as one question (screen first, camera second — the
-    /// order downstream folding relies on). A thin wrapper over the general N-leg ``commitGroup``.
-    func commitGroupAtShutter(
-        screen: CaptureResult,
-        camera: CaptureResult,
-        groupID: UUID,
-        intent: SessionOrchestrator.CaptureIntent
-    ) {
-        commitGroup([screen, camera], groupID: groupID, intent: intent)
-    }
-
-    /// Commit an ordered group of capture legs as ONE multi-ground question and run a single turn.
-    /// Each leg becomes its own `.image` turn sharing `groupID` (ascending `id` preserves the order
-    /// the prompt fold names them in); each leg's archive write gates on its OWN ground inside
-    /// `storedCapture`, preserving the per-ground rule. The turn runs on the last VISION-bearing leg
-    /// (so the role router resolves to the vision model and the vision gate engages on a screen/camera
-    /// leg even when a non-image leg — an audio transcript — was captured last); a group with no image
-    /// runs on its last leg. The screen+camera shutter and the screen+audio fan-out both commit here.
-    func commitGroup(
-        _ legs: [CaptureResult],
-        groupID: UUID,
-        intent: SessionOrchestrator.CaptureIntent
-    ) {
-        guard let session, !legs.isEmpty else { return }
-        // Prefer the last image leg so the vision gate/model routing key on a real screenshot/photo
-        // (a screen+audio group's audio leg has no image); fall back to the last leg for an all-text
-        // group. For composite (screen + camera, both images) this is the camera leg, as before.
-        let primary = legs.last(where: \.hasVision) ?? legs[legs.count - 1]
-        if intent == .fresh { session.resetConversation() }
-        for leg in legs {
-            session.turnCounter += 1
-            session.conversation.append(ChatTurn(
-                id: session.turnCounter, kind: .image(session.storedCapture(leg)), compositeGroupID: groupID
-            ))
-        }
-        session.lifecycle.inferenceTask = Task { await session.runTurn(capturedNow: primary) }
-    }
-
     // MARK: - Shared capture spine
 
     /// Common pre-capture state reset + phase transition for every ground. Returns false when the
     /// phase machine rejects the transition (the caller must not start the capture task).
-    private func beginCapturePhase(intent: SessionOrchestrator.CaptureIntent) -> Bool {
+    /// Internal so the composite coordinator reuses the same spine instead of duplicating it.
+    func beginCapturePhase(intent: SessionOrchestrator.CaptureIntent) -> Bool {
         guard let session else { return false }
         session.abortSessionWork()
         session.lifecycle.pendingIntent = intent
@@ -362,6 +191,27 @@ final class CaptureCoordinator {
         session.stopSpeechOutput()
         guard case .applied = session.applyPhaseEvent(.beginCapture) else { return false }
         return true
+    }
+
+    /// THE single capture-failure ladder. Runs `body` and routes its outcome: a cancellation is a
+    /// silent no-op; a `CaptureError` fails to the typed recovery; any other error fails generic — but
+    /// only while `generation` is still the current capture (a stale leg of an aborted/superseded turn
+    /// never touches the phase). The single-leg, multi-ground, and composite paths all share this so
+    /// the guarded catch ladder lives in exactly one place. Internal so the composite coordinator
+    /// inherits it rather than carrying a copy.
+    func runGuardedCapture(generation: Int, _ body: @escaping () async throws -> Void) async {
+        guard let session else { return }
+        do {
+            try await body()
+        } catch is CancellationError {
+            return
+        } catch let error as CaptureError {
+            guard session.lifecycle.isCurrentCapture(generation) else { return }
+            _ = session.applyPhaseEvent(.captureFailed(.from(captureError: error)))
+        } catch {
+            guard session.lifecycle.isCurrentCapture(generation) else { return }
+            _ = session.applyPhaseEvent(.captureFailed(.generic(message: error.localizedDescription)))
+        }
     }
 
     /// Runs `produce` (the ground-specific "get a `CaptureResult`" step) on the inference task, then
@@ -375,7 +225,7 @@ final class CaptureCoordinator {
         guard let session else { return }
         let generation = session.lifecycle.snapshotCapture()
         session.lifecycle.inferenceTask = Task {
-            do {
+            await self.runGuardedCapture(generation: generation) {
                 let result = try await produce()
                 guard session.lifecycle.isCurrentCapture(generation), !Task.isCancelled else { return }
                 session.lifecycle.pendingCapture = result
@@ -385,14 +235,6 @@ final class CaptureCoordinator {
                 } else {
                     self.commitCapture(result, intent: intent)
                 }
-            } catch is CancellationError {
-                return
-            } catch let error as CaptureError {
-                guard session.lifecycle.isCurrentCapture(generation) else { return }
-                _ = session.applyPhaseEvent(.captureFailed(.from(captureError: error)))
-            } catch {
-                guard session.lifecycle.isCurrentCapture(generation) else { return }
-                _ = session.applyPhaseEvent(.captureFailed(.generic(message: error.localizedDescription)))
             }
         }
     }
