@@ -134,10 +134,11 @@ final class CaptureCoordinator {
         }
         let primary = profile.primaryGround
         // Stable order: primary first (when capturable), then the rest of the active grounds by their
-        // declaration order in `Ground.allCases` so the leg order is deterministic across launches.
-        let rest = Ground.allCases.filter {
-            $0 != primary && profile.activeGrounds.contains($0) && isOneShot($0)
-        }
+        // explicit `captureLegOrder` rank so the leg order is intentional and deterministic across
+        // launches — reordering the `Ground` enum's cases must not silently reorder capture or prompt.
+        let rest = Ground.allCases
+            .filter { $0 != primary && profile.activeGrounds.contains($0) && isOneShot($0) }
+            .sorted { $0.captureLegOrder < $1.captureLegOrder }
         let leading = isOneShot(primary) ? [primary] : []
         return leading + rest
     }

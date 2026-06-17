@@ -20,6 +20,23 @@ final class GroundProfileTests: XCTestCase {
         XCTAssertEqual(Ground.agent.requiredPermissions, [])
     }
 
+    // MARK: Capture leg order
+
+    func testCaptureLegOrderIsIntentionalAndIndependentOfCaseDeclaration() {
+        // The leg rank — and therefore the multi-ground fan-out's capture/prompt order — must be a
+        // deliberate choice, not the `case` declaration order. The visual screen ground leads, the
+        // supplementary text leg follows, and the transcript leg comes after.
+        XCTAssertLessThan(Ground.screen.captureLegOrder, Ground.selectedText.captureLegOrder)
+        XCTAssertLessThan(Ground.selectedText.captureLegOrder, Ground.systemAudio.captureLegOrder)
+    }
+
+    func testCaptureLegOrderIsATotalRankAcrossEveryGround() {
+        // Every ground has a distinct rank so sorting by it is total and stable across launches; a
+        // future ground that forgets a rank (a duplicate) would fail here, not silently tie.
+        let ranks = Ground.allCases.map(\.captureLegOrder)
+        XCTAssertEqual(Set(ranks).count, Ground.allCases.count, "each ground has a unique capture rank")
+    }
+
     // MARK: Catalog resolution
 
     func testBuiltInFallsBackToScreenDefaultForUnknownID() {
