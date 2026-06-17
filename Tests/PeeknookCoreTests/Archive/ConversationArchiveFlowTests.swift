@@ -136,6 +136,63 @@ final class ConversationArchiveFlowTests: XCTestCase {
         XCTAssertTrue(remaining.isEmpty)
     }
 
+    func testRetakeOnArchivedThreadKeepsItsSavedScreenshots() async {
+        // A fresh Retake on a reopened archived chat funnels through resetConversation → a session
+        // blob purge. The thread's adopted (on-disk) screenshots must survive that purge — the
+        // archive store owns them and only deletes them when the thread itself is removed.
+        let (store, dir) = tempArchive()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        // Save a thread that carries a real JPEG screenshot; save externalizes it to a blob on disk.
+        let savedThread = ConversationThread(
+            turns: [
+                ChatTurn(id: 1, kind: .image(CaptureResult(
+                    text: nil,
+                    sourceLabel: "Window",
+                    screenshotBase64: StubCaptureProvider.defaultScreenshotBase64
+                ))),
+                ChatTurn(id: 2, kind: .assistant("archived answer")),
+            ],
+            turnCounter: 2
+        )
+        let saveResult = await store.save(savedThread)
+        XCTAssertTrue(saveResult.isSuccess)
+
+        guard let reloaded = await store.load(id: savedThread.id),
+              case .image(let archivedImage)? = reloaded.turns.first?.kind,
+              let originalBlobID = archivedImage.screenshotBlobID else {
+            return XCTFail("Expected the saved thread to reference an externalized screenshot blob")
+        }
+        let blobStore = await store.blobStore
+        XCTAssertNotNil(try? blobStore.loadBase64(id: originalBlobID), "fixture blob must exist before the Retake")
+
+        let orchestrator = SessionOrchestrator(
+            settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b", persistConversation: true),
+            captureRegistry: GroundRegistry([
+                .screen: StubCaptureProvider(sampleText: "fresh", screenshotBase64: StubCaptureProvider.defaultScreenshotBase64),
+            ]),
+            inference: MockInferenceEngine(tokens: ["retaken"])
+        )
+        orchestrator.conversationArchive = store
+        orchestrator.captureBlobStore = blobStore
+
+        await orchestrator.openThread(id: savedThread.id)
+        guard case .result = orchestrator.phase else {
+            return XCTFail("Expected the reopened thread to surface as a result, got \(orchestrator.phase)")
+        }
+
+        orchestrator.retake()
+        _ = await orchestrator.waitForResult("retaken")
+
+        // The adopted blob survived the session purge, and the original thread is still listed.
+        XCTAssertNotNil(
+            try? blobStore.loadBase64(id: originalBlobID),
+            "a fresh Retake must not delete a reopened archived thread's saved screenshots"
+        )
+        let summaries = await store.waitForSummaries(count: 2)
+        XCTAssertTrue(summaries.contains { $0.id == savedThread.id }, "the original archived thread must stay listed")
+    }
+
     func testContextPressureCriticalNearWindowLimit() async throws {
         let orchestrator = SessionOrchestrator(
             settings: PeeknookSettings(previewBeforeInfer: false, textModel: "gemma4:e4b"),
