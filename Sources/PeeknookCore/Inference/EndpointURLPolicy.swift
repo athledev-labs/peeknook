@@ -13,10 +13,14 @@ public enum EndpointURLPolicy: Sendable {
         case insecureRemoteHTTP
     }
 
-    /// True when the endpoint targets a host other than local loopback.
+    /// True when the endpoint targets a host other than local loopback. Fails safe: an unparseable
+    /// or host-less (but non-empty) URL is treated as remote so the remote/insecure warnings still
+    /// show. An empty/whitespace-only string stays non-remote because it means "use the default
+    /// local loopback endpoint".
     public static func usesRemoteHost(_ urlString: String) -> Bool {
         guard let url = normalizedURL(from: urlString), let host = url.host else {
-            return !isLoopbackSubstring(in: urlString)
+            let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
+            return !trimmed.isEmpty
         }
         return !isLoopbackHost(host)
     }
@@ -57,11 +61,6 @@ public enum EndpointURLPolicy: Sendable {
         let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
         return URL(string: trimmed)
-    }
-
-    private static func isLoopbackSubstring(in string: String) -> Bool {
-        let lower = string.lowercased()
-        return lower.contains("127.0.0.1") || lower.contains("localhost") || lower.contains("[::1]")
     }
 }
 

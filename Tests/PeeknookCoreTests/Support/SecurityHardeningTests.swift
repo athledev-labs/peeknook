@@ -69,6 +69,14 @@ final class SecurityHardeningTests: XCTestCase {
         XCTAssertFalse(EndpointURLPolicy.usesRemoteHost("http://[::1]:11434"))
         XCTAssertTrue(EndpointURLPolicy.usesRemoteHost("http://192.168.1.10:11434"))
 
+        // Fail safe: an unparseable or host-less (but non-empty) URL is treated as remote so the
+        // remote/insecure warnings still surface. A loopback token embedded in junk must not
+        // suppress the warning.
+        XCTAssertTrue(EndpointURLPolicy.usesRemoteHost("ht!tp://evil.example/localhost"))
+        XCTAssertTrue(EndpointURLPolicy.usesRemoteHost("not a url 127.0.0.1"))
+        XCTAssertFalse(EndpointURLPolicy.usesRemoteHost(""))
+        XCTAssertFalse(EndpointURLPolicy.usesRemoteHost("   "))
+
         XCTAssertEqual(
             EndpointURLPolicy.validate("http://127.0.0.1:11434", acceptInsecureRemote: false),
             .valid(URL(string: "http://127.0.0.1:11434")!)
