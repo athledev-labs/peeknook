@@ -216,10 +216,24 @@ public actor ConversationArchiveStore {
             return nil
         }
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        try? writeProtected(fileData, to: threadURL(thread.id))
-        writeIndex(ConversationArchiveIndex(version: Self.indexVersion, summaries: [thread.summary(fileBytes: fileData.count)]))
-        try? FileManager.default.removeItem(at: legacyFileURL)
-        return thread
+        // A thread that is not on disk must not trigger legacy deletion, so a failed write leaves the
+        // legacy file untouched for a clean retry on the next launch.
+        do {
+            try writeProtected(fileData, to: threadURL(thread.id))
+        } catch {
+            return nil
+        }
+        // Only delete the legacy source once the v2 index commit has actually succeeded. On failure,
+        // roll back the just-written thread file (mirroring `save()`) and keep the legacy file so the
+        // next launch re-enters migration and retries cleanly.
+        switch writeIndex(ConversationArchiveIndex(version: Self.indexVersion, summaries: [thread.summary(fileBytes: fileData.count)])) {
+        case .success:
+            try? FileManager.default.removeItem(at: legacyFileURL)
+            return thread
+        case .failure:
+            try? FileManager.default.removeItem(at: threadURL(thread.id))
+            return nil
+        }
     }
 
     /// Re-seal any legacy plaintext thread files. Returns how many were upgraded.

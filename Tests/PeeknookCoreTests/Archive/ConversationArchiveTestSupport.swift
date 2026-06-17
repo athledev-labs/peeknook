@@ -41,6 +41,30 @@ struct FailingArchiveProtection: ConversationArchiveProtection {
     func open(_ sealed: Data) throws -> Data { throw error }
 }
 
+/// Seals normally for the first call, then throws on the second. Migration seals the thread first
+/// and the index second, so this forces the index write to fail while the thread write succeeds —
+/// letting tests exercise the migration's mid-write failure path without the Keychain.
+final class SecondSealFailsArchiveProtection: ConversationArchiveProtection, @unchecked Sendable {
+    private let inner: FixedKeyArchiveProtection
+    private let lock = NSLock()
+    private var sealCount = 0
+
+    init(key: SymmetricKey = ConversationArchiveTestSupport.sharedTestKey) {
+        self.inner = FixedKeyArchiveProtection(key: key)
+    }
+
+    func seal(_ plaintext: Data) throws -> Data {
+        lock.lock()
+        sealCount += 1
+        let attempt = sealCount
+        lock.unlock()
+        if attempt == 2 { throw ArchiveProtectionError.keyUnavailable }
+        return try inner.seal(plaintext)
+    }
+
+    func open(_ sealed: Data) throws -> Data { try inner.open(sealed) }
+}
+
 /// Controllable, thread-safe tri-state marker for the fail-closed gate tests. `available == false`
 /// models a keychain that can't be reached, so `value()` returns nil (the store must fail soft).
 final class SealMarkerBox: @unchecked Sendable {
