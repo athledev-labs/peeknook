@@ -188,25 +188,14 @@ enum PromptBuilder {
         webLookup: WebLookupSnapshot?
     ) -> String {
         var lines = ["## Capture", "Source: \(capture.sourceLabel)."]
-        switch capture.ground {
-        case .camera:
-            lines.append("Ground: camera — the attached image is a photo from the Mac's camera (paper, whiteboard, book, or a physical object), not a screenshot of the display.")
-        case .file:
-            lines.append("Ground: imported file — the attached image is a page or image from a file the user opened from disk (e.g. a PDF page or a saved image), not a live capture of the current screen.")
-        case .systemAudio:
-            lines.append("Ground: system audio — the text below is an on-device transcript of what was playing through the Mac (a meeting, video, or call). There is NO image; answer from the transcript.")
-        default:
-            break
+        if let groundLine = capture.ground.promptGroundLine {
+            lines.append(groundLine)
         }
         if capture.appName != nil || capture.windowTitle != nil {
             lines.append("Target: \(capture.targetLabel).")
         }
         if capture.hasVision {
-            switch capture.ground {
-            case .camera: lines.append("A camera photo is attached to this message (vision).")
-            case .file:   lines.append("An image from the imported file is attached to this message (vision).")
-            default:      lines.append("A screenshot is attached to this message (vision).")
-            }
+            lines.append(capture.ground.promptVisionAttachmentSentence)
         }
         if let text = capture.text, !text.isEmpty {
             // An audio leg carries no image — its text IS the content, not a supplement to a
@@ -250,7 +239,7 @@ enum PromptBuilder {
         ]
         for (index, leg) in imageLegs.enumerated() {
             let n = index + 1
-            lines.append("Image \(n) is \(groundImageDescription(leg.ground)) (source: \(leg.capture.sourceLabel)).")
+            lines.append("Image \(n) is \(leg.ground.promptImageDescription) (source: \(leg.capture.sourceLabel)).")
             if leg.ground == .screen, leg.capture.appName != nil || leg.capture.windowTitle != nil {
                 lines.append("Image \(n) target: \(leg.capture.targetLabel).")
             }
@@ -262,14 +251,14 @@ enum PromptBuilder {
             // supplement to be overridden by the images.
             if leg.kind == .transcript {
                 lines.append("""
-                Transcript of \(groundShortLabel(leg.ground)):
+                Transcript of \(leg.ground.promptShortLabel):
                 ---
                 \(text)
                 ---
                 """)
             } else {
                 lines.append("""
-                Supplementary extracted text from \(groundShortLabel(leg.ground)) (may be incomplete; prefer the images when they disagree):
+                Supplementary extracted text from \(leg.ground.promptShortLabel) (may be incomplete; prefer the images when they disagree):
                 ---
                 \(text)
                 ---
@@ -280,29 +269,6 @@ enum PromptBuilder {
             lines.append(WebSearchClient.promptContext(from: webLookup))
         }
         return lines.joined(separator: "\n")
-    }
-
-    /// How a leg's image is described in a multi-ground prompt, keyed by its ground.
-    private static func groundImageDescription(_ ground: Ground) -> String {
-        switch ground {
-        case .camera:
-            return "a CAMERA PHOTO from the Mac's camera (paper, whiteboard, book, or a physical object), NOT a screenshot of the display"
-        case .file:
-            return "an image from an imported FILE (e.g. a PDF page or a saved image), not a live capture of the current screen"
-        default:
-            return "a SCREENSHOT of the Mac display"
-        }
-    }
-
-    /// Short noun phrase naming a leg's source, for the supplementary-text label.
-    private static func groundShortLabel(_ ground: Ground) -> String {
-        switch ground {
-        case .camera:       return "the camera photo"
-        case .file:         return "the imported file"
-        case .selectedText: return "the selected text"
-        case .systemAudio:  return "the system audio"
-        default:            return "the screenshot"
-        }
     }
 
     private static func depthSection(_ depth: AnswerDepth) -> String {

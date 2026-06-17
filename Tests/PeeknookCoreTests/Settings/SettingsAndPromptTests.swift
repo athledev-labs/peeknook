@@ -65,6 +65,50 @@ final class SettingsAndPromptTests: XCTestCase {
         XCTAssertFalse(message.contains("Ground: camera"))
     }
 
+    func testFileGroundKeepsImportedFileWording() {
+        let capture = CaptureResult(text: nil, sourceLabel: "report.pdf", screenshotBase64: "x", ground: .file)
+        let message = PromptBuilder.captureUserMessage(capture: capture, assembly: PromptAssembly(answerDepth: .deep))
+        XCTAssertTrue(message.contains("Ground: imported file"))
+        XCTAssertTrue(message.contains("An image from the imported file is attached to this message (vision)."))
+        XCTAssertFalse(message.contains("A screenshot is attached"))
+    }
+
+    func testSystemAudioGroundKeepsTranscriptWordingAndClaimsNoScreenshot() {
+        let capture = CaptureResult(text: "Deadline moved to Monday.", sourceLabel: "System audio", ground: .systemAudio)
+        let message = PromptBuilder.captureUserMessage(capture: capture, assembly: PromptAssembly(answerDepth: .deep))
+        XCTAssertTrue(message.contains("Ground: system audio"))
+        XCTAssertTrue(message.contains("Transcript of system audio:"))
+        XCTAssertFalse(message.contains("A screenshot is attached"), "an audio leg must never claim a screenshot")
+    }
+
+    func testMultiGroundScreenAndTranscriptKeepTheirModalityWording() {
+        let screen = MediaPayload(
+            capture: CaptureResult(text: nil, sourceLabel: "Keynote", appName: "Keynote", screenshotBase64: "b", ground: .screen),
+            kind: .image,
+            imageBase64: "b"
+        )
+        let audio = MediaPayload(
+            capture: CaptureResult(text: "We will reconvene at noon.", sourceLabel: "System audio", ground: .systemAudio),
+            kind: .transcript
+        )
+        let message = PromptBuilder.multiGroundUserMessage(payloads: [screen, audio], assembly: PromptAssembly(answerDepth: .deep))
+        XCTAssertTrue(message.contains("Image 1 is a SCREENSHOT of the Mac display"))
+        XCTAssertTrue(message.contains("Transcript of the system audio:"))
+    }
+
+    /// A never-shipped, text-only ground must NOT silently inherit the screenshot wording: with the
+    /// per-ground copy centralized on `Ground`, a transcript leg from such a ground is honestly
+    /// labelled and never claims an attached screenshot.
+    func testNonScreenTextOnlyGroundDoesNotClaimScreenshot() {
+        let capture = CaptureResult(text: "the selection", sourceLabel: "Pages", ground: .selectedText)
+        let message = PromptBuilder.captureUserMessage(capture: capture, assembly: PromptAssembly(answerDepth: .deep))
+        XCTAssertFalse(
+            message.contains("A screenshot is attached to this message (vision)."),
+            "a text-only ground without vision must not claim a screenshot"
+        )
+        XCTAssertTrue(message.contains("Ground: selected text"))
+    }
+
     func testCaptureUserMessageFoldsQuestionWhenPresent() {
         let capture = CaptureResult(text: "t", sourceLabel: "Safari (vision)", screenshotBase64: "x")
         let withQ = PromptBuilder.captureUserMessage(
