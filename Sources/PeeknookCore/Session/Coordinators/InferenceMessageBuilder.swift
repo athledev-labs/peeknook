@@ -2,6 +2,32 @@
 
 import Foundation
 
+/// Carries secret-redaction across the message build for a remote/`:cloud` turn. When present, the
+/// prompt builder replaces secret spans in the SENT text legs (transcript/clipboard primary text and
+/// supplementary extracted text) with a fixed token and tallies the count here; the archived
+/// ``ChatTurn`` and the on-screen conversation keep the original text untouched. The screenshot bitmap
+/// is out of scope — only text legs are inspected. `nil` (the local, non-cloud path) means no
+/// inspection at all, so the assembled messages stay byte-identical to before.
+///
+/// A reference type so the prompt builder's static, value-returning functions can accumulate the hit
+/// count across every message in one turn without changing their return shape.
+final class RedactionContext {
+    let policy: SensitiveContentPolicy
+    private(set) var hitCount = 0
+
+    init(policy: SensitiveContentPolicy = SensitiveContentPolicy()) {
+        self.policy = policy
+    }
+
+    /// Redacts one text leg headed for the remote model, tallying any stripped spans. Returns the
+    /// original string unchanged (and adds nothing to the count) when it carries no secrets.
+    func redact(_ text: String) -> String {
+        let result = policy.redactedForRemoteInference(text: text)
+        hitCount += result.hitCount
+        return result.text
+    }
+}
+
 /// Pure mapping from the display conversation to the model's message list. Takes the per-turn
 /// inputs (`quickMode`, `sessionBrief`) as plain values so it has no orchestrator dependency and the
 /// message logic is directly testable. The inference and suggestion coordinators both build their
@@ -68,7 +94,8 @@ struct InferenceMessageBuilder {
         from conversation: [ChatTurn],
         webLookup: WebLookupSnapshot? = nil,
         policy: InferenceReplayPolicy = .inference,
-        imageBase64ByTurnID: [Int: String] = [:]
+        imageBase64ByTurnID: [Int: String] = [:],
+        redaction: RedactionContext? = nil
     ) -> [InferenceMessage] {
         let units = imagePayloadUnits(conversation.filter(\.isImage))
         let replayImageIDs = Set(units.suffix(policy.maxImagePayloads).flatMap { $0.map(\.id) })
@@ -110,7 +137,7 @@ struct InferenceMessageBuilder {
                     messages.append(InferenceMessage(
                         role: .user,
                         text: PromptBuilder.multiGroundUserMessage(
-                            payloads: payloads, assembly: assembly, webLookup: lookup
+                            payloads: payloads, assembly: assembly, webLookup: lookup, redaction: redaction
                         ),
                         imagesBase64: payloads.compactMap(\.imageBase64)
                     ))
@@ -122,7 +149,8 @@ struct InferenceMessageBuilder {
                             capture: capture,
                             assembly: assembly,
                             webLookup: lookup,
-                            question: turn.question   // a live-promoted frame folds its note into this message
+                            question: turn.question,   // a live-promoted frame folds its note into this message
+                            redaction: redaction
                         ),
                         imageBase64: includeImage ? (imageBase64ByTurnID[turn.id] ?? capture.screenshotBase64) : nil
                     ))

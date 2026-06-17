@@ -30,14 +30,14 @@ struct PeekSessionNoticeBanner: View {
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(theme.primaryLabel)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text(peek: message)
+                    messageText
                         .font(.system(size: 10))
                         .foregroundStyle(theme.secondaryLabel)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .accessibilityElement(children: .combine)
                 .accessibilityAddTraits(.isStaticText)
-                .accessibilityLabel(Text(verbatim: "\(PeekLocalized(.init(title))). \(PeekLocalized(.init(message)))"))
+                .accessibilityLabel(Text(verbatim: "\(PeekLocalized(.init(title))). \(accessibilityMessage)"))
                 Spacer(minLength: 0)
             }
             HStack(spacing: 4) {
@@ -66,6 +66,7 @@ struct PeekSessionNoticeBanner: View {
         case .threadUnavailable: "exclamationmark.triangle"
         case .liveRefreshFailed: "arrow.clockwise"
         case .liveEnded: "antenna.radiowaves.left.and.right.slash"
+        case .secretsRedactedForRemote: "eye.slash"
         }
     }
 
@@ -75,21 +76,44 @@ struct PeekSessionNoticeBanner: View {
         case .threadUnavailable: "Couldn't open that chat"
         case .liveRefreshFailed: "Couldn't refresh"
         case .liveEnded: "Live ended"
+        case .secretsRedactedForRemote: "Removed secrets before sending"
         }
     }
 
-    private var message: String {
+    /// The visible message as a localized `Text`. The redaction case interpolates the count, so it
+    /// renders through a `LocalizedStringKey` format key instead of a static literal.
+    private var messageText: Text {
         switch notice {
         case .contextFull:
-            conversationArchived
+            Text(peek: conversationArchived
                 ? "The previous chat's context window was full, so this began a fresh chat. Your earlier chat is saved in History."
-                : "The previous chat's context window was full, so this began a fresh chat."
+                : "The previous chat's context window was full, so this began a fresh chat.")
         case .threadUnavailable:
-            "That saved chat is missing or unreadable, so it was removed from your history."
+            Text(peek: "That saved chat is missing or unreadable, so it was removed from your history.")
         case .liveRefreshFailed:
-            "Peeknook couldn't capture the latest screen. The live chat is still on, so you can try Refresh again."
+            Text(peek: "Peeknook couldn't capture the latest screen. The live chat is still on, so you can try Refresh again.")
         case .liveEnded:
-            "The live session reached its time limit and turned off. Tap Go live to start watching again."
+            Text(peek: "The live session reached its time limit and turned off. Tap Go live to start watching again.")
+        case .secretsRedactedForRemote(let count):
+            Text(peek: "Removed \(count) likely secrets from the text before sending it to your remote model. Your saved chat keeps the original.")
+        }
+    }
+
+    /// The same message resolved to a plain `String` for the combined VoiceOver label.
+    private var accessibilityMessage: String {
+        switch notice {
+        case .contextFull:
+            PeekLocalized(conversationArchived
+                ? "The previous chat's context window was full, so this began a fresh chat. Your earlier chat is saved in History."
+                : "The previous chat's context window was full, so this began a fresh chat.")
+        case .threadUnavailable:
+            PeekLocalized("That saved chat is missing or unreadable, so it was removed from your history.")
+        case .liveRefreshFailed:
+            PeekLocalized("Peeknook couldn't capture the latest screen. The live chat is still on, so you can try Refresh again.")
+        case .liveEnded:
+            PeekLocalized("The live session reached its time limit and turned off. Tap Go live to start watching again.")
+        case .secretsRedactedForRemote(let count):
+            PeekLocalized("Removed \(count) likely secrets from the text before sending it to your remote model. Your saved chat keeps the original.")
         }
     }
 }
