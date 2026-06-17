@@ -118,6 +118,13 @@ struct PeekSettingsCaptureSection: View {
             )
 
             PeekSettingsToggleRow(
+                icon: orchestrator.settings.accessibilityTreeEnabled ? "rectangle.3.group.bubble" : "rectangle.dashed",
+                title: "Read accessibility tree",
+                detail: "Lets a profile read the focused window's structure (its accessibility roles, labels, and values) as a text outline alongside the screen. It is read on-device and is NOT a screenshot. Add the accessibility-tree ground to a profile to use it. Needs Accessibility. Secure and password fields keep their structure but their values are removed, and any leftover secret is masked. The outline is sent to your model like the rest of your prompt, so it goes to a remote or cloud endpoint if you point Peeknook at one.",
+                isOn: accessibilityTreeBinding
+            )
+
+            PeekSettingsToggleRow(
                 icon: orchestrator.settings.liveEnabled ? "dot.radiowaves.left.and.right" : "antenna.radiowaves.left.and.right.slash",
                 title: "Live session",
                 detail: "Adds a Go live command to an answered chat so it stays armed and keeps context across captures. You stay in control: a clear Live indicator with a Stop, and capture stays user-triggered.",
@@ -431,6 +438,13 @@ struct PeekSettingsCaptureSection: View {
         Binding(
             get: { orchestrator.settings.systemAudioEnabled },
             set: { settings.setSystemAudioEnabled($0) }
+        )
+    }
+
+    private var accessibilityTreeBinding: Binding<Bool> {
+        Binding(
+            get: { orchestrator.settings.accessibilityTreeEnabled },
+            set: { settings.setAccessibilityTreeEnabled($0) }
         )
     }
 

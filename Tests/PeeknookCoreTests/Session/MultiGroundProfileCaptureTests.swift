@@ -37,6 +37,43 @@ final class MultiGroundProfileCaptureTests: XCTestCase {
         )
     }
 
+    private func screenAccessibilityProfile() -> GroundProfile {
+        GroundProfile(
+            id: UUID().uuidString,
+            displayNameKey: "Screen + Accessibility",
+            symbol: "macwindow",
+            primaryGround: .screen,
+            activeGrounds: [.screen, .accessibilityTree],
+            isBuiltIn: false,
+            displayName: "Screen + Accessibility"
+        )
+    }
+
+    private func makeAccessibilityOrchestrator(
+        engine: any InferenceEngine,
+        profile: GroundProfile,
+        accessibilityTreeEnabled: Bool
+    ) -> SessionOrchestrator {
+        let orchestrator = SessionOrchestrator(
+            settings: PeeknookSettings(
+                previewBeforeInfer: false,
+                textModel: "gemma4:e4b",
+                accessibilityTreeEnabled: accessibilityTreeEnabled
+            ),
+            captureRegistry: GroundRegistry([
+                .screen: StubCaptureProvider(sampleText: "screen text", appName: "Safari"),
+                .accessibilityTree: AccessibilityTreeCaptureProvider(
+                    reader: StubAccessibilityTreeReader(), isTrusted: { true }
+                ),
+            ]),
+            inference: engine
+        )
+        let store = storeWithProfile(profile)
+        orchestrator.profileStore = store
+        orchestrator.settings.activeProfileID = profile.id
+        return orchestrator
+    }
+
     private func makeOrchestrator(
         engine: any InferenceEngine,
         profile: GroundProfile,
@@ -156,6 +193,47 @@ final class MultiGroundProfileCaptureTests: XCTestCase {
             return nil
         }
         XCTAssertEqual(captured, [.screen, .systemAudio], "opt-in on: primary screen leg leads, audio follows")
+        XCTAssertTrue(captured.contains(profile.primaryGround), "the primary ground is always captured")
+    }
+
+    // MARK: - accessibilityTree opt-in gate
+
+    func testAccessibilityTreeOptInOffCapturesOnlyTheScreenLeg() async {
+        // A profile that lists screen + accessibility tree captures ONLY the screen leg while
+        // `accessibilityTreeEnabled` is off (the default) — the live AX walk is never reached, and the
+        // fan-out collapses to the single one-shot screen path (no group).
+        let profile = screenAccessibilityProfile()
+        let engine = ScriptedEngine(responsesPerCall: [["a"]])
+        let o = makeAccessibilityOrchestrator(engine: engine, profile: profile, accessibilityTreeEnabled: false)
+
+        o.beginCapture()
+        _ = await o.waitForResult("a")
+
+        let images = o.conversation.filter(\.isImage)
+        XCTAssertEqual(images.count, 1, "opt-in off: only the screen leg is captured")
+        guard case .image(let only)? = images.first?.kind else { return XCTFail("missing leg") }
+        XCTAssertEqual(only.ground, .screen, "the kept leg is the primary screen ground")
+        XCTAssertNil(images.first?.compositeGroupID, "a single leg is not a group")
+    }
+
+    func testAccessibilityTreeOptInOnCapturesBothLegsKeepingPrimary() async {
+        // With the opt-in on, the same profile fans out to BOTH legs — the primary (screen) ground
+        // leads, and the accessibility outline follows as a text leg.
+        let profile = screenAccessibilityProfile()
+        let o = makeAccessibilityOrchestrator(
+            engine: MockInferenceEngine(tokens: ["a"], declaredCapabilities: ["vision"]),
+            profile: profile,
+            accessibilityTreeEnabled: true
+        )
+
+        o.beginCapture()
+        _ = await o.waitForResult("a")
+
+        let captured = o.conversation.compactMap { turn -> Ground? in
+            if case .image(let capture) = turn.kind { return capture.ground }
+            return nil
+        }
+        XCTAssertEqual(captured, [.screen, .accessibilityTree], "opt-in on: primary screen leg leads, AX outline follows")
         XCTAssertTrue(captured.contains(profile.primaryGround), "the primary ground is always captured")
     }
 

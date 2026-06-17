@@ -135,7 +135,7 @@ struct PeekProfileEditor: View {
     /// Eligible grounds in a stable display order (primary first).
     private var eligibleGrounds: [Ground] {
         let primary = profile.primaryGround
-        let rest = [Ground.screen, .selectedText, .systemAudio, .clipboard]
+        let rest = [Ground.screen, .selectedText, .systemAudio, .clipboard, .accessibilityTree]
             .filter { Ground.multiGroundEligible.contains($0) && $0 != primary }
         return [primary] + rest
     }
@@ -143,17 +143,27 @@ struct PeekProfileEditor: View {
     @ViewBuilder
     private func groundPill(_ ground: Ground) -> some View {
         let isPrimary = ground == profile.primaryGround
-        let isAudio = ground == .systemAudio
-        let audioGated = isAudio && !orchestrator.settings.systemAudioEnabled
+        let gated = isGated(ground)
         let selected = profile.activeGrounds.contains(ground)
         PeekSurfaceFilterPill(
             title: groundTitle(ground),
             isSelected: selected,
-            hint: groundHint(ground, isPrimary: isPrimary, audioGated: audioGated),
+            hint: groundHint(ground, isPrimary: isPrimary, gated: gated),
             action: { toggleGround(ground, currentlySelected: selected) }
         )
-        // The primary ground is part of the profile's identity; audio is unavailable until the opt-in.
-        .disabled(isPrimary || audioGated)
+        // The primary ground is part of the profile's identity; an opt-in ground is unavailable until
+        // its opt-in is on.
+        .disabled(isPrimary || gated)
+    }
+
+    /// A ground whose capture is held behind an off-by-default opt-in is gated (disabled with a hint)
+    /// until that opt-in is on, so a user sees why a profile carrying it still only reads its other legs.
+    private func isGated(_ ground: Ground) -> Bool {
+        switch ground {
+        case .systemAudio: return !orchestrator.settings.systemAudioEnabled
+        case .accessibilityTree: return !orchestrator.settings.accessibilityTreeEnabled
+        default: return false
+        }
     }
 
     private func toggleGround(_ ground: Ground, currentlySelected: Bool) {
@@ -175,16 +185,24 @@ struct PeekProfileEditor: View {
         case .selectedText: "Selected text"
         case .systemAudio: "System audio"
         case .clipboard: "Clipboard"
+        case .accessibilityTree: "Accessibility tree"
         default: "Screen"
         }
     }
 
-    private func groundHint(_ ground: Ground, isPrimary: Bool, audioGated: Bool) -> String {
+    private func groundHint(_ ground: Ground, isPrimary: Bool, gated: Bool) -> String {
         if isPrimary {
             return "Always captured by this profile"
         }
-        if audioGated {
-            return "Turn on Hear system audio in Capture first"
+        if gated {
+            switch ground {
+            case .systemAudio: return "Turn on Hear system audio in Capture first"
+            case .accessibilityTree: return "Turn on Read accessibility tree in Capture first"
+            default: break
+            }
+        }
+        if ground == .accessibilityTree {
+            return "On-device window structure (roles, labels, values), not a screenshot. Secure fields are redacted."
         }
         return "Include this ground in every capture"
     }

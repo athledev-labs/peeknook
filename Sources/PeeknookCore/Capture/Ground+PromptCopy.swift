@@ -24,6 +24,8 @@ extension Ground {
             return "Ground: system audio — the text below is an on-device transcript of what was playing through the Mac (a meeting, video, or call). There is NO image; answer from the transcript."
         case .clipboard:
             return "Ground: clipboard — the text below is what the user has copied to the clipboard. There is NO image; answer from the copied text."
+        case .accessibilityTree:
+            return "Ground: accessibility tree — the text below is a structured outline of the focused window's accessibility elements (roles, labels, and values), read on-device. It is NOT a screenshot; there is NO image. Answer from the outline; secure fields are redacted."
         case .selectedText:
             return "Ground: selected text — the text below is what the user selected on screen. There is NO image; answer from the selected text."
         case .voiceInput:
@@ -49,6 +51,8 @@ extension Ground {
             return "No image is attached — the system-audio transcript below is the content."
         case .clipboard:
             return "No image is attached — the copied clipboard text below is the content."
+        case .accessibilityTree:
+            return "No image is attached — the accessibility outline below is the content."
         case .selectedText:
             return "No image is attached — the selected text below is the content."
         case .voiceInput:
@@ -73,6 +77,8 @@ extension Ground {
             return "an on-device transcript of the system audio (no image)"
         case .clipboard:
             return "text the user has copied to the clipboard (no image)"
+        case .accessibilityTree:
+            return "a structured accessibility outline of the focused window (roles, labels, values), NOT a screenshot (no image)"
         case .selectedText:
             return "text the user selected on screen (no image)"
         case .voiceInput:
@@ -90,6 +96,7 @@ extension Ground {
         switch self {
         case .systemAudio:  return "Transcript of system audio"
         case .clipboard:    return "Copied clipboard text"
+        case .accessibilityTree: return "Accessibility outline of the focused window"
         case .selectedText: return "Selected text"
         case .voiceInput:   return "Transcript of the dictation"
         case .agent:        return "Result from the sidecar agent"
@@ -108,6 +115,7 @@ extension Ground {
         case .selectedText: return "the selected text"
         case .systemAudio:  return "the system audio"
         case .clipboard:    return "the copied text"
+        case .accessibilityTree: return "the accessibility outline"
         case .voiceInput:   return "the dictation"
         case .agent:        return "the agent result"
         }

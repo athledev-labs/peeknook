@@ -31,6 +31,10 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     /// audio and transcribe it on-device into a text leg. Off by default; never continuous, never
     /// over the network. Distinct from `voiceInputEnabled` (the user's microphone dictation).
     public var systemAudioEnabled: Bool
+    /// Opt-in: let a capture read the focused window's accessibility tree — a structured, on-device
+    /// outline of roles, labels, and values — and fold it into a text leg. Off by default; secure
+    /// fields are redacted and any leftover secret is masked. Gates on the Accessibility permission.
+    public var accessibilityTreeEnabled: Bool
     /// User-added models (any Ollama tag) shown alongside the curated catalog in the picker.
     public var customModels: [CustomModelEntry]
     /// User reorder/hide deltas for the notch command bars, keyed by a scope token. v1 only ever reads
@@ -134,6 +138,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         persistConversation: Bool = false,
         webLookupEnabled: Bool = false,
         systemAudioEnabled: Bool = false,
+        accessibilityTreeEnabled: Bool = false,
         customModels: [CustomModelEntry] = [],
         commandOverrides: [String: [CommandOverride]] = [:],
         displayName: String = "",
@@ -177,6 +182,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.persistConversation = persistConversation
         self.webLookupEnabled = webLookupEnabled
         self.systemAudioEnabled = systemAudioEnabled
+        self.accessibilityTreeEnabled = accessibilityTreeEnabled
         self.customModels = customModels
         self.commandOverrides = commandOverrides
         self.displayName = displayName
@@ -251,7 +257,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, systemAudioEnabled, customModels, commandOverrides, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, highlightSpeechWhileReading, speechVoiceIdentifier, briefHotkey, inferenceImageReplay, captureQuality, acceptInsecureRemoteOllama, activeProfileID, cameraHotkey, answerBackend, openAICompatibleBaseURL, openAICompatibleModelTag, acceptInsecureRemoteOpenAICompatible, catalogBaseURL, fastTextFollowUps, textOnlyBackend, textOnlyModelTag, compositeCaptureEnabled, liveEnabled, liveRefreshTriggerRaw, liveAutoRespond, liveTimerIntervalSeconds, liveRateCapSeconds, livePersistAcrossDone, liveMaxArmedSeconds
+        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, systemAudioEnabled, accessibilityTreeEnabled, customModels, commandOverrides, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, highlightSpeechWhileReading, speechVoiceIdentifier, briefHotkey, inferenceImageReplay, captureQuality, acceptInsecureRemoteOllama, activeProfileID, cameraHotkey, answerBackend, openAICompatibleBaseURL, openAICompatibleModelTag, acceptInsecureRemoteOpenAICompatible, catalogBaseURL, fastTextFollowUps, textOnlyBackend, textOnlyModelTag, compositeCaptureEnabled, liveEnabled, liveRefreshTriggerRaw, liveAutoRespond, liveTimerIntervalSeconds, liveRateCapSeconds, livePersistAcrossDone, liveMaxArmedSeconds
     }
 
     // Tolerant decode, a saved blob missing a newer key keeps the rest of the user's
@@ -270,6 +276,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.persistConversation = try c.decodeIfPresent(Bool.self, forKey: .persistConversation) ?? false
         self.webLookupEnabled = try c.decodeIfPresent(Bool.self, forKey: .webLookupEnabled) ?? false
         self.systemAudioEnabled = try c.decodeIfPresent(Bool.self, forKey: .systemAudioEnabled) ?? false
+        self.accessibilityTreeEnabled = try c.decodeIfPresent(Bool.self, forKey: .accessibilityTreeEnabled) ?? false
         self.customModels = try c.decodeIfPresent([CustomModelEntry].self, forKey: .customModels) ?? []
         // Primitives-only ``CommandOverride`` (String/Int?/Bool) cannot throw on an unknown raw value,
         // so this decode can never trip the full-reset bomb; a stale command id is dropped at apply time.

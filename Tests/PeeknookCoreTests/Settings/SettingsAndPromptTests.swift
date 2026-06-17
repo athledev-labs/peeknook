@@ -399,6 +399,26 @@ final class SettingsAndPromptTests: XCTestCase {
         XCTAssertTrue(back.systemAudioEnabled, "the field round-trips through encode/decode")
     }
 
+    func testAccessibilityTreeSettingDefaultsOffAndRoundTrips() throws {
+        // A legacy blob missing the key keeps its siblings and defaults the AX-tree ground to off —
+        // tolerant decode, adding the field must not reset saved state.
+        let legacy = Data(#"{"mode":"general","textModel":"gemma4:e4b","systemAudioEnabled":true}"#.utf8)
+        let decoded = try JSONDecoder().decode(PeeknookSettings.self, from: legacy)
+        XCTAssertFalse(decoded.accessibilityTreeEnabled, "a missing key defaults off")
+        XCTAssertTrue(decoded.systemAudioEnabled, "the sibling opt-in is preserved")
+        XCTAssertEqual(decoded.textModel, "gemma4:e4b")
+
+        let on = PeeknookSettings(textModel: "gemma4:e4b", accessibilityTreeEnabled: true)
+        let back = try JSONDecoder().decode(PeeknookSettings.self, from: JSONEncoder().encode(on))
+        XCTAssertTrue(back.accessibilityTreeEnabled, "the field round-trips through encode/decode")
+
+        // Byte-identical when off: re-encoding a default-off settings must not introduce the key with a
+        // surprising value or perturb the rest, so a stored blob from before this field is unaffected.
+        let off = PeeknookSettings(textModel: "gemma4:e4b")
+        let reDecoded = try JSONDecoder().decode(PeeknookSettings.self, from: JSONEncoder().encode(off))
+        XCTAssertFalse(reDecoded.accessibilityTreeEnabled, "default off survives an encode/decode round-trip")
+    }
+
     func testSpeechVoiceOptionMenuLabelIncludesQuality() {
         let enhanced = SpeechVoiceOption(identifier: "x", displayName: "Ava", qualityLabel: "Enhanced")
         XCTAssertEqual(enhanced.menuLabel, "Ava · Enhanced")

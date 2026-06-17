@@ -23,6 +23,12 @@ public enum Ground: String, Codable, Sendable, CaseIterable, Hashable {
     /// Text the user has copied to the clipboard. Inherently user-triggered (the copy is the consent)
     /// and fully local, so it requires no TCC permission. Produces a TEXT leg, never an image.
     case clipboard
+    /// A structured, fully-local outline of the focused window's accessibility subtree (roles, labels,
+    /// values, hierarchy) — read on a user trigger via the macOS accessibility API, NOT a screenshot.
+    /// Secure/password fields keep their structure but drop their value, and any leftover secret in a
+    /// plain value is redacted. Produces a TEXT leg, never an image. Off by default; gated on the
+    /// `accessibilityTreeEnabled` opt-in at capture time.
+    case accessibilityTree
 
     /// Permissions that must be granted before this ground can capture. Drives the per-profile
     /// readiness matrix. `selectedText` deliberately returns an empty set: Accessibility is a
@@ -41,6 +47,10 @@ public enum Ground: String, Codable, Sendable, CaseIterable, Hashable {
         case .agent:        return []
         case .file:         return []   // the open panel grants file access; no TCC gate
         case .clipboard:    return []   // the user's copy is the consent; no TCC gate
+        // Reading the focused window's AX subtree is a hard Accessibility gate (the provider also
+        // checks `AXIsProcessTrusted` at capture time). Unlike `selectedText`'s opportunistic AX
+        // supplement, this ground's whole content IS the AX tree, so the permission is required.
+        case .accessibilityTree: return [.accessibility]
         }
     }
 
@@ -50,13 +60,13 @@ public enum Ground: String, Codable, Sendable, CaseIterable, Hashable {
     /// dictation (not a screen ground) and `.agent` is the reserved sidecar — neither is a capture leg.
     /// The profile editor offers only this set, and ``ProfileStore/setActiveGrounds(_:for:)`` sanitizes
     /// against it regardless of what a caller passes.
-    public static let multiGroundEligible: Set<Ground> = [.screen, .selectedText, .systemAudio, .clipboard]
+    public static let multiGroundEligible: Set<Ground> = [.screen, .selectedText, .systemAudio, .clipboard, .accessibilityTree]
 
     /// The grounds that contribute a TEXT leg rather than an image — an audio transcript or copied
     /// clipboard text. The single source of truth for "is this a text leg?", shared by the fan-out's
     /// modality resolution (``MediaPayload/Kind/resolved(for:)``) and the prompt builder's labelling,
     /// so the two can never disagree about whether a leg carries an image.
-    public static let textOnlyLegs: Set<Ground> = [.systemAudio, .clipboard]
+    public static let textOnlyLegs: Set<Ground> = [.systemAudio, .clipboard, .accessibilityTree]
 
     /// Intentional rank for ordering the non-primary legs of a multi-ground fan-out (lower captures
     /// first). The primary ground always leads regardless of rank; this only sequences the rest, so
@@ -73,8 +83,9 @@ public enum Ground: String, Codable, Sendable, CaseIterable, Hashable {
         case .file:         return 3
         case .systemAudio:  return 4
         case .clipboard:    return 5
-        case .voiceInput:   return 6
-        case .agent:        return 7
+        case .accessibilityTree: return 6
+        case .voiceInput:   return 7
+        case .agent:        return 8
         }
     }
 }
