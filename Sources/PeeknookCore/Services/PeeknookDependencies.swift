@@ -80,6 +80,14 @@ public struct PeeknookDependencies {
                 // resolves to a capture only when a user profile includes the `.clipboard` ground —
                 // the user's copy is itself the trigger and consent, so there is no opt-in to gate.
                 .clipboard: ClipboardCaptureProvider(),
+                // Accessibility tree ("read the focused window's structure"): a fully local text ground
+                // that resolves to a capture only when a user profile includes `.accessibilityTree` AND
+                // the off-by-default `accessibilityTreeEnabled` opt-in is on — both checked at capture
+                // time in `CompositeCaptureCoordinator.oneShotCaptureGrounds`. The provider also gates on
+                // live `AXIsProcessTrusted`. With the opt-in off (the default) the live AX walk is
+                // unreachable. Its permission (Accessibility) is requested through the profile's
+                // `requiredPermissions`.
+                .accessibilityTree: AccessibilityTreeCaptureProvider(),
             ]),
             inferenceRegistry: InferenceBackendRegistry([
                 .ollama: OllamaInferenceEngine(probeCache: probeCache),
@@ -128,6 +136,11 @@ public struct PeeknookDependencies {
         providers[.systemAudio] = SystemAudioCaptureProvider(transcriber: StubSystemAudioTranscriber())
         // Stub-backed clipboard reader: deterministic, never touches the system pasteboard in tests.
         providers[.clipboard] = ClipboardCaptureProvider(reader: StubClipboardReader())
+        // Stub-backed accessibility reader with trust forced on: deterministic, never touches the live
+        // accessibility API in tests, and exercises the trusted branch of the provider's gate.
+        providers[.accessibilityTree] = AccessibilityTreeCaptureProvider(
+            reader: StubAccessibilityTreeReader(), isTrusted: { true }
+        )
         var engines: [InferenceBackend: any InferenceEngine] = Dictionary(
             uniqueKeysWithValues: InferenceBackend.allCases.map { ($0, inference) }
         )

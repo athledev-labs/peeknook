@@ -62,6 +62,17 @@ extension PeekSettingsController {
         update { $0.systemAudioEnabled = enabled }
     }
 
+    /// Opt in to reading the focused window's accessibility tree: lets a profile add the
+    /// `.accessibilityTree` ground so a capture also folds in a structured, on-device outline of the
+    /// window's roles, labels, and values. Off by default; the capture gate in
+    /// ``CompositeCaptureCoordinator`` still excludes `.accessibilityTree` until this is on (and the
+    /// provider gates on the Accessibility permission), so a profile carrying the ground keeps capturing
+    /// only its other legs until the user flips this.
+    public func setAccessibilityTreeEnabled(_ enabled: Bool) {
+        guard settings.accessibilityTreeEnabled != enabled else { return }
+        update { $0.accessibilityTreeEnabled = enabled }
+    }
+
     public func setDisplayName(_ name: String) {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard settings.displayName != trimmed else { return }

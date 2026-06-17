@@ -20,4 +20,17 @@ public enum CaptureAccessibilityPolicy: Sendable {
     public static func shouldSkipAccessibilityText(subrole: String?, roleDescription: String?) -> Bool {
         isSecureSubrole(subrole) || isSecureRoleDescription(roleDescription)
     }
+
+    /// Whether an accessibility node's VALUE must be dropped before it leaves the Mac (the node keeps
+    /// its role and label, so the structure stays legible, but the value is replaced with a marker).
+    /// True for the secure-text subrole and for any role/subrole/role-description that reads as a
+    /// password or secure field — a stricter, value-level cousin of ``shouldSkipAccessibilityText`` used
+    /// by the accessibility-tree ground, which keeps the surrounding hierarchy rather than skipping the
+    /// node entirely.
+    public static func shouldRedactValue(role: String?, subrole: String?, roleDescription: String?) -> Bool {
+        if isSecureSubrole(subrole) { return true }
+        if isSecureRoleDescription(roleDescription) { return true }
+        if let role, isSecureRoleDescription(role) { return true }
+        return false
+    }
 }

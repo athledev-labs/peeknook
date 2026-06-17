@@ -36,9 +36,13 @@ final class CompositeCaptureCoordinator {
         guard let session else { return [] }
         let registry = session.captureRegistry
         let systemAudioEnabled = session.settings.systemAudioEnabled
+        let accessibilityTreeEnabled = session.settings.accessibilityTreeEnabled
         func isOneShot(_ ground: Ground) -> Bool {
             // The live system-audio tap stays unreachable until the user enables the opt-in.
             if ground == .systemAudio, !systemAudioEnabled { return false }
+            // The live accessibility walk stays unreachable until the user enables its opt-in, so a
+            // profile listing `.accessibilityTree` keeps capturing only its other legs until then.
+            if ground == .accessibilityTree, !accessibilityTreeEnabled { return false }
             guard let provider = registry.provider(for: ground) else { return false }
             // Interactive providers are NOT one-shot — they drive their own arm/shutter or panel flow.
             return !(provider is any CameraSessionControlling) && !(provider is any FileImporting)
