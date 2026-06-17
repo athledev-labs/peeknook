@@ -204,6 +204,59 @@ final class ConversationArchiveStoreTests: XCTestCase {
         XCTAssertNil(secondMigration)
     }
 
+    func testMigrationKeepsLegacyFileWhenIndexWriteFails() async throws {
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let legacyURL = dir.appendingPathComponent("conversation.v1.json")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+
+        let legacy = PersistedConversation(
+            turns: [ChatTurn(id: 1, kind: .assistant("legacy answer"))],
+            contextWindow: 4096,
+            turnCounter: 1,
+            lastPromptTokens: 120
+        )
+        try JSONEncoder().encode(legacy).write(to: legacyURL)
+
+        // The index seal (the second seal call) fails, so the index write fails after the thread write.
+        let store = ConversationArchiveTestSupport.makeStore(
+            directory: dir,
+            legacyFileURL: legacyURL,
+            protection: SecondSealFailsArchiveProtection()
+        )
+        let migrated = await store.migrateLegacyIfNeeded()
+        XCTAssertNil(migrated, "a failed migration persists nothing and reports nil")
+
+        XCTAssertTrue(
+            FileManager.default.fileExists(atPath: legacyURL.path),
+            "the legacy file must survive so the next launch can retry"
+        )
+        XCTAssertFalse(
+            FileManager.default.fileExists(atPath: dir.appendingPathComponent("index.v2.json").path),
+            "no v2 index is written when the migration fails"
+        )
+        // No orphan thread file left behind: the only .json in the dir is the legacy file.
+        let jsonFiles = try FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
+            .filter { $0.pathExtension == "json" }
+        XCTAssertEqual(jsonFiles.map(\.lastPathComponent), ["conversation.v1.json"], "no orphan thread file remains")
+
+        // The next launch (a healthy store over the same directory) recovers the conversation.
+        let retryStore = ConversationArchiveTestSupport.makeStore(
+            directory: dir,
+            legacyFileURL: legacyURL,
+            protection: FixedKeyArchiveProtection(key: ConversationArchiveTestSupport.sharedTestKey)
+        )
+        let recovered = await retryStore.migrateLegacyIfNeeded()
+        XCTAssertNotNil(recovered, "the retry migrates the previously stranded conversation")
+        XCTAssertEqual(recovered?.contextWindow, 4096)
+        let summaries = await retryStore.summaries()
+        XCTAssertEqual(summaries.count, 1)
+        XCTAssertFalse(
+            FileManager.default.fileExists(atPath: legacyURL.path),
+            "the legacy file is removed once the retry commits the index"
+        )
+    }
+
     func testMigrationSkippedWhenArchiveAlreadyExists() async throws {
         let dir = tempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
