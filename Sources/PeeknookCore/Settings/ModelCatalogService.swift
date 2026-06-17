@@ -13,7 +13,11 @@ protocol RemoteModelCataloging: Sendable {
 
 /// Ollama-backed remote catalog; swap for other backends in ``PeeknookServices.makeStack``.
 struct OllamaRemoteModelCatalog: RemoteModelCataloging, Sendable {
-    var client = OllamaCatalogClient()
+    let client: OllamaCatalogClient
+
+    init(client: OllamaCatalogClient = OllamaCatalogClient()) {
+        self.client = client
+    }
 
     func search(query: String, page: Int) async throws -> [RemoteCatalogModel] {
         try await client.search(query: query, page: page).map { model in
@@ -62,8 +66,12 @@ public struct ModelCatalogService: Sendable {
         self.remote = remote
     }
 
-    public static func makeDefault() -> ModelCatalogService {
-        ModelCatalogService(remote: OllamaRemoteModelCatalog())
+    public static func makeDefault(
+        catalogBaseURL: String = OllamaCatalogClient.defaultCatalogBaseURL
+    ) -> ModelCatalogService {
+        ModelCatalogService(
+            remote: OllamaRemoteModelCatalog(client: OllamaCatalogClient(baseURL: catalogBaseURL))
+        )
     }
 
     // MARK: - Tag identity

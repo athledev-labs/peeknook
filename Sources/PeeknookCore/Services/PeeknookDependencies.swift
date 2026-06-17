@@ -89,7 +89,9 @@ public struct PeeknookDependencies {
             speechRecognizer: speechRecognizer,
             answerSpeechSynthesizer: answerSpeechSynthesizer,
             previewSpeechSynthesizer: previewSpeechSynthesizer,
-            modelCatalog: ModelCatalogService.makeDefault(),
+            modelCatalog: ModelCatalogService.makeDefault(
+                catalogBaseURL: OllamaCatalogClient.defaultCatalogBaseURL
+            ),
             credentialStore: credentialStore,
             probeCache: probeCache
         )
