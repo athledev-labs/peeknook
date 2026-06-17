@@ -10,6 +10,8 @@ import Foundation
 @MainActor
 final class InferenceCoordinator {
     private weak var session: SessionOrchestrator?
+    /// The non-blocking follow-up suggestion pass, run after each answer lands.
+    private let suggestions: SuggestionCoordinator
 
     /// When the last token (or successful warm-up) landed — the in-session half of the warm gate.
     private var lastInferenceAt: Date?
@@ -19,6 +21,7 @@ final class InferenceCoordinator {
 
     init(session: SessionOrchestrator) {
         self.session = session
+        self.suggestions = SuggestionCoordinator(session: session)
     }
 
     /// Within Ollama's `keep_alive` window (10m), the model is still resident, so the next
@@ -79,6 +82,12 @@ final class InferenceCoordinator {
         session.webLookupSnapshot = nil
 
         let sessionGen = session.lifecycle.snapshotSession()
+        // Snapshot the per-turn answer-depth and brief inputs into a pure message builder shared by
+        // this turn's web-lookup gate, replay budgeting, and request assembly.
+        let builder = InferenceMessageBuilder(
+            quickMode: session.settings.quickMode,
+            sessionBrief: session.sessionBrief.nilIfEmpty
+        )
 
         // Don't send a screenshot to a model that can't see it: a text-only model would silently
         // drop the image and answer from text alone. Only the authoritative `/api/show` check
@@ -105,7 +114,7 @@ final class InferenceCoordinator {
         if let capture {
             let lookupLeg: CaptureResult? = capture.ground == .screen
                 ? capture
-                : latestTurnLegs().first { $0.ground == .screen }
+                : builder.latestTurnLegs(in: session.conversation).first { $0.ground == .screen }
             if let lookupLeg,
                session.moduleEnabled(.webLookup, for: session.gatingProfile(forTurnGround: lookupLeg.ground)) {
                 session.isFetchingWebLookup = true
@@ -137,7 +146,7 @@ final class InferenceCoordinator {
         )
         // Budget replay by payload UNIT: a composite group (screen + camera legs) counts as ONE unit,
         // so the latest question replays whole — never half a composite (the group-atomic guard).
-        let imageUnits = imagePayloadUnits(budgeted.filter(\.isImage))
+        let imageUnits = builder.imagePayloadUnits(budgeted.filter(\.isImage))
         let replayImageIDs = Set(imageUnits.suffix(inferencePolicy.maxImagePayloads).flatMap { $0.map(\.id) })
         var imageBase64ByTurnID = session.preloadImageBase64(for: budgeted, replayIDs: replayImageIDs)
         // Splice the just-captured leg's fresh base64 into ITS OWN turn slot (the freshest copy, in case
@@ -155,7 +164,7 @@ final class InferenceCoordinator {
             mode: session.settings.mode,
             agentSystemAppendix: session.activeAgentAppendix,
             profileTemplate: session.activeProfileTemplate,
-            messages: inferenceMessages(
+            messages: builder.inferenceMessages(
                 from: budgeted,
                 webLookup: session.webLookupSnapshot,
                 policy: inferencePolicy,
@@ -213,7 +222,7 @@ final class InferenceCoordinator {
             let turnProfile = session.gatingProfile(forTurnGround: capture?.ground)
             session.persistConversationNow()
             session.speakLastAnswer(gatedBy: turnProfile)
-            fetchSuggestions(gatedBy: turnProfile)
+            suggestions.fetchSuggestions(gatedBy: turnProfile)
             ensureContextWindowLoaded()
         } catch {
             if !Task.isCancelled, session.lifecycle.isCurrentSession(sessionGen) {
@@ -221,187 +230,6 @@ final class InferenceCoordinator {
                     .inferenceFailed(.from(error: error, backend: route.model.backend))
                 )
             }
-        }
-    }
-
-    private func promptAssembly(continuingSession: Bool) -> PromptAssembly {
-        PromptAssembly(
-            answerDepth: AnswerDepth(quickMode: session?.settings.quickMode ?? false),
-            sessionBrief: session?.sessionBrief.nilIfEmpty ?? nil,
-            continuingSession: continuingSession
-        )
-    }
-
-    /// The image legs of the turn just committed: the trailing run of image turns sharing the final
-    /// image turn's `compositeGroupID` (a standalone capture is a one-leg group). Lets the web-lookup
-    /// gate find a screen leg even when the turn ran on a non-screen leg (e.g. a composite's camera
-    /// leg). A `compositeGroupID` is a fresh UUID per group, so filtering by it never crosses groups.
-    private func latestTurnLegs() -> [CaptureResult] {
-        guard let session else { return [] }
-        let imageTurns = session.conversation.filter(\.isImage)
-        guard let last = imageTurns.last else { return [] }
-        let legs = last.compositeGroupID.map { group in
-            imageTurns.filter { $0.compositeGroupID == group }
-        } ?? [last]
-        return legs.compactMap { turn in
-            if case .image(let capture) = turn.kind { return capture }
-            return nil
-        }
-    }
-
-    /// Groups image turns into replay units: a multi-ground group's legs (consecutive turns sharing a
-    /// `compositeGroupID`) form ONE unit; standalone images are their own unit. Order preserved, so
-    /// `maxImagePayloads` budgets whole questions and never replays half a group.
-    private func imagePayloadUnits(_ imageTurns: [ChatTurn]) -> [[ChatTurn]] {
-        var units: [[ChatTurn]] = []
-        var previousGroup: UUID?
-        for turn in imageTurns {
-            if let group = turn.compositeGroupID, group == previousGroup, !units.isEmpty {
-                units[units.count - 1].append(turn)
-            } else {
-                units.append([turn])
-            }
-            previousGroup = turn.compositeGroupID
-        }
-        return units
-    }
-
-    /// Maps the display conversation to the model's message list: each image unit becomes one
-    /// grounded user message. A multi-ground unit (e.g. screen + camera, or any N grounds) folds all
-    /// its legs into a single message carrying every leg's image, in order; standalone images are
-    /// byte-identical to before. Only the latest `policy.maxImagePayloads` units ride as base64
-    /// payloads; older ones keep text grounding.
-    private func inferenceMessages(
-        from conversation: [ChatTurn],
-        webLookup: WebLookupSnapshot? = nil,
-        policy: InferenceReplayPolicy = .inference,
-        imageBase64ByTurnID: [Int: String] = [:]
-    ) -> [InferenceMessage] {
-        let units = imagePayloadUnits(conversation.filter(\.isImage))
-        let replayImageIDs = Set(units.suffix(policy.maxImagePayloads).flatMap { $0.map(\.id) })
-        let lastUnitIDs = Set(units.last?.map(\.id) ?? [])
-        // Per-leg unit position (0-based among image units) and the representative ("first") leg of
-        // each unit — the one we emit; the other legs of a composite were already folded into it.
-        var unitIndexByID: [Int: Int] = [:]
-        var firstLegIDs = Set<Int>()
-        for (index, unit) in units.enumerated() {
-            let ordered = unit.sorted { $0.id < $1.id }
-            if let first = ordered.first { firstLegIDs.insert(first.id) }
-            for leg in unit { unitIndexByID[leg.id] = index }
-        }
-
-        var messages: [InferenceMessage] = []
-        for turn in conversation {
-            switch turn.kind {
-            case .image(let capture):
-                guard firstLegIDs.contains(turn.id) else { continue } // folded composite leg, already emitted
-                let unitIndex = unitIndexByID[turn.id] ?? 0
-                let assembly = promptAssembly(continuingSession: unitIndex > 0)
-                let lookup = lastUnitIDs.contains(turn.id) ? webLookup : nil
-                let unit = units[unitIndex].sorted { $0.id < $1.id }
-
-                if unit.count > 1 {
-                    // Multi-ground turn: project each leg into a MediaPayload and fold them into one
-                    // message, named in order. Replay is group-atomic, so the images ride only when
-                    // the whole unit is in the replay window (otherwise the legs keep text grounding).
-                    let includeImages = unit.allSatisfy { replayImageIDs.contains($0.id) }
-                    let payloads: [MediaPayload] = unit.compactMap { leg in
-                        guard case .image(let c) = leg.kind else { return nil }
-                        // A transcript leg (e.g. system audio) carries no image — its text is folded in
-                        // by the prompt builder, so it never gets a base64 payload even inside the budget.
-                        let kind = MediaPayload.Kind.resolved(for: c.ground)
-                        let base64 = (kind == .image && includeImages)
-                            ? (imageBase64ByTurnID[leg.id] ?? c.screenshotBase64) : nil
-                        return MediaPayload(capture: c, kind: kind, imageBase64: base64)
-                    }
-                    messages.append(InferenceMessage(
-                        role: .user,
-                        text: PromptBuilder.multiGroundUserMessage(
-                            payloads: payloads, assembly: assembly, webLookup: lookup
-                        ),
-                        imagesBase64: payloads.compactMap(\.imageBase64)
-                    ))
-                } else {
-                    let includeImage = replayImageIDs.contains(turn.id)
-                    messages.append(InferenceMessage(
-                        role: .user,
-                        text: PromptBuilder.captureUserMessage(
-                            capture: capture,
-                            assembly: assembly,
-                            webLookup: lookup,
-                            question: turn.question   // a live-promoted frame folds its note into this message
-                        ),
-                        imageBase64: includeImage ? (imageBase64ByTurnID[turn.id] ?? capture.screenshotBase64) : nil
-                    ))
-                }
-            case .user(let text):
-                messages.append(InferenceMessage(
-                    role: .user,
-                    text: PromptBuilder.followUpUserMessage(
-                        question: text,
-                        assembly: promptAssembly(continuingSession: false)
-                    )
-                ))
-            case .assistant(let text):
-                messages.append(InferenceMessage(role: .assistant, text: text))
-            }
-        }
-        return messages
-    }
-
-    /// Generates the dynamic action pills for the answer just shown. Controlled by the
-    /// `suggestFollowUps` module (global setting + the turn profile's override), it's a separate,
-    /// non-blocking call, so quick mode (which is about answer terseness) doesn't disable it.
-    /// Applies only if the same answer is on screen.
-    private func fetchSuggestions(gatedBy turnProfile: GroundProfile) {
-        guard let session else { return }
-        session.lifecycle.suggestionTask?.cancel()
-        session.suggestedFollowUps = []
-        guard session.moduleEnabled(.suggestFollowUps, for: turnProfile) else {
-            session.isFetchingSuggestions = false
-            return
-        }
-        session.isFetchingSuggestions = true
-        // The appendix rides symmetrically; both engines' suggestion pass uses the static
-        // follow-up prompt today, so pills stay persona-blind in v1 (recorded seam).
-        let request = InferenceRequest(
-            mode: session.settings.mode,
-            agentSystemAppendix: session.activeAgentAppendix,
-            profileTemplate: session.activeProfileTemplate,
-            messages: inferenceMessages(from: session.conversation, policy: .suggestions),
-            model: session.activeAnswerModel.tag,
-            endpoint: session.activeInferenceEndpoint,
-            quickMode: session.settings.quickMode
-        )
-        let expectedTurn = session.turnCounter
-        let sessionGen = session.lifecycle.snapshotSession()
-        session.lifecycle.suggestionTask = Task {
-            defer { session.isFetchingSuggestions = false }
-            let result = await session.inference.generateFollowUps(request: request)
-            if Task.isCancelled { return }
-            guard session.lifecycle.isCurrentSession(sessionGen),
-                  case .result = session.phase,
-                  session.turnCounter == expectedTurn else { return }
-            session.suggestedFollowUps = result.suggestions
-            self.attachSuggestionUsage(result.stats, forAnswerTurnID: session.turnCounter)
-        }
-    }
-
-    private func attachSuggestionUsage(_ stats: InferenceStats?, forAnswerTurnID turnID: Int) {
-        guard let session, let stats, stats.promptTokens > 0 || stats.responseTokens > 0,
-              let index = session.conversation.lastIndex(where: { $0.id == turnID && $0.isAssistant })
-        else { return }
-        if var usage = session.conversation[index].turnUsage {
-            usage.suggestionPass = stats
-            session.conversation[index].turnUsage = usage
-        } else {
-            session.conversation[index].turnUsage = TurnUsage(
-                promptTokens: 0,
-                responseTokens: 0,
-                generationSeconds: 0,
-                contextWindow: session.contextWindow,
-                suggestionPass: stats
-            )
         }
     }
 
