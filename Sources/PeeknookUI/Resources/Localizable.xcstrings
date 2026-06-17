@@ -9,6 +9,10 @@
       "comment": "Setup: re-run the readiness checks.",
       "extractionState": "manual"
     },
+    "Clipboard": {
+      "comment": "Profile editor: clipboard ground pill label.",
+      "extractionState": "manual"
+    },
     "Continue": {
       "comment": "Setup: proceed past the Get-ready checklist.",
       "extractionState": "manual"

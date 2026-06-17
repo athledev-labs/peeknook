@@ -22,6 +22,8 @@ extension Ground {
             return "Ground: imported file — the attached image is a page or image from a file the user opened from disk (e.g. a PDF page or a saved image), not a live capture of the current screen."
         case .systemAudio:
             return "Ground: system audio — the text below is an on-device transcript of what was playing through the Mac (a meeting, video, or call). There is NO image; answer from the transcript."
+        case .clipboard:
+            return "Ground: clipboard — the text below is what the user has copied to the clipboard. There is NO image; answer from the copied text."
         case .selectedText:
             return "Ground: selected text — the text below is what the user selected on screen. There is NO image; answer from the selected text."
         case .voiceInput:
@@ -45,6 +47,8 @@ extension Ground {
             return "An image from the imported file is attached to this message (vision)."
         case .systemAudio:
             return "No image is attached — the system-audio transcript below is the content."
+        case .clipboard:
+            return "No image is attached — the copied clipboard text below is the content."
         case .selectedText:
             return "No image is attached — the selected text below is the content."
         case .voiceInput:
@@ -67,12 +71,30 @@ extension Ground {
             return "an image from an imported FILE (e.g. a PDF page or a saved image), not a live capture of the current screen"
         case .systemAudio:
             return "an on-device transcript of the system audio (no image)"
+        case .clipboard:
+            return "text the user has copied to the clipboard (no image)"
         case .selectedText:
             return "text the user selected on screen (no image)"
         case .voiceInput:
             return "an on-device transcript of the user's dictation (no image)"
         case .agent:
             return "a result from a sidecar agent (no image)"
+        }
+    }
+
+    /// The heading for a text-only leg's content block in the single-leg capture prompt, where the
+    /// leg's text IS the answer's content (not a supplement to a screenshot). Only reached for a ground
+    /// in ``Ground/textOnlyLegs``; the image grounds return an honest fallback that is never emitted
+    /// through that gate.
+    var promptPrimaryTextLabel: String {
+        switch self {
+        case .systemAudio:  return "Transcript of system audio"
+        case .clipboard:    return "Copied clipboard text"
+        case .selectedText: return "Selected text"
+        case .voiceInput:   return "Transcript of the dictation"
+        case .agent:        return "Result from the sidecar agent"
+        case .screen, .camera, .file:
+            return "Extracted text"
         }
     }
 
@@ -85,6 +107,7 @@ extension Ground {
         case .file:         return "the imported file"
         case .selectedText: return "the selected text"
         case .systemAudio:  return "the system audio"
+        case .clipboard:    return "the copied text"
         case .voiceInput:   return "the dictation"
         case .agent:        return "the agent result"
         }
