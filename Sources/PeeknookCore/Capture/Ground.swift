@@ -47,6 +47,25 @@ public enum Ground: String, Codable, Sendable, CaseIterable, Hashable {
     /// The profile editor offers only this set, and ``ProfileStore/setActiveGrounds(_:for:)`` sanitizes
     /// against it regardless of what a caller passes.
     public static let multiGroundEligible: Set<Ground> = [.screen, .selectedText, .systemAudio]
+
+    /// Intentional rank for ordering the non-primary legs of a multi-ground fan-out (lower captures
+    /// first). The primary ground always leads regardless of rank; this only sequences the rest, so
+    /// the leg order — and therefore the prompt's "Image 1, Image 2…" numbering downstream in
+    /// ``PromptBuilder`` — is a deliberate choice, NOT a side effect of the `case` declaration order.
+    /// Reordering the enum no longer reorders capture. Visual grounds (screen) lead, then the
+    /// supplementary text leg (selectedText), then the transcript leg (systemAudio); the non-fan-out
+    /// grounds keep ranks too so the rank is total and adding a ground stays a value, not a migration.
+    public var captureLegOrder: Int {
+        switch self {
+        case .screen:       return 0
+        case .camera:       return 1
+        case .selectedText: return 2
+        case .file:         return 3
+        case .systemAudio:  return 4
+        case .voiceInput:   return 5
+        case .agent:        return 6
+        }
+    }
 }
 
 /// A macOS TCC permission a ground may require. Completed at endgame shape so the readiness matrix
