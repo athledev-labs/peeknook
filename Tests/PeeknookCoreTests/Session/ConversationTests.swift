@@ -19,6 +19,9 @@ final class ScriptedEngine: InferenceEngine, @unchecked Sendable {
     /// Whether `warmUp` reports the model as loaded (drives prewarm warmth tests).
     var warmUpSucceeds = true
     private(set) var warmUpCallCount = 0
+    /// Tag-aware set of models this engine reports resident from `isModelResident`. `nil` (default)
+    /// reports residency as unknown, exactly like a backend that can't probe its own warm state.
+    var residentModels: Set<String>?
 
     init(responsesPerCall: [[String]], tokenDelayNanoseconds: UInt64 = 0) {
         self.responsesPerCall = responsesPerCall
@@ -35,6 +38,11 @@ final class ScriptedEngine: InferenceEngine, @unchecked Sendable {
     func contextLength(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> Int? { contextWindow }
 
     func capabilities(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> [String]? { nil }
+
+    func isModelResident(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> Bool? {
+        guard let residentModels else { return nil }
+        return OllamaSetupClient.matchesModel(installedNames: Array(residentModels), wanted: model)
+    }
 
     func generateFollowUps(request: InferenceRequest) async -> FollowUpGenerationResult {
         suggestionRequests.append(request)

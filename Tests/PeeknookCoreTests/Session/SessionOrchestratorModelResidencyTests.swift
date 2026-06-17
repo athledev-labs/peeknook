@@ -11,10 +11,13 @@ final class SessionOrchestratorModelResidencyTests: XCTestCase {
         super.tearDown()
     }
 
-    private func stubbedOllamaClient() -> OllamaSetupClient {
+    /// A real `OllamaInferenceEngine` whose `/api/ps` probe is stubbed, so residency rides the
+    /// engine protocol (not an injected setup client) while the same `/api/ps` JSON fixtures stay
+    /// exercised end to end.
+    private func stubbedOllamaEngine() -> OllamaInferenceEngine {
         let config = URLSessionConfiguration.ephemeral
         config.protocolClasses = [OllamaURLProtocolStub.self]
-        return OllamaSetupClient(session: URLSession(configuration: config))
+        return OllamaInferenceEngine(session: URLSession(configuration: config))
     }
 
     private func makeOrchestrator(_ engine: InferenceEngine = ScriptedEngine(responsesPerCall: [["ok"]])) -> SessionOrchestrator {
@@ -38,8 +41,7 @@ final class SessionOrchestratorModelResidencyTests: XCTestCase {
 
     func testRefreshModelResidencyDetectsLoadedModelAfterRelaunch() async {
         stubRunningModel()
-        let orchestrator = makeOrchestrator()
-        orchestrator._ollamaResidencyClient = stubbedOllamaClient()
+        let orchestrator = makeOrchestrator(stubbedOllamaEngine())
 
         XCTAssertFalse(orchestrator.modelLikelyWarm)
         await orchestrator.refreshActiveModelResidency()
@@ -48,18 +50,16 @@ final class SessionOrchestratorModelResidencyTests: XCTestCase {
 
     func testRefreshModelResidencyRequiresTagAwareMatch() async {
         stubRunningModel("gemma4:e2b")
-        let orchestrator = makeOrchestrator()
-        orchestrator._ollamaResidencyClient = stubbedOllamaClient()
+        let orchestrator = makeOrchestrator(stubbedOllamaEngine())
 
         await orchestrator.refreshActiveModelResidency()
         XCTAssertFalse(orchestrator.modelLikelyWarm, "e2b loaded must not satisfy e4b request")
     }
 
     func testPrewarmSkipsWarmUpWhenModelAlreadyResident() async {
-        stubRunningModel()
         let engine = ScriptedEngine(responsesPerCall: [["ok"]])
+        engine.residentModels = ["gemma4:e4b"]
         let orchestrator = makeOrchestrator(engine)
-        orchestrator._ollamaResidencyClient = stubbedOllamaClient()
 
         orchestrator.prewarm()
         await orchestrator.waitForPrewarmComplete()
@@ -68,11 +68,10 @@ final class SessionOrchestratorModelResidencyTests: XCTestCase {
         XCTAssertEqual(engine.warmUpCallCount, 0, "resident model should not trigger warmUp")
     }
 
-    func testRunTurnSnapshotsWarmLabelFromOllamaPs() async {
-        stubRunningModel()
+    func testRunTurnSnapshotsWarmLabelFromResidency() async {
         let engine = ScriptedEngine(responsesPerCall: [["warm"]], tokenDelayNanoseconds: 200_000_000)
+        engine.residentModels = ["gemma4:e4b"]
         let orchestrator = makeOrchestrator(engine)
-        orchestrator._ollamaResidencyClient = stubbedOllamaClient()
         orchestrator.conversation = [
             ChatTurn(id: 1, kind: .assistant("prior")),
         ]
@@ -85,5 +84,15 @@ final class SessionOrchestratorModelResidencyTests: XCTestCase {
 
         XCTAssertTrue(sawWarm)
         orchestrator.cancel()
+    }
+
+    func testNonResidentEngineLeavesWarmGateOnTimerOnly() async {
+        // An engine that can't report residency (nil) must not fake a warm model; the warm gate then
+        // rides only the in-session lastInferenceAt timer, which is cold before any turn.
+        let engine = ScriptedEngine(responsesPerCall: [["ok"]]) // residentModels nil by default
+        let orchestrator = makeOrchestrator(engine)
+
+        await orchestrator.refreshActiveModelResidency()
+        XCTAssertFalse(orchestrator.modelLikelyWarm, "unknown residency must not mark the model warm")
     }
 }

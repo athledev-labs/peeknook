@@ -596,10 +596,4 @@ public final class SessionOrchestrator {
     var isPrewarming: Bool {
         inferenceCoordinator.isPrewarming
     }
-
-    /// Injectable in tests so `/api/ps` can be stubbed without hitting the network.
-    var _ollamaResidencyClient: OllamaSetupClient? {
-        get { inferenceCoordinator.residencyClient }
-        set { inferenceCoordinator.residencyClient = newValue }
-    }
 }

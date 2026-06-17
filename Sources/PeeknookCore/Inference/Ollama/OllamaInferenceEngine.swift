@@ -273,6 +273,24 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
         return nil
     }
 
+    // MARK: - Residency
+
+    /// Probe `/api/ps` for the models Ollama currently has resident, then tag-aware match against the
+    /// wanted model. Routes through `resolveBaseURL` (the `EndpointURLPolicy` HTTPS gate), so it never
+    /// bypasses the same network policy every other call obeys. Returns nil on any throw / non-200 so
+    /// an unreachable server stays "unknown" (never a false warm), matching the prior behavior.
+    public func isModelResident(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> Bool? {
+        guard let base = try? resolveBaseURL(baseURL, acceptInsecureRemote: acceptInsecureRemote) else { return nil }
+        let url = base.appendingPathComponent("api/ps")
+        var req = URLRequest(url: url)
+        req.httpMethod = "GET"
+        req.timeoutInterval = 4
+        guard let (data, response) = try? await session.data(for: req),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let ps = try? JSONDecoder().decode(OllamaPsResponse.self, from: data) else { return nil }
+        return OllamaSetupClient.matchesModel(installedNames: ps.models.map(\.name), wanted: model)
+    }
+
     // MARK: - Warm-up
 
     @discardableResult
