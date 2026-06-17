@@ -77,6 +77,22 @@ final class StorageFootprintServiceTests: XCTestCase {
         }
     }
 
+    func testEmptyRunningListMapsToNoneLoaded() async {
+        let service = StorageFootprintService(
+            archive: ConversationArchiveTestSupport.makeStore(directory: makeTempDir()),
+            ollama: stubOllamaClient(running: []),
+            systemProfile: { SystemProfile(physicalMemoryGB: 16, suggestedTextModel: "gemma4:e2b") }
+        )
+
+        let snapshot = await service.snapshot(
+            persistConversation: true,
+            ollamaBaseURL: "http://127.0.0.1:11434",
+            acceptInsecureRemoteOllama: false
+        )
+
+        XCTAssertEqual(snapshot.ollamaMemory, .noneLoaded)
+    }
+
     func testRemoteOllamaSkipsDiskAndMemoryProbes() async {
         let service = StorageFootprintService(
             archive: ConversationArchiveTestSupport.makeStore(directory: makeTempDir()),
