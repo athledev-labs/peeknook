@@ -63,6 +63,31 @@ final class WebSearchClientTests: XCTestCase {
     }
 }
 
+/// Records the request URL and returns a canned 200 body so catalog tests can assert the honored
+/// host without any real network egress.
+final class CatalogURLProtocolStub: URLProtocol {
+    static var recordedURLs: [URL] = []
+    static var body = Data("{\"pages\":[],\"tags\":[]}".utf8)
+    static let lock = NSLock()
+
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        if let url = request.url {
+            Self.lock.lock()
+            Self.recordedURLs.append(url)
+            Self.lock.unlock()
+        }
+        let http = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: nil)!
+        client?.urlProtocol(self, didReceive: http, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: Self.body)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
+}
+
 final class OllamaCatalogClientTests: XCTestCase {
     func testVisionHeuristicMatchesKnownFamilies() {
         XCTAssertTrue(OllamaCatalogClient.likelySupportsVision(modelID: "library/gemma4"))
@@ -73,5 +98,52 @@ final class OllamaCatalogClientTests: XCTestCase {
     func testCloudTagDetection() {
         XCTAssertTrue(OllamaCatalogClient.isCloudTag("nemotron-3-ultra:cloud"))
         XCTAssertFalse(OllamaCatalogClient.isCloudTag("gemma4:e4b"))
+    }
+
+    func testDefaultCatalogBaseURLIsPinned() {
+        XCTAssertEqual(
+            OllamaCatalogClient.defaultCatalogBaseURL,
+            "https://ollama-models-api.devcomfort.workers.dev"
+        )
+    }
+
+    func testInjectedBaseURLIsHonoredForSearchAndTags() async throws {
+        CatalogURLProtocolStub.recordedURLs = []
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [CatalogURLProtocolStub.self]
+        let client = OllamaCatalogClient(session: URLSession(configuration: config), baseURL: "https://example.test")
+
+        _ = try await client.search(query: "gemma")
+        _ = try await client.tags(for: "gemma4")
+
+        XCTAssertEqual(CatalogURLProtocolStub.recordedURLs.count, 2)
+        XCTAssertEqual(CatalogURLProtocolStub.recordedURLs[0].host, "example.test")
+        XCTAssertEqual(CatalogURLProtocolStub.recordedURLs[0].path, "/search")
+        XCTAssertEqual(CatalogURLProtocolStub.recordedURLs[1].host, "example.test")
+        XCTAssertEqual(CatalogURLProtocolStub.recordedURLs[1].path, "/model")
+    }
+}
+
+final class CatalogBaseURLSettingTests: XCTestCase {
+    func testCatalogBaseURLDefaultsEmptyAndResolvesToBuiltInDefault() throws {
+        let legacy = Data(#"{"mode":"general","textModel":"gemma4:e4b"}"#.utf8)
+        let decoded = try JSONDecoder().decode(PeeknookSettings.self, from: legacy)
+        XCTAssertEqual(decoded.catalogBaseURL, "")
+        XCTAssertEqual(decoded.resolvedCatalogBaseURL, OllamaCatalogClient.defaultCatalogBaseURL)
+    }
+
+    func testCatalogBaseURLRoundTripsAndResolves() throws {
+        let custom = PeeknookSettings(textModel: "gemma4:e4b", catalogBaseURL: "https://catalog.example")
+        let decoded = try JSONDecoder().decode(
+            PeeknookSettings.self,
+            from: JSONEncoder().encode(custom)
+        )
+        XCTAssertEqual(decoded.catalogBaseURL, "https://catalog.example")
+        XCTAssertEqual(decoded.resolvedCatalogBaseURL, "https://catalog.example")
+    }
+
+    func testResolvedCatalogBaseURLTreatsWhitespaceAsDefault() {
+        let blank = PeeknookSettings(textModel: "gemma4:e4b", catalogBaseURL: "   ")
+        XCTAssertEqual(blank.resolvedCatalogBaseURL, OllamaCatalogClient.defaultCatalogBaseURL)
     }
 }

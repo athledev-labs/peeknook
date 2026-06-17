@@ -76,6 +76,12 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     public var openAICompatibleModelTag: String
     /// Opt-in: allow plain HTTP to a non-loopback OpenAI-compatible host (screenshots in cleartext).
     public var acceptInsecureRemoteOpenAICompatible: Bool
+    /// Base URL for the public model-catalog browse proxy (browse-only metadata, never capture
+    /// inference). Empty means "use the built-in default" (``OllamaCatalogClient/defaultCatalogBaseURL``),
+    /// which keeps saved blobs byte-identical for old builds. When set, the egress is HTTPS-gated through
+    /// ``EndpointURLPolicy`` at the wiring seam exactly like the inference endpoints, so the catalog host
+    /// is an explicit, overridable dependency rather than a silent hardcoded one. See ``resolvedCatalogBaseURL``.
+    public var catalogBaseURL: String
     /// Opt-in: route a pure text follow-up (no new capture) to ``textOnlyModelTag`` instead of the
     /// vision model, dropping the replayed screenshot for a faster, cheaper answer. Off by default;
     /// when off — or when no text model is chosen — every turn resolves the primary vision model, so
@@ -147,6 +153,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         openAICompatibleBaseURL: String = "",
         openAICompatibleModelTag: String = "",
         acceptInsecureRemoteOpenAICompatible: Bool = false,
+        catalogBaseURL: String = "",
         fastTextFollowUps: Bool = false,
         textOnlyBackend: InferenceBackend = .ollama,
         textOnlyModelTag: String = "",
@@ -189,6 +196,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.openAICompatibleBaseURL = openAICompatibleBaseURL
         self.openAICompatibleModelTag = openAICompatibleModelTag
         self.acceptInsecureRemoteOpenAICompatible = acceptInsecureRemoteOpenAICompatible
+        self.catalogBaseURL = catalogBaseURL
         self.fastTextFollowUps = fastTextFollowUps
         self.textOnlyBackend = textOnlyBackend
         self.textOnlyModelTag = textOnlyModelTag
@@ -228,6 +236,14 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         return scheme == "http" && !acceptInsecureRemoteOpenAICompatible
     }
 
+    /// The effective model-catalog browse host: the user override when set, otherwise the built-in
+    /// default. The resolution rule lives with the setting so wiring just reads this one value (it is
+    /// still HTTPS-gated through ``EndpointURLPolicy`` before a client is built).
+    public var resolvedCatalogBaseURL: String {
+        let trimmed = catalogBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? OllamaCatalogClient.defaultCatalogBaseURL : trimmed
+    }
+
     /// The command-bar override deltas for a scope (defaults to the global bucket). Empty when none
     /// are stored. The single read path the orchestrator's resolution choke point routes through.
     public func commandOverrides(forScope scope: String = Self.globalCommandScope) -> [CommandOverride] {
@@ -235,7 +251,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, systemAudioEnabled, customModels, commandOverrides, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, highlightSpeechWhileReading, speechVoiceIdentifier, briefHotkey, inferenceImageReplay, captureQuality, acceptInsecureRemoteOllama, activeProfileID, cameraHotkey, answerBackend, openAICompatibleBaseURL, openAICompatibleModelTag, acceptInsecureRemoteOpenAICompatible, fastTextFollowUps, textOnlyBackend, textOnlyModelTag, compositeCaptureEnabled, liveEnabled, liveRefreshTriggerRaw, liveAutoRespond, liveTimerIntervalSeconds, liveRateCapSeconds, livePersistAcrossDone, liveMaxArmedSeconds
+        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, systemAudioEnabled, customModels, commandOverrides, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, highlightSpeechWhileReading, speechVoiceIdentifier, briefHotkey, inferenceImageReplay, captureQuality, acceptInsecureRemoteOllama, activeProfileID, cameraHotkey, answerBackend, openAICompatibleBaseURL, openAICompatibleModelTag, acceptInsecureRemoteOpenAICompatible, catalogBaseURL, fastTextFollowUps, textOnlyBackend, textOnlyModelTag, compositeCaptureEnabled, liveEnabled, liveRefreshTriggerRaw, liveAutoRespond, liveTimerIntervalSeconds, liveRateCapSeconds, livePersistAcrossDone, liveMaxArmedSeconds
     }
 
     // Tolerant decode, a saved blob missing a newer key keeps the rest of the user's
@@ -278,6 +294,9 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.openAICompatibleBaseURL = try c.decodeIfPresent(String.self, forKey: .openAICompatibleBaseURL) ?? ""
         self.openAICompatibleModelTag = try c.decodeIfPresent(String.self, forKey: .openAICompatibleModelTag) ?? ""
         self.acceptInsecureRemoteOpenAICompatible = try c.decodeIfPresent(Bool.self, forKey: .acceptInsecureRemoteOpenAICompatible) ?? false
+        // Empty == built-in default catalog host, so an old blob missing this key keeps the rest of the
+        // user's settings and points the browse proxy at the default (see ``resolvedCatalogBaseURL``).
+        self.catalogBaseURL = try c.decodeIfPresent(String.self, forKey: .catalogBaseURL) ?? ""
         self.fastTextFollowUps = try c.decodeIfPresent(Bool.self, forKey: .fastTextFollowUps) ?? false
         // Raw-String decode (mirrors answerBackend) so an unknown future backend degrades to Ollama
         // instead of throwing and resetting every setting.

@@ -66,12 +66,13 @@ public enum PeeknookServices {
             credentialStore: dependencies.credentialStore
         )
         let storageFootprint = StorageFootprintService(archive: orchestrator.conversationArchive)
+        let modelCatalog = resolvedModelCatalog(settings: settings, fallback: dependencies.modelCatalog)
         return Stack(
             orchestrator: orchestrator,
             setup: setup,
             usage: usage,
             settings: settingsController,
-            modelCatalog: dependencies.modelCatalog,
+            modelCatalog: modelCatalog,
             storageFootprint: storageFootprint,
             profileStore: profileStore
         )
@@ -80,6 +81,25 @@ public enum PeeknookServices {
     @MainActor
     public static func makeOrchestrator(settings: PeeknookSettings) -> SessionOrchestrator {
         makeStack(settings: settings, defaults: .standard).orchestrator
+    }
+
+    /// Resolves the model-catalog service from settings, HTTPS-gating any catalog override through the
+    /// same ``EndpointURLPolicy`` as inference. An empty/whitespace override means "use the built-in
+    /// default" and reuses the injected service unchanged (byte-identical to today). A validated custom
+    /// host builds a fresh catalog client; an invalid or insecure-remote override falls back to the
+    /// built-in default rather than ever pointing the client at an unvalidated host.
+    private static func resolvedModelCatalog(
+        settings: PeeknookSettings,
+        fallback: ModelCatalogService
+    ) -> ModelCatalogService {
+        let resolved = settings.resolvedCatalogBaseURL
+        guard resolved != OllamaCatalogClient.defaultCatalogBaseURL else { return fallback }
+        switch EndpointURLPolicy.validate(resolved, acceptInsecureRemote: settings.acceptInsecureRemoteOllama) {
+        case .valid:
+            return ModelCatalogService.makeDefault(catalogBaseURL: resolved)
+        case .invalidURL, .unsupportedScheme, .insecureRemoteHTTP:
+            return ModelCatalogService.makeDefault(catalogBaseURL: OllamaCatalogClient.defaultCatalogBaseURL)
+        }
     }
 
 }

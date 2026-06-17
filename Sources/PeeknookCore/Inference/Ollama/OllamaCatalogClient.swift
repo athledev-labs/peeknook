@@ -31,12 +31,18 @@ public struct OllamaCatalogTagDetail: Equatable, Sendable {
 
 /// Searches ollama.com's model library. Network-only, not used during capture inference.
 public struct OllamaCatalogClient: Sendable {
+    /// The built-in browse proxy for public model-catalog metadata (a community-hosted mirror of the
+    /// Ollama library). This is the lone catalog egress host and the single place the trust lives;
+    /// it is overridable via `PeeknookSettings.catalogBaseURL` and validated through `EndpointURLPolicy`
+    /// at the wiring seam, so the dependency is explicit rather than silently hardcoded.
+    public static let defaultCatalogBaseURL = "https://ollama-models-api.devcomfort.workers.dev"
+
     public var session: URLSession
     public var baseURL: String
 
     public init(
         session: URLSession = .shared,
-        baseURL: String = "https://ollama-models-api.devcomfort.workers.dev"
+        baseURL: String = OllamaCatalogClient.defaultCatalogBaseURL
     ) {
         self.session = session
         self.baseURL = baseURL
