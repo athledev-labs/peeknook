@@ -192,12 +192,7 @@ struct PeekSettingsDataSection: View {
     private func ollamaMemoryRow(_ state: OllamaMemoryFootprintState) -> some View {
         switch state {
         case .noneLoaded:
-            PeekSettingsFootprintRow(
-                icon: "memorychip",
-                title: "Loaded in Ollama",
-                detail: "Nothing loaded right now. Ollama loads a model when you capture.",
-                value: "None"
-            )
+            ollamaMemoryNoneRow()
         case .unavailable(let reason):
             PeekSettingsFootprintRow(
                 icon: "memorychip",
@@ -207,16 +202,28 @@ struct PeekSettingsDataSection: View {
                 tone: .warning
             )
         case .loaded(let models):
-            let primary = models.first!
-            let ram = ByteFormat.storage(primary.sizeBytes)
-            let extra = models.count > 1 ? " +\(models.count - 1) more" : ""
-            PeekSettingsFootprintRow(
-                icon: "memorychip",
-                title: "Loaded in Ollama",
-                detail: "\(primary.name)\(extra) — weights Ollama is holding in memory after a capture",
-                value: ram
-            )
+            if let primary = models.first {
+                let ram = ByteFormat.storage(primary.sizeBytes)
+                let extra = models.count > 1 ? " +\(models.count - 1) more" : ""
+                PeekSettingsFootprintRow(
+                    icon: "memorychip",
+                    title: "Loaded in Ollama",
+                    detail: "\(primary.name)\(extra) — weights Ollama is holding in memory after a capture",
+                    value: ram
+                )
+            } else {
+                ollamaMemoryNoneRow()
+            }
         }
+    }
+
+    private func ollamaMemoryNoneRow() -> some View {
+        PeekSettingsFootprintRow(
+            icon: "memorychip",
+            title: "Loaded in Ollama",
+            detail: "Nothing loaded right now. Ollama loads a model when you capture.",
+            value: "None"
+        )
     }
 
     private func thisMacGroup(_ snapshot: StorageFootprintSnapshot) -> some View {
