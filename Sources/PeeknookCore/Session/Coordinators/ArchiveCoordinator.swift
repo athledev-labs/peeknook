@@ -22,6 +22,11 @@ final class ArchiveCoordinator {
     var captureBlobStore: CaptureBlobStore?
     /// Blob ids written during the current in-memory session (purged on New chat when not archived).
     private var sessionBlobIDs = Set<UUID>()
+    /// Blob ids adopted when reopening an archived thread. These live on disk and are owned by the
+    /// archive store (deleted only when the thread file is removed), so a session-side purge must
+    /// never touch them — otherwise a fresh Retake on an open archived chat would erase its saved
+    /// screenshots while the thread stays listed and reopenable.
+    private var adoptedBlobIDs = Set<UUID>()
     private var screenshotCache: [UUID: String] = [:]
 
     private var archiveIOTask: Task<Void, Never>?
@@ -268,21 +273,25 @@ final class ArchiveCoordinator {
     }
 
     func purgeSessionBlobs() {
-        guard let store = captureBlobStore, !sessionBlobIDs.isEmpty else {
-            sessionBlobIDs.removeAll()
-            screenshotCache.removeAll()
-            return
+        // Only delete session-minted blobs. Blobs adopted from a reopened archived thread stay on
+        // disk for the archive store to garbage-collect when the thread itself is removed.
+        let purgeable = sessionBlobIDs.subtracting(adoptedBlobIDs)
+        if let store = captureBlobStore, !purgeable.isEmpty {
+            try? store.delete(ids: purgeable)
         }
-        try? store.delete(ids: sessionBlobIDs)
         sessionBlobIDs.removeAll()
+        adoptedBlobIDs.removeAll()
         screenshotCache.removeAll()
     }
 
     private func adoptBlobOwnership(from thread: ConversationThread) {
         sessionBlobIDs.removeAll()
+        adoptedBlobIDs.removeAll()
         screenshotCache.removeAll()
-        for id in CaptureBlobReferences.blobIDs(in: thread.turns) {
-            sessionBlobIDs.insert(id)
-        }
+        let ids = CaptureBlobReferences.blobIDs(in: thread.turns)
+        adoptedBlobIDs = ids
+        // Track them as session ids too so the not-archived discard paths still account for them; the
+        // archive-owned ones are filtered back out in `purgeSessionBlobs` so a Retake can't erase them.
+        sessionBlobIDs = ids
     }
 }
