@@ -19,4 +19,9 @@ public enum SessionNotice: Equatable, Sendable {
     /// (the "Keep watching" cap the user cannot turn off) and disarmed itself. A one-shot cue so the
     /// Live chip's disappearance is explained ("Live ended — tap Go live to continue").
     case liveEnded
+    /// `count` likely secrets (API keys, tokens, JWTs, PEM, labeled secrets) were stripped from the
+    /// text sent to a remote or `:cloud` model on the turn just answered. Non-blocking — the answer
+    /// already streamed; this only tells the user what was withheld. The archived/on-screen text keeps
+    /// the original; the screenshot bitmap is not inspected.
+    case secretsRedactedForRemote(count: Int)
 }

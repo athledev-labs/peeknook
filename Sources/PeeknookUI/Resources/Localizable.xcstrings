@@ -1720,6 +1720,14 @@
     "Open Privacy settings to grant Accessibility (optional)": {
       "comment": "Setup: hint for the optional Accessibility link.",
       "extractionState": "manual"
+    },
+    "Removed secrets before sending": {
+      "comment": "Notice banner title: secrets were redacted before sending text to a remote or cloud model.",
+      "extractionState": "manual"
+    },
+    "Removed %lld likely secrets from the text before sending it to your remote model. Your saved chat keeps the original.": {
+      "comment": "Notice banner message: count of secret spans redacted from remote-bound text; the archived chat keeps the original.",
+      "extractionState": "manual"
     }
   },
   "version": "1.0"

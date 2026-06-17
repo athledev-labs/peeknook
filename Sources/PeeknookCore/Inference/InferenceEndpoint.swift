@@ -31,6 +31,20 @@ public extension InferenceEndpoint {
         }
     }
 
+    /// True when this endpoint's base URL targets a host other than local loopback — the same
+    /// determination the HTTPS gate makes, reused here so "do we redact secrets before sending?" can
+    /// never diverge from "is this remote?".
+    var usesRemoteHost: Bool {
+        EndpointURLPolicy.usesRemoteHost(connection.baseURL)
+    }
+
+    /// Whether text headed to this endpoint with `modelTag` is leaving the Mac, for redaction purposes:
+    /// a non-loopback base URL, OR an Ollama `:cloud` tag (which Ollama routes to its hosted models even
+    /// from a loopback daemon). Either makes the egress remote.
+    func isRemoteEgress(modelTag: String) -> Bool {
+        usesRemoteHost || OllamaCatalogClient.isCloudTag(modelTag)
+    }
+
     /// Alias of ``PeeknookSettings/activeEndpoint`` retained for call-site stability.
     static func from(settings: PeeknookSettings) -> InferenceEndpoint {
         settings.activeEndpoint

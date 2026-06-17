@@ -83,7 +83,8 @@ enum PromptBuilder {
         capture: CaptureResult,
         assembly: PromptAssembly,
         webLookup: WebLookupSnapshot? = nil,
-        question: String? = nil
+        question: String? = nil,
+        redaction: RedactionContext? = nil
     ) -> String {
         var sections: [String] = []
 
@@ -91,7 +92,7 @@ enum PromptBuilder {
             sections.append(sessionBriefSection(brief))
         }
 
-        sections.append(captureContextSection(capture: capture, webLookup: webLookup))
+        sections.append(captureContextSection(capture: capture, webLookup: webLookup, redaction: redaction))
         sections.append(depthSection(assembly.answerDepth))
 
         if assembly.continuingSession {
@@ -123,7 +124,8 @@ enum PromptBuilder {
     static func multiGroundUserMessage(
         payloads: [MediaPayload],
         assembly: PromptAssembly,
-        webLookup: WebLookupSnapshot? = nil
+        webLookup: WebLookupSnapshot? = nil,
+        redaction: RedactionContext? = nil
     ) -> String {
         var sections: [String] = []
 
@@ -131,7 +133,7 @@ enum PromptBuilder {
             sections.append(sessionBriefSection(brief))
         }
 
-        sections.append(multiGroundContextSection(payloads: payloads, webLookup: webLookup))
+        sections.append(multiGroundContextSection(payloads: payloads, webLookup: webLookup, redaction: redaction))
         sections.append(depthSection(assembly.answerDepth))
 
         if assembly.continuingSession {
@@ -185,7 +187,8 @@ enum PromptBuilder {
 
     private static func captureContextSection(
         capture: CaptureResult,
-        webLookup: WebLookupSnapshot?
+        webLookup: WebLookupSnapshot?,
+        redaction: RedactionContext? = nil
     ) -> String {
         var lines = ["## Capture", "Source: \(capture.sourceLabel)."]
         if let groundLine = capture.ground.promptGroundLine {
@@ -197,7 +200,10 @@ enum PromptBuilder {
         if capture.hasVision {
             lines.append(capture.ground.promptVisionAttachmentSentence)
         }
-        if let text = capture.text, !text.isEmpty {
+        if let original = capture.text, !original.isEmpty {
+            // Redact only the SENT copy when this turn is bound for a remote/cloud model; the archive
+            // and the on-screen turn keep `capture.text` untouched. `nil` redaction leaves it verbatim.
+            let text = redaction?.redact(original) ?? original
             // A text-only leg (an audio transcript or copied clipboard text) carries no image — its
             // text IS the content, not a supplement to a screenshot, so it is labelled as primary copied
             // text and never told to "prefer the image".
@@ -231,7 +237,8 @@ enum PromptBuilder {
     /// the same way, and a non-image leg (e.g. a future audio transcript) contributes only its text.
     private static func multiGroundContextSection(
         payloads: [MediaPayload],
-        webLookup: WebLookupSnapshot?
+        webLookup: WebLookupSnapshot?,
+        redaction: RedactionContext? = nil
     ) -> String {
         let imageLegs = payloads.filter { $0.kind == .image }
         var lines = [
@@ -247,7 +254,9 @@ enum PromptBuilder {
         }
         lines.append("Use ALL of the images together — they describe the same situation from several views.")
         for leg in payloads {
-            guard let text = leg.capture.text, !text.isEmpty else { continue }
+            guard let original = leg.capture.text, !original.isEmpty else { continue }
+            // Redact only the SENT copy for a remote/cloud turn; the per-leg archive keeps the original.
+            let text = redaction?.redact(original) ?? original
             // A transcript leg carries no image, so its text is primary content (the audio), not a
             // supplement to be overridden by the images.
             if leg.kind == .transcript {

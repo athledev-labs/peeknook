@@ -160,6 +160,14 @@ final class InferenceCoordinator {
            })?.id {
             imageBase64ByTurnID[latestVisionImageID] = base64
         }
+        // When this turn streams to a remote host or an Ollama `:cloud` tag, redact secret spans
+        // (API keys, tokens, JWTs, PEM, labeled secrets) out of the SENT text legs before assembly.
+        // A local/loopback non-cloud turn passes `nil`, so the assembled messages stay byte-identical
+        // (no inspection at all). The archived turns and on-screen conversation keep the original text;
+        // the screenshot bitmap is out of scope — only text legs are inspected.
+        let redaction = route.endpoint.isRemoteEgress(modelTag: route.model.tag)
+            ? RedactionContext()
+            : nil
         let request = InferenceRequest(
             mode: session.settings.mode,
             agentSystemAppendix: session.activeAgentAppendix,
@@ -168,12 +176,14 @@ final class InferenceCoordinator {
                 from: budgeted,
                 webLookup: session.webLookupSnapshot,
                 policy: inferencePolicy,
-                imageBase64ByTurnID: imageBase64ByTurnID
+                imageBase64ByTurnID: imageBase64ByTurnID,
+                redaction: redaction
             ),
             model: route.model.tag,
             endpoint: route.endpoint,
             quickMode: session.settings.quickMode
         )
+        let redactedSecretCount = redaction?.hitCount ?? 0
         let stream = session.inference(for: route.endpoint).stream(request: request)
 
         do {
@@ -219,6 +229,11 @@ final class InferenceCoordinator {
             // could show the Live chip with a permanently dead loop. Idempotent: a no-op when the loop is
             // already running (normal in-result turns), when not armed, or for a manual-trigger session.
             session.liveCoordinator.ensureTimerLoopRunning()
+            // Non-blocking, post-answer: if any secrets were stripped from the remote-bound payload,
+            // tell the user. The answer already streamed; this only explains what was withheld.
+            if redactedSecretCount > 0 {
+                session.emitNotice(.secretsRedactedForRemote(count: redactedSecretCount))
+            }
             let turnProfile = session.gatingProfile(forTurnGround: capture?.ground)
             session.persistConversationNow()
             session.speakLastAnswer(gatedBy: turnProfile)
