@@ -20,6 +20,9 @@ public enum Ground: String, Codable, Sendable, CaseIterable, Hashable {
     /// `voiceInput` (the user's microphone dictation): this ground hears the *screen's* output, not
     /// the user's voice. Produces a TEXT leg (the transcript), never an image.
     case systemAudio
+    /// Text the user has copied to the clipboard. Inherently user-triggered (the copy is the consent)
+    /// and fully local, so it requires no TCC permission. Produces a TEXT leg, never an image.
+    case clipboard
 
     /// Permissions that must be granted before this ground can capture. Drives the per-profile
     /// readiness matrix. `selectedText` deliberately returns an empty set: Accessibility is a
@@ -37,6 +40,7 @@ public enum Ground: String, Codable, Sendable, CaseIterable, Hashable {
         case .selectedText: return []
         case .agent:        return []
         case .file:         return []   // the open panel grants file access; no TCC gate
+        case .clipboard:    return []   // the user's copy is the consent; no TCC gate
         }
     }
 
@@ -46,7 +50,13 @@ public enum Ground: String, Codable, Sendable, CaseIterable, Hashable {
     /// dictation (not a screen ground) and `.agent` is the reserved sidecar — neither is a capture leg.
     /// The profile editor offers only this set, and ``ProfileStore/setActiveGrounds(_:for:)`` sanitizes
     /// against it regardless of what a caller passes.
-    public static let multiGroundEligible: Set<Ground> = [.screen, .selectedText, .systemAudio]
+    public static let multiGroundEligible: Set<Ground> = [.screen, .selectedText, .systemAudio, .clipboard]
+
+    /// The grounds that contribute a TEXT leg rather than an image — an audio transcript or copied
+    /// clipboard text. The single source of truth for "is this a text leg?", shared by the fan-out's
+    /// modality resolution (``MediaPayload/Kind/resolved(for:)``) and the prompt builder's labelling,
+    /// so the two can never disagree about whether a leg carries an image.
+    public static let textOnlyLegs: Set<Ground> = [.systemAudio, .clipboard]
 
     /// Intentional rank for ordering the non-primary legs of a multi-ground fan-out (lower captures
     /// first). The primary ground always leads regardless of rank; this only sequences the rest, so
@@ -62,8 +72,9 @@ public enum Ground: String, Codable, Sendable, CaseIterable, Hashable {
         case .selectedText: return 2
         case .file:         return 3
         case .systemAudio:  return 4
-        case .voiceInput:   return 5
-        case .agent:        return 6
+        case .clipboard:    return 5
+        case .voiceInput:   return 6
+        case .agent:        return 7
         }
     }
 }

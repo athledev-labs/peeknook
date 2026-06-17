@@ -135,7 +135,7 @@ struct PeekProfileEditor: View {
     /// Eligible grounds in a stable display order (primary first).
     private var eligibleGrounds: [Ground] {
         let primary = profile.primaryGround
-        let rest = [Ground.screen, .selectedText, .systemAudio]
+        let rest = [Ground.screen, .selectedText, .systemAudio, .clipboard]
             .filter { Ground.multiGroundEligible.contains($0) && $0 != primary }
         return [primary] + rest
     }
@@ -174,6 +174,7 @@ struct PeekProfileEditor: View {
         case .screen: "Screen"
         case .selectedText: "Selected text"
         case .systemAudio: "System audio"
+        case .clipboard: "Clipboard"
         default: "Screen"
         }
     }

@@ -198,11 +198,12 @@ enum PromptBuilder {
             lines.append(capture.ground.promptVisionAttachmentSentence)
         }
         if let text = capture.text, !text.isEmpty {
-            // An audio leg carries no image — its text IS the content, not a supplement to a
-            // screenshot, so it is labelled as the transcript and never told to "prefer the image".
-            if capture.ground == .systemAudio {
+            // A text-only leg (an audio transcript or copied clipboard text) carries no image — its
+            // text IS the content, not a supplement to a screenshot, so it is labelled as primary copied
+            // text and never told to "prefer the image".
+            if Ground.textOnlyLegs.contains(capture.ground) {
                 lines.append("""
-                Transcript of system audio:
+                \(capture.ground.promptPrimaryTextLabel):
                 ---
                 \(text)
                 ---

@@ -76,6 +76,10 @@ public struct PeeknookDependencies {
                 // tap is unreachable. Its permissions (Screen Recording + Speech Recognition) are
                 // requested through the active profile's `requiredPermissions`.
                 .systemAudio: SystemAudioCaptureProvider(),
+                // Clipboard ("read what you copied"): a fully local, zero-permission text ground. It
+                // resolves to a capture only when a user profile includes the `.clipboard` ground —
+                // the user's copy is itself the trigger and consent, so there is no opt-in to gate.
+                .clipboard: ClipboardCaptureProvider(),
             ]),
             inferenceRegistry: InferenceBackendRegistry([
                 .ollama: OllamaInferenceEngine(probeCache: probeCache),
@@ -122,6 +126,8 @@ public struct PeeknookDependencies {
         providers[.file] = FileImportCaptureProvider()  // real, pure decoder — deterministic in tests
         // Stub-backed so the registry wiring is present and deterministic — no hardware in tests.
         providers[.systemAudio] = SystemAudioCaptureProvider(transcriber: StubSystemAudioTranscriber())
+        // Stub-backed clipboard reader: deterministic, never touches the system pasteboard in tests.
+        providers[.clipboard] = ClipboardCaptureProvider(reader: StubClipboardReader())
         var engines: [InferenceBackend: any InferenceEngine] = Dictionary(
             uniqueKeysWithValues: InferenceBackend.allCases.map { ($0, inference) }
         )

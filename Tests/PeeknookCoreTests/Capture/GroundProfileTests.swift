@@ -133,7 +133,7 @@ final class GroundProfileTests: XCTestCase {
     func testMultiGroundEligibleIsTheFoldableSet() {
         // Only the one-shot, foldable grounds — never the interactive (camera/file) or non-capture
         // (voiceInput/agent) ones the fan-out can't commit.
-        XCTAssertEqual(Ground.multiGroundEligible, [.screen, .selectedText, .systemAudio])
+        XCTAssertEqual(Ground.multiGroundEligible, [.screen, .selectedText, .systemAudio, .clipboard])
         for ineligible in [Ground.camera, .file, .voiceInput, .agent] {
             XCTAssertFalse(Ground.multiGroundEligible.contains(ineligible), "\(ineligible) is not foldable")
         }
