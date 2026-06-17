@@ -13,10 +13,8 @@ final class InferenceCoordinator {
 
     /// When the last token (or successful warm-up) landed — the in-session half of the warm gate.
     private var lastInferenceAt: Date?
-    /// True when Ollama `/api/ps` reports the active model resident (survives app relaunch).
+    /// True when the active engine reports the active model resident (survives app relaunch).
     private var activeModelResidentInMemory = false
-    /// Injectable in tests so `/api/ps` can be stubbed without hitting the network.
-    var residencyClient: OllamaSetupClient?
     private(set) var isPrewarming = false
 
     init(session: SessionOrchestrator) {
@@ -24,33 +22,26 @@ final class InferenceCoordinator {
     }
 
     /// Within Ollama's `keep_alive` window (10m), the model is still resident, so the next
-    /// capture skips cold load. Also true when `/api/ps` confirms the active model is loaded
-    /// (honest after relaunch while Ollama kept the weights warm). 9m margin on the timer.
+    /// capture skips cold load. Also true when the engine confirms the active model is loaded
+    /// (honest after relaunch while the backend kept the weights warm). 9m margin on the timer.
     var modelLikelyWarm: Bool {
         if activeModelResidentInMemory { return true }
         guard let last = lastInferenceAt else { return false }
         return Date().timeIntervalSince(last) < 540
     }
 
-    /// Whether Ollama's `/api/ps` last reported the active answer model as loaded in memory.
-    /// Complements the in-session `lastInferenceAt` heuristic so a relaunch after Ollama kept
-    /// the model warm still shows honest "Reading the screen…" copy instead of cold-load text.
+    /// Refresh whether the active engine reports the active answer model loaded in memory. Backends
+    /// that can answer (e.g. Ollama via `/api/ps`) report true/false; those that can't return nil,
+    /// which maps to "not resident" so the warm gate falls back to the in-session `lastInferenceAt`
+    /// heuristic. Complements that heuristic so a relaunch after the backend kept the model warm
+    /// still shows honest "Reading the screen…" copy instead of cold-load text.
     func refreshActiveModelResidency() async {
         guard let session else { return }
-        switch session.activeInferenceEndpoint {
-        case let .ollama(baseURL, acceptInsecureRemote):
-            let client = residencyClient ?? OllamaSetupClient()
-            let running = (try? await client.runningModelFootprints(
-                baseURL: baseURL,
-                acceptInsecureRemote: acceptInsecureRemote
-            )) ?? []
-            activeModelResidentInMemory = OllamaSetupClient.matchesModel(
-                installedNames: running.map(\.name),
-                wanted: session.activeAnswerModel.tag
-            )
-        case .openAICompatible:
-            activeModelResidentInMemory = false
-        }
+        let resident = await session.inference.isModelResident(
+            model: session.activeAnswerModel.tag,
+            endpoint: session.activeInferenceEndpoint
+        )
+        activeModelResidentInMemory = (resident == true)
     }
 
     /// Pre-load the model when the notch opens so the user's first capture is warm, not cold.

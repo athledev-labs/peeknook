@@ -234,6 +234,12 @@ public struct OpenAICompatibleInferenceEngine: InferenceEngine, Sendable {
         nil
     }
 
+    /// `/v1` exposes no residency endpoint — nil keeps the warm-copy gate honestly "unknown" here, so
+    /// it falls back to the in-session timer instead of guessing the server's model state.
+    public func isModelResident(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> Bool? {
+        nil
+    }
+
     // MARK: - Message mapping
 
     /// System prompt first, then the turn sequence; each turn's image rides its own message in

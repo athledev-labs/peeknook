@@ -99,6 +99,10 @@ public protocol InferenceEngine: Sendable {
     /// model isn't installed / can't be inspected. Best-effort; used to warn when a chosen model
     /// can't see the captured screenshot.
     func capabilities(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> [String]?
+    /// Whether the backend reports the model already loaded in memory (warm `keep_alive` resident),
+    /// so the next capture skips the cold-start cost. `nil` (the default) means residency is
+    /// unknowable for this backend — honest "don't know", never a false "cold". Best-effort.
+    func isModelResident(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> Bool?
 }
 
 public extension InferenceEngine {
@@ -115,6 +119,13 @@ public extension InferenceEngine {
     }
     func contextLength(model: String, baseURL: String) async -> Int? { nil }
     func capabilities(model: String, baseURL: String) async -> [String]? { nil }
+
+    /// Default: residency is unknowable. A backend that can probe its own warm state (e.g. Ollama's
+    /// `/api/ps`) overrides this; everything else stays honestly `nil` rather than reporting "cold".
+    func isModelResident(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> Bool? { nil }
+    func isModelResident(model: String, baseURL: String) async -> Bool? {
+        await isModelResident(model: model, baseURL: baseURL, acceptInsecureRemote: false)
+    }
 
     /// Whether the model can read images. `nil` when unknown (not installed / older Ollama that
     /// omits the capabilities list) so callers can stay silent instead of warning incorrectly.
@@ -175,6 +186,15 @@ public extension InferenceEngine {
     func supportsVision(model: String, endpoint: InferenceEndpoint) async -> Bool? {
         let connection = endpoint.connection
         return await supportsVision(
+            model: model,
+            baseURL: connection.baseURL,
+            acceptInsecureRemote: connection.acceptInsecureRemote
+        )
+    }
+
+    func isModelResident(model: String, endpoint: InferenceEndpoint) async -> Bool? {
+        let connection = endpoint.connection
+        return await isModelResident(
             model: model,
             baseURL: connection.baseURL,
             acceptInsecureRemote: connection.acceptInsecureRemote
