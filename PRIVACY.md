@@ -1,6 +1,6 @@
 # Peeknook privacy policy
 
-Last updated: 2026-06-11
+Last updated: 2026-06-16
 
 Peeknook is local-first AI for Mac in the MacBook notch. This policy describes what the app processes, what stays on your Mac, and what can leave your Mac when you opt in.
 
@@ -31,6 +31,12 @@ When **Web lookup** is enabled, Peeknook skips searches when capture context loo
 Pressing the camera hotkey (default ⌘⇧C) opens a **live camera preview inside the notch**. While the preview is open, frames stream from the camera to the on-screen preview only — **nothing is captured, stored, or sent**. A photo is taken only when you press **Shutter**; it then follows exactly the same path as a screenshot: sent to your configured Ollama instance for the answer, kept in memory for the active chat, and written to the conversation archive only if **Save conversations** is on.
 
 The camera session is torn down — camera light off — whenever the preview closes: on Shutter, on Cancel, when the notch collapses or hides, and when you switch away from Peeknook. Camera access requires the macOS Camera permission, which is requested the first time you open the preview. The camera-only flow never requires Screen Recording.
+
+### System audio (optional, transcribed on device)
+
+**Hear system audio** (in Settings under Capture — **off by default**) lets a profile capture what is playing on this Mac — a meeting, a video, or a call — alongside the screen. It is captured only when you trigger a capture for a profile that includes the system-audio ground **and** this setting is on; nothing is recorded the rest of the time. Each capture records a **short, bounded window** of audio, not a continuous stream.
+
+The audio is turned into text **on this Mac**: Peeknook transcribes the window with on-device speech recognition, and the audio itself is not written to disk or sent anywhere. The resulting **transcript text** is then added to the prompt and **sent to your configured inference endpoint** along with the screenshot — exactly like the rest of your prompt. If you have pointed Peeknook at a **remote Ollama server** or chosen an Ollama **`:cloud` tag**, the transcript leaves this Mac to that endpoint. System audio requires both the macOS **Screen Recording** and **Speech Recognition** permissions.
 
 ### Live session (armed refresh)
 
@@ -90,6 +96,7 @@ You control the following opt-in or configuration-dependent features:
 | Ollama `:cloud` model tags | Off (not the default model) | Same as inference above: payloads go to your configured Ollama endpoint; `:cloud` tags may be executed on Ollama's cloud infrastructure per Ollama's behavior. |
 | Model library catalog browse | Only when you browse | Search terms and model/tag names to `https://ollama-models-api.devcomfort.workers.dev` (community proxy for ollama.com library metadata). No screenshots. |
 | Live session | Off | When armed, **Refresh** captures the latest screen into the chat in memory; like any capture it goes to your configured Ollama only when you ask. Optional **timed** refresh captures automatically on your interval; optional **auto-respond** then answers automatically (rate-capped, pauses at full context) — the one recurring, hands-off path to your configured Ollama (incl. remote / `:cloud`). Optional **Keep Live after Done** keeps the chat armed on the home screen — **paused, no capture there** — until Resume or any exit. Optional **Keep watching** sets a maximum armed time (15/30/60 min) after which the session **auto-disarms itself** — a countdown shows in the **Live** indicator and any interaction resets it. Armed only by you, always with a **Live** indicator and **Stop**; every exit except a kept-armed Done disarms (including notch collapse / switch away). |
+| System audio | Off | Captured only with a system-audio profile and the setting on; needs Screen Recording and Speech Recognition. A short window of audio is transcribed **on this Mac** (the audio is never sent), then the **transcript text** is added to your prompt and sent to your configured inference endpoint along with the screenshot — including a **remote** or **`:cloud`** endpoint if you point Peeknook at one. |
 | Save conversations | Off | Nothing leaves your Mac; active screenshots stay in memory only (no blob files on disk). When on, encrypted thread JSON, encrypted screenshot blobs, and the encrypted metadata index stay local. |
 | Voice input | Off | On-device speech recognition (Microphone + Speech Recognition permissions) |
 | Read answers aloud | Off | On-device text-to-speech; no network |
