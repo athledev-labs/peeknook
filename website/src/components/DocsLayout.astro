@@ -1,0 +1,105 @@
+---
+// SPDX-License-Identifier: Apache-2.0
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { sitePath, type SiteCurrent } from "../lib/sitePages";
+
+interface TocItem {
+  id: string;
+  title: string;
+}
+
+interface Props {
+  title: string;
+  tagline?: string;
+  description?: string;
+  current: SiteCurrent;
+  toc?: TocItem[];
+}
+
+const { title, tagline, description, current, toc = [] } = Astro.props;
+const base = import.meta.env.BASE_URL;
+
+const navGroups = [
+  {
+    label: "Get started",
+    links: [
+      { label: "Installation", page: "docs" as const, href: sitePath(base, "docs/") },
+      { label: "FAQ", page: "faq" as const, href: sitePath(base, "faq/") },
+    ],
+  },
+  {
+    label: "Reference",
+    links: [
+      { label: "Features", page: "features" as const, href: sitePath(base, "features/") },
+      { label: "Changelog", page: "changelog" as const, href: sitePath(base, "changelog/") },
+      { label: "Privacy", page: "privacy" as const, href: sitePath(base, "privacy/") },
+      { label: "Terms", page: "terms" as const, href: sitePath(base, "terms/") },
+      { label: "Licenses", page: "licenses" as const, href: sitePath(base, "licenses/") },
+    ],
+  },
+];
+---
+
+<BaseLayout title={title} description={description ?? tagline} current={current} wide>
+  <div class="docs-layout">
+    <aside class="docs-sidebar" aria-label="Documentation navigation">
+      <nav class="docs-nav">
+        {
+          navGroups.map((group) => (
+            <div class="docs-nav-group">
+              <p class="docs-nav-label">{group.label}</p>
+              <ul>
+                {group.links.map((link) => (
+                  <li>
+                    <a
+                      href={link.href}
+                      class:list={["docs-nav-link", current === link.page && "is-active"]}
+                      aria-current={current === link.page ? "page" : undefined}
+                    >
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        }
+      </nav>
+    </aside>
+
+    <article class="docs-content">
+      <header class="docs-header">
+        <p class="docs-eyebrow">Documentation</p>
+        <h1>{title}</h1>
+        {tagline && <p class="docs-lead">{tagline}</p>}
+      </header>
+      <slot />
+    </article>
+
+    <aside class="docs-toc" aria-label="On this page">
+      {
+        toc.length > 0 && (
+          <div class="docs-toc-inner">
+            <p class="docs-toc-label">On this page</p>
+            <ul>
+              {toc.map((item) => (
+                <li>
+                  <a
+                    href={`#${item.id}`}
+                    class="docs-toc-link"
+                    data-toc={item.id}
+                    set:html={item.title}
+                  />
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      }
+    </aside>
+  </div>
+
+  <script>
+    import "../scripts/docsToc";
+  </script>
+</BaseLayout>

@@ -1,12 +1,20 @@
 ---
 // SPDX-License-Identifier: Apache-2.0
-import DocPage from "../../components/DocPage.astro";
+import DocsLayout from "../../components/DocsLayout.astro";
+import DocBody from "../../components/DocBody.astro";
+import { parseRepoMarkdownSections } from "../../lib/markdown";
+
+const { intro, sections } = parseRepoMarkdownSections("TERMS.md");
+const toc = sections.map((s) => ({ id: s.id, title: s.title }));
 ---
 
-<DocPage
+<DocsLayout
   title="Terms of Service"
-  tagline="Free software — no warranty, GitHub Issues for bugs."
-  description="Peeknook Terms of Service — free macOS app, as-is, contact via GitHub Issues."
-  source="TERMS.md"
+  tagline="Free software, no warranty. Bug reports via GitHub Issues."
+  description="Peeknook Terms of Service. Free macOS app, as-is, contact via GitHub Issues."
   current="terms"
-/>
+  toc={toc}
+>
+  {intro && <div class="prose docs-intro" set:html={intro} />}
+  <DocBody sections={sections} />
+</DocsLayout>

@@ -50,6 +50,13 @@ function stripMarkdownInline(text: string): string {
   return text.replace(/\*\*/g, "").replace(/`/g, "").trim();
 }
 
+/** Drop em dashes (and number-range en dashes) from rendered copy. */
+function tidyDashes(text: string): string {
+  return text
+    .replace(/(\d)\s*[–—]\s*(\d)/g, "$1-$2")
+    .replace(/\s*—\s*/g, ", ");
+}
+
 export function extractHeadings(source: string): DocHeading[] {
   const headings: DocHeading[] = [];
 
@@ -78,7 +85,7 @@ export function renderRepoMarkdown(
   options: RenderMarkdownOptions = {},
 ): RenderedMarkdown {
   const absolutePath = path.join(repoRoot, relativePath);
-  const source = fs.readFileSync(absolutePath, "utf8");
+  const source = tidyDashes(fs.readFileSync(absolutePath, "utf8"));
   const headings = extractHeadings(source);
   let html = marked.parse(source) as string;
 
@@ -87,4 +94,94 @@ export function renderRepoMarkdown(
   }
 
   return { html, headings };
+}
+
+export type DocItem = { id: string; title: string; html: string };
+
+export type DocSection = {
+  id: string;
+  title: string;
+  step: string | null;
+  html: string;
+  items: DocItem[];
+};
+
+export type ParsedSections = {
+  intro: string;
+  sections: DocSection[];
+};
+
+/**
+ * Parse a repo markdown file into structured sections (`##`) and items (`###`)
+ * so pages can render designed components instead of a flat markdown blob.
+ * Section titles that begin with "N." expose `step` for numbered step badges.
+ */
+export function parseRepoMarkdownSections(relativePath: string): ParsedSections {
+  const absolutePath = path.join(repoRoot, relativePath);
+  const source = tidyDashes(fs.readFileSync(absolutePath, "utf8"));
+  const tokens = marked.lexer(source);
+  const links = (tokens as unknown as { links?: unknown }).links;
+
+  type Tok = { type: string; depth?: number; text?: string };
+  type RawItem = { title: string; id: string; tokens: unknown[] };
+  type RawSection = {
+    title: string;
+    step: string | null;
+    id: string;
+    bodyTokens: unknown[];
+    items: RawItem[];
+  };
+
+  const withLinks = (arr: unknown[]) => {
+    (arr as unknown as { links?: unknown }).links = links;
+    return arr as Parameters<typeof marked.parser>[0];
+  };
+
+  const sections: RawSection[] = [];
+  const introTokens: unknown[] = [];
+  let cur: RawSection | null = null;
+  let curItem: RawItem | null = null;
+
+  for (const token of tokens) {
+    const t = token as Tok;
+    if (t.type === "heading" && t.depth === 1) continue;
+    if (t.type === "heading" && t.depth === 2) {
+      const text = t.text ?? "";
+      const stepMatch = text.match(/^(\d+)\.\s+(.*)$/);
+      cur = {
+        title: stepMatch ? stepMatch[2] : text,
+        step: stepMatch ? stepMatch[1] : null,
+        id: slugify(stripTags(text)),
+        bodyTokens: [],
+        items: [],
+      };
+      curItem = null;
+      sections.push(cur);
+      continue;
+    }
+    if (t.type === "heading" && t.depth === 3 && cur) {
+      const text = t.text ?? "";
+      curItem = { title: text, id: slugify(stripTags(text)), tokens: [] };
+      cur.items.push(curItem);
+      continue;
+    }
+    if (curItem) curItem.tokens.push(token);
+    else if (cur) cur.bodyTokens.push(token);
+    else introTokens.push(token);
+  }
+
+  return {
+    intro: marked.parser(withLinks(introTokens)),
+    sections: sections.map((s) => ({
+      id: s.id,
+      title: marked.parseInline(s.title) as string,
+      step: s.step,
+      html: marked.parser(withLinks(s.bodyTokens)),
+      items: s.items.map((it) => ({
+        id: it.id,
+        title: marked.parseInline(it.title) as string,
+        html: marked.parser(withLinks(it.tokens)),
+      })),
+    })),
+  };
 }

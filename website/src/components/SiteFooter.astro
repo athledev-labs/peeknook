@@ -12,8 +12,6 @@ interface Props {
 const { base, version, current } = Astro.props;
 
 const links = [
-  { href: sitePath(base, "docs/"), icon: "docs" as const, label: "Docs", page: "docs" },
-  { href: sitePath(base, "faq/"), icon: "faq" as const, label: "FAQ", page: "faq" },
   { href: sitePath(base, "changelog/"), icon: "changelog" as const, label: "Changelog", page: "changelog" },
   { href: sitePath(base, "privacy/"), icon: "privacy" as const, label: "Privacy", page: "privacy" },
   { href: sitePath(base, "terms/"), icon: "terms" as const, label: "Terms", page: "terms" },

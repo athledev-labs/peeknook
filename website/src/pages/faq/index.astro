@@ -1,12 +1,50 @@
 ---
 // SPDX-License-Identifier: Apache-2.0
-import DocPage from "../../components/DocPage.astro";
+import DocsLayout from "../../components/DocsLayout.astro";
+import { parseRepoMarkdownSections } from "../../lib/markdown";
+
+const { sections } = parseRepoMarkdownSections("FAQ.md");
+const toc = sections.map((s) => ({ id: s.id, title: s.title }));
 ---
 
-<DocPage
+<DocsLayout
   title="FAQ"
   tagline="Ollama setup, permissions, privacy, and common fixes."
-  description="Peeknook FAQ — Ollama.app vs Homebrew, Screen Recording, models, and troubleshooting."
-  source="FAQ.md"
+  description="Peeknook FAQ. Ollama.app vs Homebrew, Screen Recording, models, and troubleshooting."
   current="faq"
-/>
+  toc={toc}
+>
+  {
+    sections.map((section) => (
+      <section class="faq-group" id={section.id}>
+        <h2 class="faq-eyebrow" set:html={section.title} />
+        {section.html && (
+          <div class="prose faq-group-note" set:html={section.html} />
+        )}
+        <ul class="faq-list">
+          {section.items.map((item) => (
+            <li>
+              <details class="faq-item">
+                <summary class="faq-summary">
+                  <span class="faq-question" set:html={item.title} />
+                  <span class="faq-chevron" aria-hidden="true">
+                    <svg viewBox="0 0 12 12" width="12" height="12" fill="none">
+                      <path
+                        d="M3 4.5 6 7.5 9 4.5"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </span>
+                </summary>
+                <div class="faq-answer prose" set:html={item.html} />
+              </details>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))
+  }
+</DocsLayout>

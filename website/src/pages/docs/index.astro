@@ -1,99 +1,53 @@
 ---
 // SPDX-License-Identifier: Apache-2.0
-import DocsPage from "../../components/DocsPage.astro";
-import { renderRepoMarkdown } from "../../lib/markdown";
+import DocsLayout from "../../components/DocsLayout.astro";
+import DocBody from "../../components/DocBody.astro";
+import { parseRepoMarkdownSections } from "../../lib/markdown";
 import { getRelease } from "../../lib/release";
 
 const release = await getRelease();
-const { html } = renderRepoMarkdown("INSTALL.md", { stripLeadingH1: true });
+const { sections } = parseRepoMarkdownSections("INSTALL.md");
+const toc = sections.map((s) => ({ id: s.id, title: s.title }));
 ---
 
-<DocsPage
-  title="Docs"
-  tagline="Install Peeknook and start capturing — no Terminal required."
+<DocsLayout
+  title="Installation"
+  tagline="Install Peeknook and start capturing. No Terminal required."
   description="Install Peeknook on macOS, set up Ollama.app, grant permissions, and capture."
   current="docs"
+  toc={toc}
 >
-  <article class="prose doc-guide" set:html={html} />
+  <DocBody sections={sections} />
 
   <details class="doc-advanced" id="verify-checksum">
     <summary>Advanced: verify download &amp; Terminal commands</summary>
-    <div class="doc-advanced-body">
+    <div class="doc-advanced-body prose">
       {
         release.dmgSHA256 && (
           <>
             <p>
               Latest release (<strong>{release.version}</strong>) DMG SHA-256:
             </p>
-            <pre class="doc-code doc-code--checksum"><code>{release.dmgSHA256}</code></pre>
+            <pre class="doc-code--checksum"><code>{release.dmgSHA256}</code></pre>
           </>
         )
       }
       <p>Compare after download:</p>
-      <pre class="doc-code"><code>shasum -a 256 ~/Downloads/Peeknook*.dmg</code></pre>
+      <pre><code>shasum -a 256 ~/Downloads/Peeknook*.dmg</code></pre>
       <p>
         Also on <a href={release.latestReleasesURL}>GitHub Releases</a>
-        {
-          release.zipURL && (
-            <>
-              {" "}
-              · <a href={release.zipURL}>Peeknook.zip</a>
-            </>
-          )
-        }
+        {release.zipURL && (
+          <>
+            {" "}· <a href={release.zipURL}>Peeknook.zip</a>
+          </>
+        )}
       </p>
       <p>
         Prefer Homebrew? Use the official <strong>cask</strong>, not the formula:
       </p>
-      <pre class="doc-code"><code>brew install --cask ollama-app</code></pre>
-      <p>
-        Pull a model manually (Peeknook can download from Get ready instead):
-      </p>
-      <pre class="doc-code"><code>ollama pull gemma4:e4b</code></pre>
+      <pre><code>brew install --cask ollama-app</code></pre>
+      <p>Pull a model manually (Peeknook can download from Get ready instead):</p>
+      <pre><code>ollama pull gemma4:e4b</code></pre>
     </div>
   </details>
-</DocsPage>
-
-<style>
-  .doc-advanced {
-    margin-top: 2rem;
-    padding-top: 1.25rem;
-    border-top: 1px solid var(--border-subtle);
-  }
-
-  .doc-advanced summary {
-    cursor: pointer;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    list-style: none;
-  }
-
-  .doc-advanced summary::-webkit-details-marker {
-    display: none;
-  }
-
-  .doc-advanced-body {
-    margin-top: 0.75rem;
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-  }
-
-  .doc-advanced-body p {
-    margin: 0.5rem 0;
-  }
-
-  .doc-code {
-    margin: 0.5rem 0 1rem;
-    padding: 0.65rem 0.85rem;
-    border-radius: 8px;
-    background: var(--surface-muted);
-    font-size: 0.8125rem;
-    overflow-x: auto;
-  }
-
-  .doc-code--checksum code {
-    word-break: break-all;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  }
-</style>
+</DocsLayout>

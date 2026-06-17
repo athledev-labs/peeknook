@@ -1,11 +1,20 @@
 ---
 // SPDX-License-Identifier: Apache-2.0
-import DocPage from "../../components/DocPage.astro";
+import DocsLayout from "../../components/DocsLayout.astro";
+import DocBody from "../../components/DocBody.astro";
+import { parseRepoMarkdownSections } from "../../lib/markdown";
+
+const { intro, sections } = parseRepoMarkdownSections("PRIVACY.md");
+const toc = sections.map((s) => ({ id: s.id, title: s.title }));
 ---
 
-<DocPage
+<DocsLayout
   title="Privacy"
+  tagline="Local-first by default. What stays on your Mac, and what can leave only when you opt in."
   description="Peeknook privacy policy. Local-first capture, no cloud inference by default."
-  source="PRIVACY.md"
   current="privacy"
-/>
+  toc={toc}
+>
+  {intro && <div class="prose docs-intro" set:html={intro} />}
+  <DocBody sections={sections} />
+</DocsLayout>

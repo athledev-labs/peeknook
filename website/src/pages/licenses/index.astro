@@ -1,11 +1,20 @@
 ---
 // SPDX-License-Identifier: Apache-2.0
-import DocPage from "../../components/DocPage.astro";
+import DocsLayout from "../../components/DocsLayout.astro";
+import DocBody from "../../components/DocBody.astro";
+import { parseRepoMarkdownSections } from "../../lib/markdown";
+
+const { intro, sections } = parseRepoMarkdownSections("NOTICE");
+const toc = sections.map((s) => ({ id: s.id, title: s.title }));
 ---
 
-<DocPage
+<DocsLayout
   title="Licenses"
+  tagline="Open-source licenses and third-party notices."
   description="Peeknook open-source licenses and third-party notices."
-  source="NOTICE"
   current="licenses"
-/>
+  toc={toc}
+>
+  {intro && <div class="prose" set:html={intro} />}
+  <DocBody sections={sections} />
+</DocsLayout>

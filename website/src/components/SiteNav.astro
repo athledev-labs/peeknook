@@ -1,6 +1,7 @@
 ---
 // SPDX-License-Identifier: Apache-2.0
 import ChromeLink from "./ChromeLink.astro";
+import SiteIcon from "./SiteIcon.astro";
 import { sitePath, type SiteCurrent } from "../lib/sitePages";
 
 interface Props {
@@ -11,18 +12,24 @@ interface Props {
 
 const { base, current, releasesURL } = Astro.props;
 
-const links = [
+const githubURL = "https://github.com/glendonC/peeknook";
+
+const navLinks = [
   { href: sitePath(base, "features/"), icon: "features" as const, label: "Features", page: "features" },
   { href: sitePath(base, "docs/"), icon: "docs" as const, label: "Docs", page: "docs" },
   { href: sitePath(base, "faq/"), icon: "faq" as const, label: "FAQ", page: "faq" },
   { href: releasesURL, icon: "releases" as const, label: "Releases", external: true },
-  { href: "https://github.com/glendonC/peeknook", icon: "github" as const, label: "GitHub", external: true },
+] as const;
+
+const menuLinks = [
+  ...navLinks,
+  { href: githubURL, icon: "github" as const, label: "GitHub", external: true },
 ] as const;
 ---
 
 <nav class="nav nav--desktop" aria-label="Primary">
   {
-    links.map((link) => (
+    navLinks.map((link) => (
       <ChromeLink
         href={link.href}
         icon={link.icon}
@@ -35,25 +42,36 @@ const links = [
   }
 </nav>
 
-<button
-  type="button"
-  class="menu-toggle"
-  aria-expanded="false"
-  aria-controls="site-menu"
-  aria-label="Open menu"
->
-  <span class="menu-toggle-bars" aria-hidden="true">
-    <span></span>
-    <span></span>
-  </span>
-</button>
+<div class="topbar-actions">
+  <a
+    class="nav-icon"
+    href={githubURL}
+    rel="noopener noreferrer"
+    target="_blank"
+    aria-label="Peeknook on GitHub"
+  >
+    <SiteIcon name="github" />
+  </a>
+  <button
+    type="button"
+    class="menu-toggle"
+    aria-expanded="false"
+    aria-controls="site-menu"
+    aria-label="Open menu"
+  >
+    <span class="menu-toggle-bars" aria-hidden="true">
+      <span></span>
+      <span></span>
+    </span>
+  </button>
+</div>
 
 <div id="site-menu" class="mobile-menu" hidden>
   <div class="mobile-menu-backdrop" data-menu-dismiss></div>
   <div class="mobile-menu-panel">
     <nav class="mobile-menu-nav" aria-label="Primary">
       {
-        links.map((link) => (
+        menuLinks.map((link) => (
           <ChromeLink
             href={link.href}
             icon={link.icon}

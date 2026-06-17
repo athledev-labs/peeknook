@@ -15,6 +15,7 @@ interface Props {
   current?: SiteCurrent;
   centerMain?: boolean;
   noIndex?: boolean;
+  wide?: boolean;
 }
 
 const {
@@ -23,6 +24,7 @@ const {
   current,
   centerMain = false,
   noIndex = false,
+  wide = false,
 } = Astro.props;
 
 const isHome = current === "home";
@@ -92,12 +94,21 @@ const ogImage = new URL(sitePath(base, "logo-mark.svg"), SITE_ORIGIN).href;
           "page-main",
           centerMain && "page-main--center",
           isHome && "page-main--home",
-          !isHome && "page-main--doc",
+          !isHome && !wide && "page-main--doc",
+          wide && "page-main--wide",
         ]}
       >
-        <div class="page-grid page-grid--home">
-          <slot />
-        </div>
+        {
+          wide ? (
+            <div class="page-wide">
+              <slot />
+            </div>
+          ) : (
+            <div class="page-grid page-grid--home">
+              <slot />
+            </div>
+          )
+        }
       </main>
 
       <SiteFooter base={base} version={release.version} current={current} />

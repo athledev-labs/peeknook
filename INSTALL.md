@@ -11,7 +11,7 @@ Peeknook is local-first AI in your MacBook notch. You trigger capture with **⌘
 - **macOS 15** or later (Apple Silicon recommended)
 - **Free disk space** for your first model pull — about **7–20 GB** depending on the tag (see [Choose your model](#choose-your-model))
 - **Internet** for the first model download
-- **Ollama.app** — Peeknook uses Ollama to run the vision model locally (installed separately; see below)
+- **Ollama.app** runs the vision model locally (installed separately; see below)
 
 ---
 

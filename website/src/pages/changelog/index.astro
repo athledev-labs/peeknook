@@ -1,58 +1,49 @@
 ---
 // SPDX-License-Identifier: Apache-2.0
-import BaseLayout from "../../layouts/BaseLayout.astro";
-import {
-  formatReleaseDate,
-  getChangelog,
-} from "../../lib/changelog";
+import DocsLayout from "../../components/DocsLayout.astro";
+import { formatReleaseDate, getChangelog } from "../../lib/changelog";
 import { getRelease } from "../../lib/release";
 import { sitePath } from "../../lib/sitePages";
 
 const release = await getRelease();
-const entries = await getChangelog();
+const entries = (await getChangelog()).map((entry) => ({
+  ...entry,
+  anchor: `v${entry.version.replace(/[^a-z0-9]+/gi, "-")}`,
+}));
 const base = import.meta.env.BASE_URL;
+const toc = entries.map((entry) => ({ id: entry.anchor, title: entry.version }));
 ---
 
-<BaseLayout
+<DocsLayout
   title="Changelog"
-  description="Peeknook release notes — version history and highlights."
+  tagline="Release history for the signed macOS app. Newest first."
+  description="Peeknook release notes. Version history and highlights."
   current="changelog"
+  toc={toc}
 >
-  <section class="home-hero">
-    <div class="home-hero-copy">
-      <h1>Changelog</h1>
-      <p class="home-hero-tagline">
-        Release history for the signed macOS app. Newest first.
-      </p>
-    </div>
+  <div class="changelog-list">
+    {
+      entries.map((entry) => (
+        <article class="changelog-entry" id={entry.anchor}>
+          <header class="changelog-header">
+            <h2 class="changelog-version">
+              <a href={entry.url}>{entry.version}</a>
+            </h2>
+            <time class="changelog-date" datetime={entry.publishedAt}>
+              {formatReleaseDate(entry.publishedAt)}
+            </time>
+          </header>
+          <div class="prose changelog-body" set:html={entry.bodyHtml} />
+        </article>
+      ))
+    }
+  </div>
 
-    <div class="doc-guide changelog-list">
-      {
-        entries.map((entry) => (
-          <article class="changelog-entry">
-            <header class="changelog-header">
-              <h2 class="changelog-version">
-                <a href={entry.url}>{entry.version}</a>
-              </h2>
-              <time
-                class="changelog-date"
-                datetime={entry.publishedAt}
-              >
-                {formatReleaseDate(entry.publishedAt)}
-              </time>
-            </header>
-            <div class="prose changelog-body" set:html={entry.bodyHtml} />
-          </article>
-        ))
-      }
-    </div>
-
-    <p class="doc-note changelog-foot">
-      All builds: <a href={release.latestReleasesURL}>GitHub Releases</a>
-      · Install: <a href={sitePath(base, "docs/")}>Docs</a>
-    </p>
-  </section>
-</BaseLayout>
+  <p class="doc-note changelog-foot">
+    All builds: <a href={release.latestReleasesURL}>GitHub Releases</a>
+    · Install: <a href={sitePath(base, "docs/")}>Docs</a>
+  </p>
+</DocsLayout>
 
 <style>
   .changelog-list {
@@ -62,7 +53,7 @@ const base = import.meta.env.BASE_URL;
   }
 
   .changelog-entry {
-    padding: 1.75rem 0;
+    padding: 1.85rem 0;
     border-top: 0.5px solid var(--line-soft);
   }
 
@@ -83,7 +74,7 @@ const base = import.meta.env.BASE_URL;
   .changelog-version {
     margin: 0;
     font-family: var(--font-display);
-    font-size: clamp(1.05rem, 2vw, 1.2rem);
+    font-size: clamp(1.1rem, 2vw, 1.3rem);
     font-weight: var(--weight-regular);
     letter-spacing: -0.02em;
   }
@@ -110,8 +101,6 @@ const base = import.meta.env.BASE_URL;
   }
 
   .changelog-foot {
-    margin-top: 1.5rem;
-    font-size: 0.8125rem;
-    color: var(--text-faint);
+    margin-top: 1.75rem;
   }
 </style>

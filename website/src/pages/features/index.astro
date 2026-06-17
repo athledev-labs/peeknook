@@ -1,8 +1,13 @@
 ---
 // SPDX-License-Identifier: Apache-2.0
-import ArticlePage from "../../components/ArticlePage.astro";
-import FeatureList from "../../components/FeatureList.astro";
-import type { Feature } from "../../components/FeatureList.astro";
+import DocsLayout from "../../components/DocsLayout.astro";
+import { sitePath } from "../../lib/sitePages";
+
+interface Feature {
+  title: string;
+  description: string;
+  optional?: boolean;
+}
 
 const features: Feature[] = [
   {
@@ -93,13 +98,69 @@ const features: Feature[] = [
     optional: true,
   },
 ];
+
+const base = import.meta.env.BASE_URL;
+
+const groups = [
+  {
+    id: "core-features",
+    label: "Core features",
+    items: features.filter((f) => !f.optional),
+  },
+  {
+    id: "optional-features",
+    label: "Optional features",
+    items: features.filter((f) => f.optional),
+  },
+];
+
+const toc = groups.map((g) => ({ id: g.id, title: g.label }));
 ---
 
-<ArticlePage
+<DocsLayout
   title="Features"
   tagline="Private intelligence for everything on your screen."
   description="Ask about what's on your screen with private AI on your Mac."
   current="features"
+  toc={toc}
 >
-  <FeatureList features={features} />
-</ArticlePage>
+  {
+    groups.map((group) => (
+      <section class="faq-group" id={group.id}>
+        <h2 class="faq-eyebrow">{group.label}</h2>
+        {group.id === "optional-features" && (
+          <p class="faq-group-note">
+            Off until you turn them on. See{" "}
+            <a href={sitePath(base, "privacy/")}>Privacy</a> for what can leave
+            your Mac.
+          </p>
+        )}
+        <ul class="faq-list">
+          {group.items.map((feature) => (
+            <li>
+              <details class="faq-item">
+                <summary class="faq-summary">
+                  <span class="faq-question">{feature.title}</span>
+                  <span class="faq-chevron" aria-hidden="true">
+                    <svg viewBox="0 0 12 12" width="12" height="12" fill="none">
+                      <path
+                        d="M3 4.5 6 7.5 9 4.5"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </span>
+                </summary>
+                <div class="faq-answer prose">
+                  <p set:html={feature.description} />
+                </div>
+              </details>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))
+  }
+</DocsLayout>

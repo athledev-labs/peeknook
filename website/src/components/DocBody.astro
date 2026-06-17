@@ -1,0 +1,68 @@
+---
+// SPDX-License-Identifier: Apache-2.0
+import type { DocSection } from "../lib/markdown";
+
+interface Props {
+  sections: DocSection[];
+}
+
+const { sections } = Astro.props;
+
+type Block =
+  | { type: "steps"; steps: DocSection[] }
+  | { type: "section"; section: DocSection };
+
+const blocks: Block[] = [];
+for (const section of sections) {
+  if (section.step) {
+    const last = blocks[blocks.length - 1];
+    if (last && last.type === "steps") last.steps.push(section);
+    else blocks.push({ type: "steps", steps: [section] });
+  } else {
+    blocks.push({ type: "section", section });
+  }
+}
+---
+
+{
+  blocks.map((block) =>
+    block.type === "steps" ? (
+      <div class="steps">
+        {block.steps.map((section) => (
+          <section class="step" id={section.id}>
+            <span class="step-marker">{section.step}</span>
+            <div class="step-body">
+              <h2 class="step-title" set:html={section.title} />
+              {section.html && <div class="prose" set:html={section.html} />}
+              {section.items.map((item) => (
+                <div class="doc-sub" id={item.id}>
+                  <h3 set:html={item.title} />
+                  <div class="prose" set:html={item.html} />
+                </div>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+    ) : (
+      <section
+        class:list={[
+          "docs-section",
+          block.section.id === "what-you-need" && "docs-cards",
+        ]}
+        id={block.section.id}
+      >
+        <h2 set:html={block.section.title} />
+        {block.section.html && (
+          <div class="prose" set:html={block.section.html} />
+        )}
+        {block.section.items.map((item) => (
+          <div class="doc-sub" id={item.id}>
+            <h3 set:html={item.title} />
+            <div class="prose" set:html={item.html} />
+          </div>
+        ))}
+      </section>
+    ),
+  )
+}

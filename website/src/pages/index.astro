@@ -3,8 +3,10 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import DownloadCTA from "../components/DownloadCTA.astro";
 import { getRelease } from "../lib/release";
+import { sitePath } from "../lib/sitePages";
 
 const release = await getRelease();
+const base = import.meta.env.BASE_URL;
 ---
 
 <BaseLayout
@@ -20,5 +22,24 @@ const release = await getRelease();
     <div class="home-actions">
       <DownloadCTA href={release.dmgURL} />
     </div>
+    <figure class="home-demo">
+      <div class="demo-squircle">
+        {/* Drop the product capture here — swap .demo-placeholder for
+            <img class="demo-media" src=… alt=… /> or
+            <video class="demo-media" autoplay muted loop playsinline …>. */}
+        <span class="demo-notch" aria-hidden="true"></span>
+        <div class="demo-placeholder" aria-hidden="true">
+          <img
+            class="demo-placeholder-mark"
+            src={sitePath(base, "logo-mark.svg")}
+            alt=""
+            width="44"
+            height="44"
+            decoding="async"
+          />
+          <span class="demo-placeholder-label">Demo</span>
+        </div>
+      </div>
+    </figure>
   </section>
 </BaseLayout>
