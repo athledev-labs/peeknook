@@ -1,10 +1,10 @@
 # Peeknook
 
-**Complete AI for Mac — in the MacBook notch.** Local-first, private, and built on [OpenNook](https://github.com/glendonC/opennook).
+**Complete AI for Mac, in the MacBook notch.** Local-first, private, and built on [OpenNook](https://github.com/glendonC/opennook).
 
 ## Using Peeknook (download)
 
-Install the signed app from **[GitHub Releases](https://github.com/glendonC/peeknook/releases/latest)** — no Terminal required.
+Install the signed app from **[GitHub Releases](https://github.com/glendonC/peeknook/releases/latest)**, no Terminal required.
 
 **[INSTALL.md](INSTALL.md)** walks through: DMG install, Ollama.app setup, Get ready permissions, model download, and troubleshooting. The same guide is on the [website docs](https://glendonc.github.io/peeknook/docs/).
 
@@ -40,7 +40,7 @@ brew install xcodegen            # one-time: the script generates the project wi
 open Peeknook.xcodeproj
 ```
 
-`regenerate-xcodeproj.sh` runs **XcodeGen** (`xcodegen generate`) against `project.yml`, so XcodeGen must be installed first; the script exits with an install hint if it is missing. Like the SPM build, the generated Xcode project / signed `.app` resolves OpenNook from the sibling `../opennook` checkout (the script requires it locally — set `OPENNOOK_PACKAGE_PATH` to point at an existing clone). `Package.swift` itself falls back to the Git URL when no sibling checkout is present, which is enough for `swift build` / `swift test` but not for `regenerate-xcodeproj.sh`.
+`regenerate-xcodeproj.sh` runs **XcodeGen** (`xcodegen generate`) against `project.yml`, so XcodeGen must be installed first; the script exits with an install hint if it is missing. Like the SPM build, the generated Xcode project / signed `.app` resolves OpenNook from the sibling `../opennook` checkout (the script requires it locally; set `OPENNOOK_PACKAGE_PATH` to point at an existing clone). `Package.swift` itself falls back to the Git URL when no sibling checkout is present, which is enough for `swift build` / `swift test` but not for `regenerate-xcodeproj.sh`.
 
 ## Developing vs using the shipped app
 
@@ -50,11 +50,11 @@ macOS ties **Screen Recording**, **Accessibility**, and **Camera** to the app bu
 
 | Goal | Use |
 |------|-----|
-| Day-to-day development | `swift build` / `swift run Peeknook` — grant TCC to the binary System Settings shows |
-| Pre-release / user-like testing | `./Scripts/release.sh` (or Xcode Release archive) → install the exported `.app` — grant TCC to **Peeknook** |
+| Day-to-day development | `swift build` / `swift run Peeknook`: grant TCC to the binary System Settings shows |
+| Pre-release / user-like testing | `./Scripts/release.sh` (or Xcode Release archive), then install the exported `.app`: grant TCC to **Peeknook** |
 | What you ship | Notarized `.app` from [Releases](https://github.com/glendonC/peeknook/releases/latest) |
 
-> For permission or Gatekeeper issues while developing, prefer testing the **signed `.app`** before filing bugs. Production users should install from the website or GitHub Releases, not `swift run`. If a downloaded build is ever blocked, [INSTALL.md → If macOS blocks the app](INSTALL.md#if-macos-blocks-the-app) has the one-time Open-Anyway steps.
+> For permission or Gatekeeper issues while developing, prefer testing the **signed `.app`** before filing bugs. Production users should install from the website or GitHub Releases, not `swift run`. If a downloaded build is ever blocked, [INSTALL.md > If macOS blocks the app](INSTALL.md#if-macos-blocks-the-app) has the one-time Open-Anyway steps.
 
 ## Add another nook module
 
@@ -93,14 +93,14 @@ Capture (⌘⇧P) stays disabled until then. **Accessibility** is optional and o
 
 ## Models (Gemma 4 via Ollama)
 
-Peeknook sends each capture to **your configured Ollama instance**. The default is **local Ollama** on this Mac (`http://127.0.0.1:11434`). In Settings → Vision → Advanced you can point at a **remote Ollama server** (HTTPS by default; optional **Allow insecure HTTP** for cleartext). You can also select Ollama **`:cloud` tags** from the model library; those run through Ollama and may execute off this Mac per Ollama's cloud offering.
+Peeknook sends each capture to **your configured Ollama instance**. The default is **local Ollama** on this Mac (`http://127.0.0.1:11434`). In Settings > Vision > Advanced you can point at a **remote Ollama server** (HTTPS by default; optional **Allow insecure HTTP** for cleartext). You can also select Ollama **`:cloud` tags** from the model library; those run through Ollama and may execute off this Mac per Ollama's cloud offering.
 
 Default model tags by RAM:
 
 | RAM | Default tag |
 |-----|-------------|
 | ≤16 GB | `gemma4:e2b` |
-| 17–24 GB | `gemma4:e4b` |
+| 17-24 GB | `gemma4:e4b` |
 | 25+ GB | `gemma4:26b` |
 
 ```sh
@@ -119,7 +119,7 @@ ollama pull gemma4:e4b           # or the tag Settings suggests
 
 ### OpenAI-compatible servers (LM Studio, vLLM)
 
-Settings → Answer model → **Backend** switches inference from Ollama to any local
+Settings > Answer model > **Backend** switches inference from Ollama to any local
 OpenAI-compatible server (`/v1/chat/completions`). Point it at the server address (e.g.
 `http://127.0.0.1:1234` for LM Studio), pick a model from the server's `/v1/models` list, and
 capture as usual. Notes:
@@ -129,14 +129,14 @@ capture as usual. Notes:
 - The optional API key (most local servers need none) is stored in the macOS **Keychain**, never
   in settings files; see [PRIVACY.md](PRIVACY.md).
 - These servers don't report model capabilities, so Peeknook can't verify vision support up
-  front — load a multimodal model (e.g. a Qwen-VL variant) or the screenshot is silently ignored.
-- Ollama setup steps don't apply on this backend; server health shows in Settings → Answer model.
+  front: load a multimodal model (e.g. a Qwen-VL variant) or the screenshot is silently ignored.
+- Ollama setup steps don't apply on this backend; server health shows in Settings > Answer model.
 
 ### Bring your own model
 
-Gemma 4 is the default, but the picker is open: **Answer model → Add a model…** (in Home, Setup, or Settings) accepts any Ollama tag, pulls it if needed, and selects it, so you can try the latest open models in your notch without a code change. Custom models persist and can be removed from Settings.
+Gemma 4 is the default, but the picker is open: **Answer model > Add a model…** (in Home, Setup, or Settings) accepts any Ollama tag, pulls it if needed, and selects it, so you can try any open model in your notch without a code change. Custom models persist and can be removed from Settings.
 
-Because every capture sends a screenshot, **pick a model that supports image input**. Peeknook reads the model's `/api/show` capabilities and warns when a chosen model is text-only. Note: some otherwise-multimodal models (e.g. NVIDIA's Nemotron 3 family) currently run **text-only** under Ollama because Ollama doesn't load their separate vision projector (`mmproj`) files, those will ignore the screenshot until upstream support lands.
+Because every capture sends a screenshot, **pick a model that supports image input**. Peeknook reads the model's `/api/show` capabilities and warns when a chosen model is text-only. Note: some otherwise-multimodal models (e.g. NVIDIA's Nemotron 3 family) run **text-only** under Ollama because Ollama doesn't load their separate vision projector (`mmproj`) files, those will ignore the screenshot until upstream support lands.
 
 Grant **Screen Recording** (required) when macOS prompts. Every capture includes a screenshot of the chosen window or display; visible on-screen content (including login UIs) is sent to your Ollama instance. **Accessibility** is optional and only adds **selected** text alongside the screenshot; it does not read focused password fields, but the screenshot still shows what is on screen.
 

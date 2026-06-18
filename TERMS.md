@@ -6,7 +6,7 @@ Peeknook is a **free** macOS app published by Glendon Chin. Source code is [Apac
 
 ## The software
 
-Peeknook is local-first AI for macOS. It captures screenshots **only when you trigger capture** (default **⌘⇧P**) and sends them to inference you configure—by default **Ollama on your Mac**.
+Peeknook is local-first AI for macOS. It captures screenshots **only when you trigger capture** (default **⌘⇧P**) and sends them to inference you configure: by default **Ollama on your Mac**.
 
 Peeknook does **not** bundle Ollama or model weights. You install those separately.
 
@@ -18,7 +18,7 @@ Do not use Peeknook to surveil others or capture content without authorization.
 
 ## No warranty
 
-PEEKNOOK IS PROVIDED **"AS IS"** WITHOUT WARRANTY OF ANY KIND. AI outputs may be wrong—verify important information yourself.
+PEEKNOOK IS PROVIDED **"AS IS"** WITHOUT WARRANTY OF ANY KIND. AI outputs may be wrong. Verify important information yourself.
 
 ## Liability
 
@@ -30,4 +30,4 @@ We may update these Terms. The date above changes when we do.
 
 ## Contact
 
-[GitHub Issues](https://github.com/glendonC/peeknook/issues) — bugs and questions.
+[GitHub Issues](https://github.com/glendonC/peeknook/issues): bugs and questions.

@@ -11,7 +11,7 @@ Quick answers for installing and using Peeknook on macOS.
 - **macOS 15** or later on an **Apple Silicon** Mac
 - **Peeknook.app** from [GitHub Releases](https://github.com/glendonC/peeknook/releases/latest)
 - **[Ollama.app](https://ollama.com/download)** running locally (not the Homebrew formula)
-- A **vision model** pull (Gemma 4 recommended; about **7–20 GB** depending on tag)
+- A **vision model** pull (Gemma 4 recommended; about **7-20 GB** depending on tag)
 - **Screen Recording** permission for **Peeknook** in System Settings
 
 Full steps: [Install guide](https://glendonc.github.io/peeknook/docs/).
@@ -29,7 +29,7 @@ brew install --cask ollama-app
 | RAM | Suggested tag | Approx. download |
 |-----|---------------|------------------|
 | 16 GB or less | `gemma4:e2b` | ~7 GB |
-| 17–24 GB | `gemma4:e4b` | ~10 GB |
+| 17-24 GB | `gemma4:e4b` | ~10 GB |
 | 25 GB or more | `gemma4:26b` | ~18 GB |
 
 Peeknook can pull the model from **Get ready** on first launch.
@@ -44,7 +44,7 @@ v1 builds target **Apple Silicon**. Intel Macs are not supported for the shipped
 
 ### Why does Peeknook need Screen Recording?
 
-Every capture sends a **screenshot** of the window or display you choose to your local vision model. macOS requires Screen Recording permission for that. Peeknook does **not** record in the background—only when you press the capture hotkey (default **⌘⇧P**).
+Every capture sends a **screenshot** of the window or display you choose to your local vision model. macOS requires Screen Recording permission for that. Peeknook does **not** record in the background: only when you press the capture hotkey (default **⌘⇧P**).
 
 ### I granted Screen Recording to Terminal, not Peeknook
 
@@ -80,11 +80,11 @@ Peeknook picks the window **under the cursor**, then frontmost, then largest. Mo
 
 ### Capture is disabled / grayed out
 
-Complete **Get ready**: Ollama running, model downloaded, Screen Recording granted. Check **Settings → Capture** for permission repair.
+Complete **Get ready**: Ollama running, model downloaded, Screen Recording granted. Check **Settings > Capture** for permission repair.
 
 ### Ollama offline errors
 
-Open **Ollama.app** and confirm the menu bar icon is active. Default server: `http://127.0.0.1:11434` in Settings → Answer model.
+Open **Ollama.app** and confirm the menu bar icon is active. Default server: `http://127.0.0.1:11434` in Settings > Answer model.
 
 ### What are the default shortcuts?
 
@@ -95,7 +95,7 @@ Open **Ollama.app** and confirm the menu bar icon is active. Default server: `ht
 | Camera still (optional) | **⌘⇧C** |
 | Toggle notch | **⌘⌥;** |
 
-Rebind capture and brief in **Settings → Capture**.
+Rebind capture and brief in **Settings > Capture**.
 
 ---
 
@@ -103,7 +103,7 @@ Rebind capture and brief in **Settings → Capture**.
 
 ### How do I verify my DMG?
 
-Compare the SHA-256 on [GitHub Releases](https://github.com/glendonC/peeknook/releases/latest) or in [Docs → Advanced](https://glendonc.github.io/peeknook/docs/#verify-checksum):
+Compare the SHA-256 on [GitHub Releases](https://github.com/glendonC/peeknook/releases/latest) or in [Docs > Advanced](https://glendonc.github.io/peeknook/docs/#verify-checksum):
 
 ```sh
 shasum -a 256 ~/Downloads/Peeknook*.dmg
@@ -111,7 +111,7 @@ shasum -a 256 ~/Downloads/Peeknook*.dmg
 
 ### macOS says the app is from an unidentified developer
 
-Open **System Settings → Privacy & Security** and click **Open Anyway**, or right-click Peeknook → **Open** once. The shipped build is signed and notarized.
+Open **System Settings > Privacy & Security** and click **Open Anyway**, or right-click Peeknook > **Open** once. The shipped build is signed and notarized.
 
 ### How do I get updates?
 
@@ -124,7 +124,7 @@ v1 has no in-app updater. Check [GitHub Releases](https://github.com/glendonC/pe
 Open a [GitHub Issue](https://github.com/glendonC/peeknook/issues). Include:
 
 - macOS version
-- Peeknook version (**Settings → About**)
+- Peeknook version (**Settings > About**)
 - Ollama running (yes/no) and model tag
 - Screen Recording granted to Peeknook (yes/no)
 - Steps to reproduce, expected vs actual
