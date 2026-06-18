@@ -32,19 +32,19 @@ Changelog and download metadata fetch [GitHub Releases](https://github.com/glend
 
 ## Deploy
 
-Push to `main` — `.github/workflows/pages.yml` publishes to https://glendonc.github.io/peeknook/
+Push to `main`: `.github/workflows/pages.yml` publishes to https://glendonc.github.io/peeknook/
 
 ## Site standards
 
-Static site — pages are pre-rendered HTML. No app-style loading spinners.
+Static site: pages are pre-rendered HTML. No app-style loading spinners.
 
 | Concern | Approach |
 |---------|----------|
-| **404** | `src/pages/404.astro` → `404.html` (GitHub Pages serves this for bad paths) |
-| **Loading** | System fonts only — no webfont fetch, no flash |
+| **404** | `src/pages/404.astro` becomes `404.html` (GitHub Pages serves this for bad paths) |
+| **Loading** | System fonts only: no webfont fetch, no flash |
 | **Motion** | `prefers-reduced-motion` disables animations |
 | **Focus** | Visible `:focus-visible` rings; skip link to `#main-content` |
 | **SEO errors** | 404 uses `noindex` |
 | **Release data** | Fetched at **build** time (CI), not in the browser |
 
-When you add payments or client-side features later, revisit loading/error UI then — not before.
+When you add payments or client-side features later, revisit loading/error UI then, not before.
