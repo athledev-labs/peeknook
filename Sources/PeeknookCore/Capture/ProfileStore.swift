@@ -111,6 +111,57 @@ public final class ProfileStore {
         ))
     }
 
+    /// Stores a profile's tool spec, forcing the HTTP transport and clearing any `command`: a
+    /// `.command` tool is arbitrary local code execution the sandboxed signed app cannot run and that
+    /// never travels in a shared preset, so the editor must never create or save one. An empty or
+    /// whitespace url is allowed to persist (an in-progress edit) but normalizes to nil, leaving the
+    /// spec ``ToolSpec/isUsable`` false so the profile degrades to no tool.
+    public func setToolSpec(id: String, _ spec: ToolSpec) {
+        guard let existing = catalog.profiles.first(where: { $0.id == id }) else { return }
+        let httpOnly = ToolSpec(
+            transport: .http,
+            url: spec.url,
+            command: nil,
+            arguments: spec.arguments,
+            sendsScreenshot: spec.sendsScreenshot,
+            sendsText: spec.sendsText,
+            outputLabel: spec.outputLabel,
+            timeoutSeconds: spec.timeoutSeconds
+        )
+        update(existing.with(
+            displayName: existing.displayName,
+            instruction: existing.instruction,
+            promptTemplate: existing.promptTemplate,
+            modelBinding: existing.modelBinding,
+            moduleOverrides: existing.moduleOverrides,
+            toolSpec: httpOnly
+        ))
+    }
+
+    /// Creates a `.tool`-primary user profile under a fresh UUID id, seeded with a default HTTP
+    /// ``ToolSpec`` that has no endpoint yet (the editor fills it in). Returns nil when the catalog is
+    /// at ``ProfileCatalog/maxProfiles``. Distinct from ``duplicate(_:name:)``, which copies a screen
+    /// built-in: there is no `.tool` built-in to copy, so this is its own create path. Like the other
+    /// mutators it persists immediately and does not change the active profile.
+    @discardableResult
+    public func createToolProfile(name: String) -> GroundProfile? {
+        guard catalog.profiles.count < ProfileCatalog.maxProfiles else { return nil }
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let profile = GroundProfile(
+            id: UUID().uuidString,
+            displayNameKey: "Tool",
+            symbol: "wrench.and.screwdriver",
+            primaryGround: .tool,
+            activeGrounds: [.tool],
+            isBuiltIn: false,
+            displayName: trimmed.isEmpty ? nil : trimmed,
+            toolSpec: ToolSpec(transport: .http, url: "", sendsScreenshot: true)
+        )
+        catalog.profiles.append(profile)
+        persist()
+        return profile
+    }
+
     /// `nil` clears the binding (back to the global answer model).
     public func setModelBinding(id: String, _ binding: ProfileModelBinding?) {
         guard let existing = catalog.profiles.first(where: { $0.id == id }) else { return }

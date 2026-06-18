@@ -216,4 +216,100 @@ final class ProfileStoreTests: XCTestCase {
         store.setActiveGrounds([.screen, .systemAudio], for: "does.not.exist")
         XCTAssertEqual(store.catalog.profiles, [])
     }
+
+    // MARK: - Tool profiles
+
+    func testCreateToolProfileMintsToolPrimaryWithDefaultHTTPSpec() throws {
+        let store = makeStore()
+        let created = try XCTUnwrap(store.createToolProfile(name: "Chess"))
+        XCTAssertNotNil(UUID(uuidString: created.id), "tool profiles get a UUID id")
+        XCTAssertFalse(created.isBuiltIn)
+        XCTAssertEqual(created.primaryGround, .tool)
+        XCTAssertEqual(created.activeGrounds, [.tool])
+        XCTAssertEqual(created.displayName, "Chess")
+        let spec = try XCTUnwrap(created.toolSpec)
+        XCTAssertEqual(spec.transport, .http, "the editor never creates a command tool")
+        XCTAssertNil(spec.command)
+        XCTAssertNil(spec.url, "the seed has no endpoint yet")
+        XCTAssertTrue(spec.sendsScreenshot)
+        XCTAssertFalse(spec.isUsable, "no URL means the profile degrades to no tool until edited")
+    }
+
+    func testCreateToolProfilePersistsAcrossReload() throws {
+        let store = makeStore()
+        let created = try XCTUnwrap(store.createToolProfile(name: "Solver"))
+        let reloaded = ProfileStore(defaults: defaults).profile(id: created.id)
+        XCTAssertEqual(reloaded.primaryGround, .tool)
+        XCTAssertEqual(reloaded.displayName, "Solver")
+        XCTAssertEqual(reloaded.toolSpec?.transport, .http)
+    }
+
+    func testCreateToolProfileDoesNotActivate() throws {
+        // Matches "New profile": create does not change which profile is active.
+        let store = makeStore()
+        _ = try XCTUnwrap(store.createToolProfile(name: "Tool"))
+        XCTAssertEqual(store.catalog.profiles.count, 1)
+    }
+
+    func testCreateToolProfileCapsAtMaxProfiles() {
+        let store = makeStore()
+        for index in 0..<ProfileCatalog.maxProfiles {
+            XCTAssertNotNil(store.createToolProfile(name: "Tool \(index)"))
+        }
+        XCTAssertNil(store.createToolProfile(name: "One too many"))
+        XCTAssertEqual(store.catalog.profiles.count, ProfileCatalog.maxProfiles)
+    }
+
+    func testSetToolSpecRoundTripsAndPersists() throws {
+        let store = makeStore()
+        let created = try XCTUnwrap(store.createToolProfile(name: "Chess"))
+        store.setToolSpec(id: created.id, ToolSpec(
+            transport: .http,
+            url: "http://127.0.0.1:7000",
+            sendsScreenshot: true,
+            sendsText: true,
+            outputLabel: "Chess engine analysis",
+            timeoutSeconds: 12
+        ))
+        let restored = ProfileStore(defaults: defaults).profile(id: created.id)
+        let spec = try XCTUnwrap(restored.toolSpec)
+        XCTAssertEqual(spec.url, "http://127.0.0.1:7000")
+        XCTAssertTrue(spec.sendsText)
+        XCTAssertEqual(spec.outputLabel, "Chess engine analysis")
+        XCTAssertEqual(spec.timeoutSeconds, 12)
+        XCTAssertTrue(spec.isUsable)
+    }
+
+    func testSetToolSpecForcesHTTPAndDropsCommand() throws {
+        // The signed UI must never create or save a `.command` tool: the store rewrites it to HTTP and
+        // clears the command, preserving the URL.
+        let store = makeStore()
+        let created = try XCTUnwrap(store.createToolProfile(name: "Chess"))
+        store.setToolSpec(id: created.id, ToolSpec(
+            transport: .command,
+            url: "http://127.0.0.1:9000",
+            command: "/usr/local/bin/stockfish",
+            arguments: ["--uci"]
+        ))
+        let spec = try XCTUnwrap(store.profile(id: created.id).toolSpec)
+        XCTAssertEqual(spec.transport, .http)
+        XCTAssertNil(spec.command, "a command tool can never be saved through the editor")
+        XCTAssertEqual(spec.url, "http://127.0.0.1:9000")
+    }
+
+    func testSetToolSpecAllowsEmptyURLButLeavesItUnusable() throws {
+        let store = makeStore()
+        let created = try XCTUnwrap(store.createToolProfile(name: "Chess"))
+        store.setToolSpec(id: created.id, ToolSpec(transport: .http, url: "   "))
+        let spec = try XCTUnwrap(store.profile(id: created.id).toolSpec)
+        XCTAssertNil(spec.url, "whitespace normalizes to nil (an in-progress edit)")
+        XCTAssertFalse(spec.isUsable)
+    }
+
+    func testSetToolSpecIsNoOpOnBuiltInAndUnknownID() {
+        let store = makeStore()
+        store.setToolSpec(id: GroundProfile.screenDefault.id, ToolSpec(transport: .http, url: "http://127.0.0.1:1"))
+        store.setToolSpec(id: "does.not.exist", ToolSpec(transport: .http, url: "http://127.0.0.1:1"))
+        XCTAssertEqual(store.catalog.profiles, [], "a built-in id and an unknown id never enter the catalog")
+    }
 }

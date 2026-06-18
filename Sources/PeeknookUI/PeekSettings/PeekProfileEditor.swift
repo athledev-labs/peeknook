@@ -31,7 +31,13 @@ struct PeekProfileEditor: View {
 
             instructionField
 
-            groundsField
+            // A tool profile's grounds are just `[.tool]` (not in `multiGroundEligible`), so it shows the
+            // Tool editor in place of the grounds pills; every other profile shows its grounds.
+            if profile.primaryGround == .tool {
+                PeekProfileToolSection(settings: settings, store: store, profileID: profileID)
+            } else {
+                groundsField
+            }
 
             templateField
 

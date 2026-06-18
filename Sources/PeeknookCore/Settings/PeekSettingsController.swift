@@ -18,6 +18,9 @@ public final class PeekSettingsController {
     let defaults: UserDefaults
     let inferenceRegistry: InferenceBackendRegistry
     let credentialStore: any CredentialStoring
+    /// Injectable seam for the tool reachability check (see ``PeekSettingsController/toolReachable(_:)``),
+    /// so the probe is testable without a network.
+    let toolProbe: any ToolReachabilityProbing
     /// The engine for the active backend, resolved per call (matches the orchestrator's shim).
     /// primaryVision-only — health/warm checks here never stream a routed text-only turn; per-role
     /// turn streaming lives in ``SessionOrchestrator/inference(for:)``.
@@ -32,13 +35,15 @@ public final class PeekSettingsController {
         setup: SetupCoordinator,
         defaults: UserDefaults,
         inferenceRegistry: InferenceBackendRegistry,
-        credentialStore: any CredentialStoring = InMemoryCredentialStore()
+        credentialStore: any CredentialStoring = InMemoryCredentialStore(),
+        toolProbe: any ToolReachabilityProbing = URLSessionToolReachabilityProbe()
     ) {
         self.orchestrator = orchestrator
         self.setup = setup
         self.defaults = defaults
         self.inferenceRegistry = inferenceRegistry
         self.credentialStore = credentialStore
+        self.toolProbe = toolProbe
     }
 
     /// Single-engine convenience for tests and simple hosts (wraps a uniform registry).

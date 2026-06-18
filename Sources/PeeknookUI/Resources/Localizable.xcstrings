@@ -1,6 +1,118 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "A remote tool must use HTTPS.": {
+      "comment": "Tool profile editor: inline note when the tool URL is a remote http:// address.",
+      "extractionState": "manual"
+    },
+    "Add a tool address first.": {
+      "comment": "Tool profile editor: test-connection subtitle when no URL is set.",
+      "extractionState": "manual"
+    },
+    "An imported profile runs a local tool. Start the tool, then confirm its address in the profile editor.": {
+      "comment": "Profiles settings: hint after importing a profile that runs a local tool.",
+      "extractionState": "manual"
+    },
+    "Check that the tool is running and reachable": {
+      "comment": "Tool profile editor: test-connection subtitle before a check is run.",
+      "extractionState": "manual"
+    },
+    "Checking the tool address…": {
+      "comment": "Tool profile editor: test-connection subtitle while the probe runs.",
+      "extractionState": "manual"
+    },
+    "Create": {
+      "comment": "Profiles settings: button label for the New tool profile row.",
+      "extractionState": "manual"
+    },
+    "Create a profile that runs a local tool": {
+      "comment": "Profiles settings: subtitle for the New tool profile row.",
+      "extractionState": "manual"
+    },
+    "Decrease timeout": {
+      "comment": "Tool profile editor: accessibility label for the timeout decrement button.",
+      "extractionState": "manual"
+    },
+    "Fix the tool address first.": {
+      "comment": "Tool profile editor: test-connection subtitle when the URL is rejected by the HTTPS gate.",
+      "extractionState": "manual"
+    },
+    "How long the tool may run before the answer continues without it.": {
+      "comment": "Tool profile editor: note under the timeout control.",
+      "extractionState": "manual"
+    },
+    "Increase timeout": {
+      "comment": "Tool profile editor: accessibility label for the timeout increment button.",
+      "extractionState": "manual"
+    },
+    "New tool profile": {
+      "comment": "Profiles settings: title for the row that creates a tool profile.",
+      "extractionState": "manual"
+    },
+    "No answer. Start the tool, then try again.": {
+      "comment": "Tool profile editor: test-connection subtitle when the tool did not answer.",
+      "extractionState": "manual"
+    },
+    "Result heading": {
+      "comment": "Tool profile editor: label for the output-label field.",
+      "extractionState": "manual"
+    },
+    "Send screenshot": {
+      "comment": "Tool profile editor: toggle title for sending the screenshot to the tool.",
+      "extractionState": "manual"
+    },
+    "Send selected text": {
+      "comment": "Tool profile editor: toggle title for sending captured text to the tool.",
+      "extractionState": "manual"
+    },
+    "Send the captured or selected text to the tool as input.": {
+      "comment": "Tool profile editor: detail for the send-text toggle.",
+      "extractionState": "manual"
+    },
+    "Send the captured screenshot to the tool as input.": {
+      "comment": "Tool profile editor: detail for the send-screenshot toggle.",
+      "extractionState": "manual"
+    },
+    "Shown to the model as the heading above the tool's result.": {
+      "comment": "Tool profile editor: note under the result-heading field.",
+      "extractionState": "manual"
+    },
+    "Test": {
+      "comment": "Tool profile editor: button label to run the reachability check.",
+      "extractionState": "manual"
+    },
+    "Test connection": {
+      "comment": "Tool profile editor: title for the reachability-check row.",
+      "extractionState": "manual"
+    },
+    "That is not a valid tool address.": {
+      "comment": "Tool profile editor: inline note when the tool URL is malformed.",
+      "extractionState": "manual"
+    },
+    "The tool answered. It is reachable.": {
+      "comment": "Tool profile editor: test-connection subtitle when the tool is reachable.",
+      "extractionState": "manual"
+    },
+    "This profile runs a local tool over each capture and answers from its result. Start the tool, then point this at its address.": {
+      "comment": "Tool profile editor: section note describing what a tool profile does.",
+      "extractionState": "manual"
+    },
+    "Timeout": {
+      "comment": "Tool profile editor: title for the timeout control.",
+      "extractionState": "manual"
+    },
+    "Tool": {
+      "comment": "Tool profile editor: section header, and fallback name for a tool profile.",
+      "extractionState": "manual"
+    },
+    "Tool URL": {
+      "comment": "Tool profile editor: label for the tool endpoint field.",
+      "extractionState": "manual"
+    },
+    "Tool profile": {
+      "comment": "Profiles settings: seeded name for a newly created tool profile.",
+      "extractionState": "manual"
+    },
     "Accessibility": {
       "comment": "Setup: secondary action to open the Accessibility permission.",
       "extractionState": "manual"

@@ -58,6 +58,14 @@ struct PeekSettingsProfilesSection: View {
                 )
 
                 PeekSettingsCommandRow(
+                    icon: "wrench.and.screwdriver",
+                    title: "New tool profile",
+                    subtitle: "Create a profile that runs a local tool",
+                    trailing: .button("Create"),
+                    action: createToolProfile
+                )
+
+                PeekSettingsCommandRow(
                     icon: "square.and.arrow.down",
                     title: "Import profiles",
                     subtitle: "Install profiles from a shared preset file",
@@ -211,6 +219,15 @@ struct PeekSettingsProfilesSection: View {
         _ = store.duplicate(.screenDefault, name: seedName)
     }
 
+    /// Mints a `.tool`-primary profile and expands its editor so the user can point it at a local tool.
+    /// Like New profile it does not auto-activate.
+    private func createToolProfile() {
+        guard let store, let created = store.createToolProfile(name: PeekLocalized("Tool profile")) else { return }
+        withAnimation(.spring(response: 0.30, dampingFraction: 0.86)) {
+            expandedProfileID = created.id
+        }
+    }
+
     // MARK: - Import / export
 
     /// Export the user's whole catalog (built-ins never ship — `exportPreset` drops them).
@@ -234,10 +251,17 @@ struct PeekSettingsProfilesSection: View {
         switch added.count {
         case 0:
             importNotice = PeekLocalized("No profiles found in that file.")
+            return
         case 1:
             importNotice = PeekLocalized("Added 1 profile.")
         default:
             importNotice = PeekLocalized("Added \(added.count) profiles.")
+        }
+        // A tool profile expects a local tool to be running (a shared preset never carries an executable,
+        // and a loopback tool the user must start themselves), so hint that after a successful import.
+        if added.contains(where: { $0.primaryGround == .tool || $0.toolSpec != nil }) {
+            importNotice = (importNotice ?? "") + " "
+                + PeekLocalized("An imported profile runs a local tool. Start the tool, then confirm its address in the profile editor.")
         }
     }
 }
