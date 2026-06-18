@@ -104,7 +104,8 @@ final class ProfileStoreTests: XCTestCase {
             instruction: "Be brief.",
             promptTemplate: nil,
             modelBinding: ProfileModelBinding(backend: .ollama, tag: "gemma4:e2b"),
-            moduleOverrides: ModuleOverrides([.webLookup: true])
+            moduleOverrides: ModuleOverrides([.webLookup: true]),
+            toolSpec: nil
         ))
         let reloaded = ProfileStore(defaults: defaults)
         let restored = reloaded.profile(id: copy.id)

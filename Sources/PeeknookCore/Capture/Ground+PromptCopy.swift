@@ -32,6 +32,8 @@ extension Ground {
             return "Ground: voice input — the text below is an on-device transcript of the user's own dictation. There is NO image; answer from the dictation."
         case .agent:
             return "Ground: agent — the text below is the result from a sidecar agent the user ran. There is NO image; answer from the agent's result."
+        case .tool:
+            return "Ground: tool — the text below is the VERIFIED result from a local tool the user configured for this profile (e.g. an engine, solver, or runner). Treat it as authoritative ground truth. There is NO image; answer from the tool's result."
         }
     }
 
@@ -59,6 +61,8 @@ extension Ground {
             return "No image is attached — the dictation transcript below is the content."
         case .agent:
             return "No image is attached — the agent result below is the content."
+        case .tool:
+            return "No image is attached — the tool result below is the content."
         }
     }
 
@@ -85,6 +89,8 @@ extension Ground {
             return "an on-device transcript of the user's dictation (no image)"
         case .agent:
             return "a result from a sidecar agent (no image)"
+        case .tool:
+            return "a verified result from a local tool (no image)"
         }
     }
 
@@ -100,6 +106,7 @@ extension Ground {
         case .selectedText: return "Selected text"
         case .voiceInput:   return "Transcript of the dictation"
         case .agent:        return "Result from the sidecar agent"
+        case .tool:         return "Verified result from the tool"
         case .screen, .camera, .file:
             return "Extracted text"
         }
@@ -118,6 +125,7 @@ extension Ground {
         case .accessibilityTree: return "the accessibility outline"
         case .voiceInput:   return "the dictation"
         case .agent:        return "the agent result"
+        case .tool:         return "the tool result"
         }
     }
 }

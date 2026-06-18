@@ -73,7 +73,8 @@ final class ProfileModelBindingWiringTests: XCTestCase {
             instruction: nil,
             promptTemplate: nil,
             modelBinding: ProfileModelBinding(backend: .openAICompatible, tag: "qwen2-vl"),
-            moduleOverrides: .none
+            moduleOverrides: .none,
+            toolSpec: nil
         ))
         orchestrator.settings.activeProfileID = copy.id
 
@@ -105,7 +106,8 @@ final class ProfileModelBindingWiringTests: XCTestCase {
             instruction: nil,
             promptTemplate: nil,
             modelBinding: ProfileModelBinding(backend: .ollama, tag: "llava:13b"),
-            moduleOverrides: .none
+            moduleOverrides: .none,
+            toolSpec: nil
         ))
         orchestrator.settings.activeProfileID = copy.id
 

@@ -96,6 +96,12 @@ public struct ProfilePreset: Codable, Equatable, Sendable {
     /// a fresh UUID id and `isBuiltIn = false` (defensive — the decode already drops built-ins). Ids
     /// are always re-minted so importing the same preset twice yields two distinct profiles instead of
     /// silently overwriting one. Caps so the merged catalog never exceeds ``ProfileCatalog/maxProfiles``.
+    ///
+    /// SECURITY: import is the untrusted boundary, so a `.command` ``ToolSpec`` (arbitrary local code
+    /// execution) is STRIPPED here — an imported profile can carry a `prompt + instruction + which tool
+    /// to expect`, but never an executable. Only an `http` (loopback) tool survives, and it is still
+    /// re-validated through ``EndpointURLPolicy`` when the provider runs it. The recipient re-points a
+    /// stripped tool at their own binary. See ``ToolSpec/shareableOrStripped``.
     public func installable(into catalog: ProfileCatalog) -> [GroundProfile] {
         let room = max(0, ProfileCatalog.maxProfiles - catalog.profiles.count)
         return profiles.prefix(room).map { source in
@@ -110,7 +116,8 @@ public struct ProfilePreset: Codable, Equatable, Sendable {
                 instruction: source.instruction,
                 promptTemplate: source.promptTemplate,
                 modelBinding: source.modelBinding,
-                moduleOverrides: source.moduleOverrides
+                moduleOverrides: source.moduleOverrides,
+                toolSpec: source.toolSpec?.shareableOrStripped
             )
         }
     }

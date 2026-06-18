@@ -50,7 +50,8 @@ final class ProfileInstructionWiringTests: XCTestCase {
             instruction: "  You are a patient chess coach.  ",
             promptTemplate: nil,
             modelBinding: nil,
-            moduleOverrides: .none
+            moduleOverrides: .none,
+            toolSpec: nil
         ))
         orchestrator.settings.activeProfileID = copy.id
         orchestrator.startNewChat()
@@ -95,7 +96,8 @@ final class ProfileInstructionWiringTests: XCTestCase {
             instruction: "Be terse.",
             promptTemplate: nil,
             modelBinding: nil,
-            moduleOverrides: .none
+            moduleOverrides: .none,
+            toolSpec: nil
         ))
         orchestrator.settings.activeProfileID = copy.id
 

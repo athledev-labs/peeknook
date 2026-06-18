@@ -35,6 +35,10 @@ public struct GroundProfile: Equatable, Sendable, Identifiable {
     public let modelBinding: ProfileModelBinding?
     /// Sparse per-profile module forcing; `.none` = pure global read-through.
     public let moduleOverrides: ModuleOverrides
+    /// Optional local tool this profile runs to produce a VERIFIED text leg (chess engine, solver,
+    /// runner). Meaningful only for a `.tool`-primary profile; nil = no tool. Sanitized + tolerant on
+    /// decode (see ``ToolSpec``). Schema only in slice 1 — no provider runs it yet.
+    public let toolSpec: ToolSpec?
 
     public init(
         id: String,
@@ -47,7 +51,8 @@ public struct GroundProfile: Equatable, Sendable, Identifiable {
         instruction: String? = nil,
         promptTemplate: String? = nil,
         modelBinding: ProfileModelBinding? = nil,
-        moduleOverrides: ModuleOverrides = .none
+        moduleOverrides: ModuleOverrides = .none,
+        toolSpec: ToolSpec? = nil
     ) {
         self.id = id
         self.displayNameKey = displayNameKey
@@ -60,6 +65,7 @@ public struct GroundProfile: Equatable, Sendable, Identifiable {
         self.promptTemplate = promptTemplate
         self.modelBinding = modelBinding
         self.moduleOverrides = moduleOverrides
+        self.toolSpec = toolSpec
     }
 
     /// Union of the required permissions of every active ground. Supplementary grounds (AX via
@@ -74,7 +80,7 @@ public struct GroundProfile: Equatable, Sendable, Identifiable {
 extension GroundProfile: Codable {
     private enum CodingKeys: String, CodingKey {
         case id, displayNameKey, symbol, primaryGround, activeGrounds, isBuiltIn
-        case displayName, instruction, promptTemplate, modelBinding, moduleOverrides
+        case displayName, instruction, promptTemplate, modelBinding, moduleOverrides, toolSpec
     }
 
     public init(from decoder: Decoder) throws {
@@ -102,6 +108,7 @@ extension GroundProfile: Codable {
         )
         modelBinding = ((try? container.decodeIfPresent(ProfileModelBinding.self, forKey: .modelBinding)) ?? nil)
         moduleOverrides = ((try? container.decodeIfPresent(ModuleOverrides.self, forKey: .moduleOverrides)) ?? nil) ?? .none
+        toolSpec = ((try? container.decodeIfPresent(ToolSpec.self, forKey: .toolSpec)) ?? nil)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -120,6 +127,7 @@ extension GroundProfile: Codable {
         if moduleOverrides != .none {
             try container.encode(moduleOverrides, forKey: .moduleOverrides)
         }
+        try container.encodeIfPresent(toolSpec, forKey: .toolSpec)
     }
 }
 
@@ -186,6 +194,7 @@ public extension GroundProfile {
         promptTemplate: String?,
         modelBinding: ProfileModelBinding?,
         moduleOverrides: ModuleOverrides,
+        toolSpec: ToolSpec?,
         activeGrounds: Set<Ground>? = nil
     ) -> GroundProfile {
         let resolvedGrounds: Set<Ground>
@@ -207,7 +216,8 @@ public extension GroundProfile {
             instruction: instruction,
             promptTemplate: promptTemplate,
             modelBinding: modelBinding,
-            moduleOverrides: moduleOverrides
+            moduleOverrides: moduleOverrides,
+            toolSpec: toolSpec
         )
     }
 }

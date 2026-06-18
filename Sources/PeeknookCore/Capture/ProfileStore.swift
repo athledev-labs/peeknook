@@ -51,7 +51,8 @@ public final class ProfileStore {
             instruction: source.instruction,
             promptTemplate: source.promptTemplate,
             modelBinding: source.modelBinding,
-            moduleOverrides: source.moduleOverrides
+            moduleOverrides: source.moduleOverrides,
+            toolSpec: source.toolSpec
         )
         catalog.profiles.append(copy)
         persist()
@@ -75,7 +76,8 @@ public final class ProfileStore {
             instruction: existing.instruction,
             promptTemplate: existing.promptTemplate,
             modelBinding: existing.modelBinding,
-            moduleOverrides: existing.moduleOverrides
+            moduleOverrides: existing.moduleOverrides,
+            toolSpec: existing.toolSpec
         ))
     }
 
@@ -89,7 +91,8 @@ public final class ProfileStore {
             instruction: capped,
             promptTemplate: existing.promptTemplate,
             modelBinding: existing.modelBinding,
-            moduleOverrides: existing.moduleOverrides
+            moduleOverrides: existing.moduleOverrides,
+            toolSpec: existing.toolSpec
         ))
     }
 
@@ -103,7 +106,8 @@ public final class ProfileStore {
             instruction: existing.instruction,
             promptTemplate: capped,
             modelBinding: existing.modelBinding,
-            moduleOverrides: existing.moduleOverrides
+            moduleOverrides: existing.moduleOverrides,
+            toolSpec: existing.toolSpec
         ))
     }
 
@@ -115,7 +119,8 @@ public final class ProfileStore {
             instruction: existing.instruction,
             promptTemplate: existing.promptTemplate,
             modelBinding: binding,
-            moduleOverrides: existing.moduleOverrides
+            moduleOverrides: existing.moduleOverrides,
+            toolSpec: existing.toolSpec
         ))
     }
 
@@ -129,7 +134,8 @@ public final class ProfileStore {
             instruction: existing.instruction,
             promptTemplate: existing.promptTemplate,
             modelBinding: existing.modelBinding,
-            moduleOverrides: overrides
+            moduleOverrides: overrides,
+            toolSpec: existing.toolSpec
         ))
     }
 
@@ -140,7 +146,8 @@ public final class ProfileStore {
             instruction: existing.instruction,
             promptTemplate: existing.promptTemplate,
             modelBinding: existing.modelBinding,
-            moduleOverrides: .none
+            moduleOverrides: .none,
+            toolSpec: existing.toolSpec
         ))
     }
 
@@ -161,6 +168,7 @@ public final class ProfileStore {
             promptTemplate: existing.promptTemplate,
             modelBinding: existing.modelBinding,
             moduleOverrides: existing.moduleOverrides,
+            toolSpec: existing.toolSpec,
             activeGrounds: sanitized
         ))
     }

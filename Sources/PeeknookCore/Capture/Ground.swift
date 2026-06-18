@@ -29,6 +29,14 @@ public enum Ground: String, Codable, Sendable, CaseIterable, Hashable {
     /// plain value is redacted. Produces a TEXT leg, never an image. Off by default; gated on the
     /// `accessibilityTreeEnabled` opt-in at capture time.
     case accessibilityTree
+    /// A VERIFIED text leg produced by a local TOOL the user configured for the profile (a chess
+    /// engine's FEN + best line, a calculator, a code runner). Unlike `.agent` — the reserved
+    /// act-on-the-world sidecar — a tool only READS / COMPUTES and returns text. The provider (slice 2)
+    /// runs the profile's ``ToolSpec`` against a local HTTP endpoint (routed through
+    /// ``EndpointURLPolicy``), so the user's own tool drives it and Peeknook hardcodes none. Produces a
+    /// TEXT leg, never an image. Primary-ground only in v1 (deliberately NOT in ``multiGroundEligible``).
+    /// No provider is registered yet — slice 1 is schema only.
+    case tool
 
     /// Permissions that must be granted before this ground can capture. Drives the per-profile
     /// readiness matrix. `selectedText` deliberately returns an empty set: Accessibility is a
@@ -51,6 +59,10 @@ public enum Ground: String, Codable, Sendable, CaseIterable, Hashable {
         // checks `AXIsProcessTrusted` at capture time). Unlike `selectedText`'s opportunistic AX
         // supplement, this ground's whole content IS the AX tree, so the permission is required.
         case .accessibilityTree: return [.accessibility]
+        // A tool reaches a LOCAL endpoint (loopback HTTP) and so needs no TCC permission of its own.
+        // If its ``ToolSpec`` sends the screenshot as input, the screenshot capture's Screen Recording
+        // is composed at the profile-readiness level (slice 2), not demanded by the ground here.
+        case .tool:         return []
         }
     }
 
@@ -60,13 +72,16 @@ public enum Ground: String, Codable, Sendable, CaseIterable, Hashable {
     /// dictation (not a screen ground) and `.agent` is the reserved sidecar — neither is a capture leg.
     /// The profile editor offers only this set, and ``ProfileStore/setActiveGrounds(_:for:)`` sanitizes
     /// against it regardless of what a caller passes.
+    /// `.tool` is intentionally absent: a tool ground is a profile's PRIMARY ground in v1 (it runs the
+    /// tool over the capture and returns the verified leg), not a supplementary fan-out leg. Stacking a
+    /// tool alongside a screen leg is the v1.1 composite evolution.
     public static let multiGroundEligible: Set<Ground> = [.screen, .selectedText, .systemAudio, .clipboard, .accessibilityTree]
 
     /// The grounds that contribute a TEXT leg rather than an image — an audio transcript or copied
     /// clipboard text. The single source of truth for "is this a text leg?", shared by the fan-out's
     /// modality resolution (``MediaPayload/Kind/resolved(for:)``) and the prompt builder's labelling,
     /// so the two can never disagree about whether a leg carries an image.
-    public static let textOnlyLegs: Set<Ground> = [.systemAudio, .clipboard, .accessibilityTree]
+    public static let textOnlyLegs: Set<Ground> = [.systemAudio, .clipboard, .accessibilityTree, .tool]
 
     /// Intentional rank for ordering the non-primary legs of a multi-ground fan-out (lower captures
     /// first). The primary ground always leads regardless of rank; this only sequences the rest, so
@@ -86,6 +101,7 @@ public enum Ground: String, Codable, Sendable, CaseIterable, Hashable {
         case .accessibilityTree: return 6
         case .voiceInput:   return 7
         case .agent:        return 8
+        case .tool:         return 9
         }
     }
 }

@@ -110,7 +110,8 @@ final class ModuleOverrideGatingTests: XCTestCase {
             instruction: nil,
             promptTemplate: nil,
             modelBinding: nil,
-            moduleOverrides: ModuleOverrides([.suggestFollowUps: false, .speakAnswers: false])
+            moduleOverrides: ModuleOverrides([.suggestFollowUps: false, .speakAnswers: false]),
+            toolSpec: nil
         ))
         orchestrator.settings.activeProfileID = copy.id
         orchestrator.settings.suggestFollowUps = true
@@ -158,7 +159,8 @@ final class ModuleOverrideGatingTests: XCTestCase {
             instruction: nil,
             promptTemplate: nil,
             modelBinding: nil,
-            moduleOverrides: ModuleOverrides([.saveConversation: false])
+            moduleOverrides: ModuleOverrides([.saveConversation: false]),
+            toolSpec: nil
         ))
         orchestrator.settings.activeProfileID = copy.id
 
