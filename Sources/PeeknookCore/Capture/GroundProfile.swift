@@ -71,7 +71,16 @@ public struct GroundProfile: Equatable, Sendable, Identifiable {
     /// Union of the required permissions of every active ground. Supplementary grounds (AX via
     /// `selectedText`) contribute nothing — see ``Ground/requiredPermissions``.
     public var requiredPermissions: Set<CapturePermission> {
-        activeGrounds.reduce(into: []) { $0.formUnion($1.requiredPermissions) }
+        var permissions = activeGrounds.reduce(into: Set<CapturePermission>()) {
+            $0.formUnion($1.requiredPermissions)
+        }
+        // A `.tool` ground requires no TCC of its own (it reaches a local endpoint), but when its
+        // `ToolSpec` sends the screenshot as input the capture takes a screen frame, which needs Screen
+        // Recording. Compose it here so readiness gates a screenshot-sending tool profile correctly.
+        if primaryGround == .tool, toolSpec?.sendsScreenshot == true {
+            permissions.insert(.screenRecording)
+        }
+        return permissions
     }
 }
 

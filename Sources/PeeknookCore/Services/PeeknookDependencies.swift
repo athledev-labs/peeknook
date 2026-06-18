@@ -88,6 +88,11 @@ public struct PeeknookDependencies {
                 // unreachable. Its permission (Accessibility) is requested through the profile's
                 // `requiredPermissions`.
                 .accessibilityTree: AccessibilityTreeCaptureProvider(),
+                // Tool ground ("run my configured local tool"): resolves to a capture only when a user
+                // profile sets `.tool` as its primary ground AND carries a usable `ToolSpec`. It composes
+                // the screen provider for the frame the tool reads, POSTs through `EndpointURLPolicy`, and
+                // is dormant until such a profile exists (no built-in resolves to `.tool`).
+                .tool: ToolGroundProvider(screenProvider: MacCaptureProvider()),
             ]),
             inferenceRegistry: InferenceBackendRegistry([
                 .ollama: OllamaInferenceEngine(probeCache: probeCache),
@@ -141,6 +146,9 @@ public struct PeeknookDependencies {
         providers[.accessibilityTree] = AccessibilityTreeCaptureProvider(
             reader: StubAccessibilityTreeReader(), isTrusted: { true }
         )
+        // Stub-backed tool runner: deterministic, never touches the network. Present so the `.tool`
+        // registry entry exists; tests that assert tool behavior inject their own recording client.
+        providers[.tool] = ToolGroundProvider(screenProvider: capture, http: StubToolHTTPClient())
         var engines: [InferenceBackend: any InferenceEngine] = Dictionary(
             uniqueKeysWithValues: InferenceBackend.allCases.map { ($0, inference) }
         )

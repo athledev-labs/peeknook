@@ -40,4 +40,10 @@ public struct GroundRegistry: Sendable {
     public func fileImporter(for ground: Ground) -> (any FileImporting)? {
         providers[ground] as? any FileImporting
     }
+
+    /// The tool runner for a ground, when its provider runs a configured local tool over the capture
+    /// (the `.tool` ground). Other grounds return nil. Mirrors ``fileImporter(for:)``.
+    public func toolProvider(for ground: Ground) -> (any ToolGrounding)? {
+        providers[ground] as? any ToolGrounding
+    }
 }

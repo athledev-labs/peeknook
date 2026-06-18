@@ -106,13 +106,24 @@ final class CaptureCoordinator {
         }
         guard beginCapturePhase(intent: intent) else { return }
         let registry = session.captureRegistry
-        let ground = session.resolvedActiveProfile.primaryGround
+        let profile = session.resolvedActiveProfile
+        let ground = profile.primaryGround
+        let toolSpec = profile.toolSpec
         let scope = session.settings.captureScope
         let quick = session.settings.quickMode
         let quality = session.settings.captureQuality
         runCapture(intent: intent) {
-            let provider = try registry.resolve(ground)
             let encoding = CaptureEncodingPolicy.resolve(scope: scope, quick: quick, quality: quality)
+            // A `.tool` profile runs its configured local tool over the capture and folds the verified
+            // result as a `.tool` text leg. This rides the tool arm of the registry, off the bare
+            // capture seam (invariant #7), the same way file import uses `fileImporter(for:)`.
+            if ground == .tool {
+                guard let runner = registry.toolProvider(for: .tool), let toolSpec else {
+                    throw CaptureError.failed("This profile has no tool configured.")
+                }
+                return try await runner.runTool(toolSpec, scope: scope, quick: quick, encoding: encoding)
+            }
+            let provider = try registry.resolve(ground)
             return try await provider.capture(scope: scope, quick: quick, encoding: encoding)
         }
     }

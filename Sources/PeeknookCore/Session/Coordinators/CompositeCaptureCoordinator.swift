@@ -45,7 +45,11 @@ final class CompositeCaptureCoordinator {
             if ground == .accessibilityTree, !accessibilityTreeEnabled { return false }
             guard let provider = registry.provider(for: ground) else { return false }
             // Interactive providers are NOT one-shot — they drive their own arm/shutter or panel flow.
-            return !(provider is any CameraSessionControlling) && !(provider is any FileImporting)
+            // A tool provider is excluded too: it needs the profile's `ToolSpec`, so it runs on the
+            // single-leg `.tool` path (CaptureCoordinator) rather than the multi-ground fan-out.
+            return !(provider is any CameraSessionControlling)
+                && !(provider is any FileImporting)
+                && !(provider is any ToolGrounding)
         }
         let primary = profile.primaryGround
         // Stable order: primary first (when capturable), then the rest of the active grounds by their
