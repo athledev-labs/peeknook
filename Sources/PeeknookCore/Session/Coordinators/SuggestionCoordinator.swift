@@ -33,11 +33,20 @@ final class SuggestionCoordinator {
         )
         // The appendix rides symmetrically; both engines' suggestion pass uses the static
         // follow-up prompt today, so pills stay persona-blind in v1 (recorded seam).
+        // This pass replays the SAME captured text legs to the SAME endpoint as the answer pass, so it
+        // must redact secrets on the same condition (`InferenceCoordinator.runTurn`): a remote host or
+        // an Ollama `:cloud` tag. Otherwise a secret the answer turn stripped would still egress here on
+        // the immediately following suggestion call. A local/loopback non-cloud turn passes `nil`, so the
+        // assembled messages stay byte-identical (no inspection). The hit count needs no notice — the
+        // answer pass already surfaced it for this turn.
+        let redaction = session.activeInferenceEndpoint.isRemoteEgress(modelTag: session.activeAnswerModel.tag)
+            ? RedactionContext()
+            : nil
         let request = InferenceRequest(
             mode: session.settings.mode,
             agentSystemAppendix: session.activeAgentAppendix,
             profileTemplate: session.activeProfileTemplate,
-            messages: builder.inferenceMessages(from: session.conversation, policy: .suggestions),
+            messages: builder.inferenceMessages(from: session.conversation, policy: .suggestions, redaction: redaction),
             model: session.activeAnswerModel.tag,
             endpoint: session.activeInferenceEndpoint,
             quickMode: session.settings.quickMode

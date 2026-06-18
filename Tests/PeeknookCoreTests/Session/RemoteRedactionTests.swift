@@ -200,4 +200,86 @@ final class RemoteRedactionTests: XCTestCase {
         XCTAssertEqual(result.text, clean, "clean text is never rewritten")
         XCTAssertEqual(result.hitCount, 0)
     }
+
+    // MARK: - The follow-up suggestion pass redacts on the SAME condition as the answer pass
+
+    /// The suggestion pass replays the conversation's captured text legs to the SAME endpoint as the
+    /// answer pass. On a remote/`:cloud` turn it must redact too — otherwise a secret the answer turn
+    /// stripped still egresses on the immediately following suggestion call. Driven through the real
+    /// orchestrator path so it guards the `SuggestionCoordinator` wiring, not just the builder.
+    @MainActor
+    func testRemoteSuggestionPassRedactsCapturedSecret() async {
+        let engine = RecordingSuggestionEngine(answer: "the answer", followUps: ["What next?"])
+        let o = SessionOrchestrator(
+            settings: PeeknookSettings(
+                previewBeforeInfer: false,
+                ollamaBaseURL: "https://remote.example.com:11434",   // non-loopback ⇒ remote egress
+                textModel: "m"
+            ),
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "config\napi_key=\(skKey)")]),
+            inference: engine
+        )
+
+        o.beginCapture()
+        _ = await o.waitForResult("the answer")
+        _ = await o.waitForSuggestions(["What next?"])
+
+        let sent = engine.suggestionRequests.last?.messages.map(\.text).joined(separator: "\n") ?? ""
+        XCTAssertFalse(sent.isEmpty, "the suggestion pass must have sent a request")
+        XCTAssertFalse(sent.contains(skKey), "the captured secret is stripped from the suggestion request too")
+        XCTAssertTrue(sent.contains(token), "the redaction token replaces it in the suggestion request")
+    }
+
+    /// Mirror of the answer-pass byte-identical guarantee: a local/loopback non-cloud suggestion pass
+    /// does no inspection, so the captured text rides verbatim (nothing leaves the Mac regardless).
+    @MainActor
+    func testLoopbackSuggestionPassSendsCapturedTextVerbatim() async {
+        let engine = RecordingSuggestionEngine(answer: "the answer", followUps: ["What next?"])
+        let o = SessionOrchestrator(
+            settings: PeeknookSettings(previewBeforeInfer: false, textModel: "m"),   // default loopback
+            captureRegistry: GroundRegistry([.screen: StubCaptureProvider(sampleText: "config\napi_key=\(skKey)")]),
+            inference: engine
+        )
+
+        o.beginCapture()
+        _ = await o.waitForResult("the answer")
+        _ = await o.waitForSuggestions(["What next?"])
+
+        let sent = engine.suggestionRequests.last?.messages.map(\.text).joined(separator: "\n") ?? ""
+        XCTAssertTrue(sent.contains(skKey), "a loopback non-cloud suggestion pass is byte-identical (no inspection)")
+        XCTAssertFalse(sent.contains(token))
+    }
+}
+
+/// Records the suggestion-pass request so a test can inspect exactly what the follow-up call sends.
+/// `capabilities == nil` ⇒ `VisionGate.unknown` ⇒ never blocks, so a screen turn reaches a result
+/// without a live vision model.
+private final class RecordingSuggestionEngine: InferenceEngine, @unchecked Sendable {
+    private(set) var suggestionRequests: [InferenceRequest] = []
+    private let answer: String
+    private let followUps: [String]
+
+    init(answer: String, followUps: [String]) {
+        self.answer = answer
+        self.followUps = followUps
+    }
+
+    func health(baseURL: String, model: String, acceptInsecureRemote: Bool) async -> InferenceHealth { .ready }
+    func warmUp(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> Bool { true }
+    func contextLength(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> Int? { nil }
+    func capabilities(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> [String]? { nil }
+
+    func generateFollowUps(request: InferenceRequest) async -> FollowUpGenerationResult {
+        suggestionRequests.append(request)
+        return FollowUpGenerationResult(suggestions: followUps, stats: nil)
+    }
+
+    func stream(request: InferenceRequest) -> AsyncThrowingStream<InferenceEvent, Error> {
+        let answer = self.answer
+        return AsyncThrowingStream { continuation in
+            continuation.yield(.token(answer))
+            continuation.yield(.completed(nil))
+            continuation.finish()
+        }
+    }
 }
