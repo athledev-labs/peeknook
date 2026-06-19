@@ -139,6 +139,9 @@ public final class SessionOrchestrator {
     @ObservationIgnored private(set) lazy var liveCoordinator = LiveCoordinator(session: self)
     @ObservationIgnored private(set) lazy var captureCoordinator = CaptureCoordinator(session: self)
     @ObservationIgnored private(set) lazy var inferenceCoordinator = InferenceCoordinator(session: self)
+    /// Watches for critical system memory pressure to release the resident local model. Started by
+    /// ``PeeknookServices`` for the running app; nil (never armed) in unit-constructed orchestrators.
+    @ObservationIgnored private var memoryPressureMonitor: MemoryPressureMonitor?
 
     /// Last transient, one-shot signal for the UI (e.g. a toast/banner) that isn't part of the
     /// persistent ``SessionPhase``. `noticeToken` increments on every emit so the UI can react even
@@ -595,5 +598,38 @@ public final class SessionOrchestrator {
     /// True while a prewarm pass is in flight (used by tests' polling helpers).
     var isPrewarming: Bool {
         inferenceCoordinator.isPrewarming
+    }
+
+    // MARK: - Memory pressure
+
+    /// Begin watching for critical system memory pressure. On a critical event Peeknook releases the
+    /// resident *local* model to hand RAM back (see ``handleCriticalMemoryPressure()``). Idempotent;
+    /// started by ``PeeknookServices`` for the running app, not by unit-constructed orchestrators.
+    public func startMemoryPressureMonitoring() {
+        guard memoryPressureMonitor == nil else { return }
+        let monitor = MemoryPressureMonitor { [weak self] in
+            Task { @MainActor in self?.handleCriticalMemoryPressure() }
+        }
+        memoryPressureMonitor = monitor
+        monitor.start()
+    }
+
+    /// Critical memory pressure while idle: free the resident local model so a capture-triggered load
+    /// doesn't push the system deeper into swap. No-op when busy (never kill an in-flight answer), for
+    /// remote/cloud models (they run off-device), or when nothing is warm to free (also debounces
+    /// repeated critical events). Resets the warm gate and tells the user the next capture re-warms.
+    func handleCriticalMemoryPressure() {
+        let endpoint = activeInferenceEndpoint
+        let tag = activeAnswerModel.tag
+        guard !endpoint.isRemoteEgress(modelTag: tag), modelLikelyWarm else { return }
+        switch phase {
+        case .capturing, .previewing, .inferring, .cameraLive: return
+        default: break
+        }
+        Task {
+            await inference(for: endpoint).unloadModel(model: tag, endpoint: endpoint)
+            inferenceCoordinator.markModelUnloaded()
+            emitNotice(.modelUnloadedUnderMemoryPressure)
+        }
     }
 }

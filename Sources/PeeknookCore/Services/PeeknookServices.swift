@@ -57,6 +57,10 @@ public enum PeeknookServices {
             }
         }
         orchestrator.loadPersistedConversationIfEnabled()
+        // Release the resident local model if the system hits critical memory pressure, so a capture
+        // doesn't overcommit RAM and swap-thrash the Mac. Production-only (the running app), not in
+        // unit-constructed orchestrators.
+        orchestrator.startMemoryPressureMonitoring()
         setup.orchestrator = orchestrator
         let settingsController = PeekSettingsController(
             orchestrator: orchestrator,
