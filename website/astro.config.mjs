@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import { defineConfig } from "astro/config";
 
-// GitHub Pages project site: https://glendonc.github.io/peeknook/
+// GitHub Pages served from the custom apex domain: https://peeknook.com/
 export default defineConfig({
-  site: "https://glendonc.github.io",
-  base: "/peeknook",
+  site: "https://peeknook.com",
   trailingSlash: "ignore",
   redirects: {
     "/download/": "/docs/",

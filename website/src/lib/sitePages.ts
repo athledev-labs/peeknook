@@ -10,15 +10,15 @@ export type SiteCurrent =
   | "licenses"
   | "terms";
 
-export const SITE_ORIGIN = "https://glendonc.github.io";
-export const SITE_BASE = "/peeknook";
+export const SITE_ORIGIN = "https://peeknook.com";
+export const SITE_BASE = "";
 
 /** Astro `BASE_URL` omits a trailing slash when `trailingSlash` is not `always`. */
 export function normalizeBase(base: string): string {
   return base.endsWith("/") ? base : `${base}/`;
 }
 
-/** Join base + path segment (e.g. `/peeknook` + `features/` → `/peeknook/features/`). */
+/** Join base + path segment (e.g. `/` + `features/` → `/features/`). */
 export function sitePath(base: string, path = ""): string {
   const root = normalizeBase(base);
   if (!path) return root;

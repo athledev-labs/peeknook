@@ -32,7 +32,7 @@ Changelog and download metadata fetch [GitHub Releases](https://github.com/glend
 
 ## Deploy
 
-Push to `main`: `.github/workflows/pages.yml` publishes to https://glendonc.github.io/peeknook/
+Push to `main`: `.github/workflows/pages.yml` publishes to https://peeknook.com/ (GitHub Pages on the custom apex domain; `public/CNAME` pins it).
 
 ## Site standards
 
