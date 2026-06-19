@@ -1,10 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
   <defs>
-    <radialGradient id="graphite" cx="50%" cy="10%" r="92%">
-      <stop offset="0%" stop-color="#9AA0A8" />
-      <stop offset="40%" stop-color="#34383D" />
-      <stop offset="100%" stop-color="#0D0E10" />
+    <radialGradient id="pk-graphite" cx="50%" cy="8%" r="95%">
+      <stop offset="0%" stop-color="#9AA0A8"/>
+      <stop offset="42%" stop-color="#34383D"/>
+      <stop offset="100%" stop-color="#0D0E10"/>
     </radialGradient>
+    <linearGradient id="pk-metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F3F4F6"/>
+      <stop offset="100%" stop-color="#BCC1C8"/>
+    </linearGradient>
   </defs>
-  <rect width="100" height="100" rx="24" fill="url(#graphite)" />
+  <rect width="100" height="100" rx="24" fill="url(#pk-graphite)"/>
+  <path d="M34 0 V5 A6 6 0 0 0 40 11 H60 A6 6 0 0 0 66 5 V0 Z" fill="#08090B"/>
+  <path d="M40 75 V29 H54 A13 13 0 0 1 54 55 H40" fill="none" stroke="url(#pk-metal)"
+        stroke-width="9.5" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

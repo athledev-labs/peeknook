@@ -60,7 +60,19 @@ const ogImage = new URL(sitePath(base, "logo-mark.svg"), SITE_ORIGIN).href;
       href={sitePath(base, "favicon.svg")}
       type="image/svg+xml"
     />
-    <link rel="apple-touch-icon" href={sitePath(base, "logo-mark.svg")} />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href={sitePath(base, "favicon-32.png")}
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href={sitePath(base, "favicon-16.png")}
+    />
+    <link rel="apple-touch-icon" sizes="180x180" href={sitePath(base, "apple-touch-icon.png")} />
   </head>
   <body>
     <a class="skip-link" href="#main-content">Skip to content</a>
