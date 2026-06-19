@@ -12,13 +12,5 @@
     <true/>
     <key>com.apple.security.network.client</key>
     <true/>
-    <!-- Shared App Group with Noru Flow (same Apple Team) so NoruCaptureProvider can
-         read Noru's host discovery handshake (token + loopback port) without reaching
-         Noru's private container. Noru declares the identical group; both MUST sign
-         under Team T74YFYUA35. See NoruCaptureProvider.swift / Noru host-api.md §10. -->
-    <key>com.apple.security.application-groups</key>
-    <array>
-        <string>T74YFYUA35.com.noruflow.shared</string>
-    </array>
 </dict>
 </plist>
