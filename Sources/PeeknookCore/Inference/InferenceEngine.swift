@@ -103,6 +103,10 @@ public protocol InferenceEngine: Sendable {
     /// so the next capture skips the cold-start cost. `nil` (the default) means residency is
     /// unknowable for this backend — honest "don't know", never a false "cold". Best-effort.
     func isModelResident(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> Bool?
+    /// Release the model from memory now (Ollama `keep_alive: 0`). Best-effort and idempotent; used by
+    /// the memory-pressure guard to hand RAM back when the system is thrashing while idle. Default
+    /// no-op for backends that manage their own residency (remote/OpenAI-compatible).
+    func unloadModel(model: String, baseURL: String, acceptInsecureRemote: Bool) async
 }
 
 public extension InferenceEngine {
@@ -126,6 +130,9 @@ public extension InferenceEngine {
     func isModelResident(model: String, baseURL: String) async -> Bool? {
         await isModelResident(model: model, baseURL: baseURL, acceptInsecureRemote: false)
     }
+
+    /// Default: no-op. Only a backend that loads weights into local RAM (Ollama) has anything to free.
+    func unloadModel(model: String, baseURL: String, acceptInsecureRemote: Bool) async {}
 
     /// Whether the model can read images. `nil` when unknown (not installed / older Ollama that
     /// omits the capabilities list) so callers can stay silent instead of warning incorrectly.
@@ -195,6 +202,15 @@ public extension InferenceEngine {
     func isModelResident(model: String, endpoint: InferenceEndpoint) async -> Bool? {
         let connection = endpoint.connection
         return await isModelResident(
+            model: model,
+            baseURL: connection.baseURL,
+            acceptInsecureRemote: connection.acceptInsecureRemote
+        )
+    }
+
+    func unloadModel(model: String, endpoint: InferenceEndpoint) async {
+        let connection = endpoint.connection
+        await unloadModel(
             model: model,
             baseURL: connection.baseURL,
             acceptInsecureRemote: connection.acceptInsecureRemote

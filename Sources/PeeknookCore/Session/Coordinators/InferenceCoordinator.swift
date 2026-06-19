@@ -24,13 +24,22 @@ final class InferenceCoordinator {
         self.suggestions = SuggestionCoordinator(session: session)
     }
 
-    /// Within Ollama's `keep_alive` window (10m), the model is still resident, so the next
-    /// capture skips cold load. Also true when the engine confirms the active model is loaded
-    /// (honest after relaunch while the backend kept the weights warm). 9m margin on the timer.
+    /// Within Ollama's `keep_alive` window, the model is still resident, so the next capture skips
+    /// cold load. Also true when the engine confirms the active model is loaded (honest after relaunch
+    /// while the backend kept the weights warm). The in-session window tracks the RAM-scaled keep_alive
+    /// (`OllamaKeepAlivePolicy`) with a margin, so a low-RAM Mac with a short keep_alive flips to cold
+    /// before the weights are actually evicted instead of falsely claiming warm.
     var modelLikelyWarm: Bool {
         if activeModelResidentInMemory { return true }
         guard let last = lastInferenceAt else { return false }
-        return Date().timeIntervalSince(last) < 540
+        return Date().timeIntervalSince(last) < OllamaKeepAlivePolicy.recommendedWarmWindowSeconds()
+    }
+
+    /// The memory-pressure guard just released the model, so drop both warm signals — the in-session
+    /// timer and the residency flag — so the gate honestly reports cold and the next capture re-warms.
+    func markModelUnloaded() {
+        lastInferenceAt = nil
+        activeModelResidentInMemory = false
     }
 
     /// Refresh whether the active engine reports the active answer model loaded in memory. Backends
@@ -58,6 +67,23 @@ final class InferenceCoordinator {
             guard !self.modelLikelyWarm else {
                 self.isPrewarming = false
                 return
+            }
+            // Pre-flight RAM fit-check for a LOCAL model: if its footprint won't fit in free memory,
+            // warn the user and DON'T be the one to proactively load a model that could swap-thrash the
+            // whole Mac (the actual capture still can, but now the user has a heads-up to free memory or
+            // pick a smaller tier first). Remote/cloud models run off-device, so RAM is irrelevant —
+            // gate on `isRemoteEgress`. Unknown model size (custom tag) → skip, like the disk pre-check.
+            if !session.activeInferenceEndpoint.isRemoteEgress(modelTag: session.activeAnswerModel.tag),
+               let modelBytes = TextModelCatalog.option(
+                   for: session.activeAnswerModel.tag, custom: session.settings.customModels
+               )?.estimatedDownloadBytes {
+                let snapshot = SystemMemorySnapshot.current()
+                if ModelMemoryPolicy.fit(modelBytes: modelBytes, snapshot: snapshot) == .insufficient {
+                    let gb = ModelMemoryPolicy.warningGigabytes(modelBytes: modelBytes, snapshot: snapshot)
+                    session.emitNotice(.modelMayNotFitMemory(needGB: gb.needGB, freeGB: gb.freeGB))
+                    self.isPrewarming = false
+                    return
+                }
             }
             // Endpoint-typed so a backend switch warms the server the next turn actually hits,
             // never a stale Ollama URL.

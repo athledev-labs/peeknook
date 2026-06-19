@@ -9,11 +9,19 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
     /// `health`/`ensureModel` `/api/version` + `/api/tags` checks coalesce with the setup refresh that
     /// fires alongside them on a Settings open.
     private let probeCache: OllamaProbeCache?
+    /// `keep_alive` window for every load-bearing call, scaled to this Mac's RAM tier so a low-RAM
+    /// machine releases the resident model sooner. Injectable for tests; defaults to the live tier.
+    private let keepAlive: String
 
-    public init(session: URLSession = .shared, probeCache: OllamaProbeCache? = nil) {
+    public init(
+        session: URLSession = .shared,
+        probeCache: OllamaProbeCache? = nil,
+        keepAlive: String = OllamaKeepAlivePolicy.recommended()
+    ) {
         self.session = session
         self.client = OllamaHTTPClient(session: session)
         self.probeCache = probeCache
+        self.keepAlive = keepAlive
     }
 
     public func health(baseURL: String, model: String, acceptInsecureRemote: Bool) async -> InferenceHealth {
@@ -130,8 +138,8 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
             model: request.model,
             messages: messages,
             quickMode: request.quickMode,
-            // Keep the model warm so the next capture skips cold-start.
-            keepAlive: "10m"
+            // Keep the model warm so the next capture skips cold-start (window scaled to RAM tier).
+            keepAlive: keepAlive
         )
 
         for try await line in bytes.lines {
@@ -179,7 +187,7 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
                 model: request.model,
                 messages: messages,
                 stream: false,
-                keepAlive: "10m",
+                keepAlive: keepAlive,
                 options: ["num_predict": 120, "temperature": 0.4],
                 format: PromptBuilder.followUpSchema,
                 timeout: 30 // parity with the original follow-up pass; the answer stream uses 120s
@@ -291,6 +299,22 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
         return OllamaSetupClient.matchesModel(installedNames: ps.models.map(\.name), wanted: model)
     }
 
+    // MARK: - Unload
+
+    /// Free the model now: `POST /api/generate` with an empty prompt and `keep_alive: 0` tells Ollama
+    /// to evict the weights immediately instead of after the keep-alive window. Best-effort — any
+    /// throw/non-200 is swallowed (the memory-pressure guard tried; nothing else depends on it).
+    public func unloadModel(model: String, baseURL: String, acceptInsecureRemote: Bool) async {
+        guard let base = try? resolveBaseURL(baseURL, acceptInsecureRemote: acceptInsecureRemote) else { return }
+        let url = base.appendingPathComponent("api/generate")
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.timeoutInterval = 6
+        req.httpBody = try? JSONSerialization.data(withJSONObject: ["model": model, "keep_alive": 0])
+        _ = try? await session.data(for: req)
+    }
+
     // MARK: - Warm-up
 
     @discardableResult
@@ -305,7 +329,7 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
                 model: model,
                 messages: [OllamaChatMessage(role: "user", content: "ok")],
                 stream: false,
-                keepAlive: "10m",
+                keepAlive: keepAlive,
                 options: ["num_predict": 1],
                 format: nil
             )

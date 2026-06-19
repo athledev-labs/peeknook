@@ -67,6 +67,8 @@ struct PeekSessionNoticeBanner: View {
         case .liveRefreshFailed: "arrow.clockwise"
         case .liveEnded: "antenna.radiowaves.left.and.right.slash"
         case .secretsRedactedForRemote: "eye.slash"
+        case .modelMayNotFitMemory: "memorychip"
+        case .modelUnloadedUnderMemoryPressure: "bolt.badge.clock"
         }
     }
 
@@ -77,6 +79,8 @@ struct PeekSessionNoticeBanner: View {
         case .liveRefreshFailed: "Couldn't refresh"
         case .liveEnded: "Live ended"
         case .secretsRedactedForRemote: "Removed secrets before sending"
+        case .modelMayNotFitMemory: "Model may not fit in memory"
+        case .modelUnloadedUnderMemoryPressure: "Freed the model to ease memory"
         }
     }
 
@@ -96,6 +100,10 @@ struct PeekSessionNoticeBanner: View {
             Text(peek: "The live session reached its time limit and turned off. Tap Go live to start watching again.")
         case .secretsRedactedForRemote(let count):
             Text(peek: "Removed \(count) likely secrets from the text before sending it to your remote model. Your saved chat keeps the original.")
+        case .modelMayNotFitMemory(let needGB, let freeGB):
+            Text(peek: "This model needs about \(needGB) GB, but only \(freeGB) GB is free right now. Capturing may slow your Mac — free up memory or pick a smaller model in Settings.")
+        case .modelUnloadedUnderMemoryPressure:
+            Text(peek: "Your Mac was low on memory, so Peeknook released the model to free it up. Your next capture will take a moment to warm up again.")
         }
     }
 
@@ -114,6 +122,10 @@ struct PeekSessionNoticeBanner: View {
             PeekLocalized("The live session reached its time limit and turned off. Tap Go live to start watching again.")
         case .secretsRedactedForRemote(let count):
             PeekLocalized("Removed \(count) likely secrets from the text before sending it to your remote model. Your saved chat keeps the original.")
+        case .modelMayNotFitMemory(let needGB, let freeGB):
+            PeekLocalized("This model needs about \(needGB) GB, but only \(freeGB) GB is free right now. Capturing may slow your Mac — free up memory or pick a smaller model in Settings.")
+        case .modelUnloadedUnderMemoryPressure:
+            PeekLocalized("Your Mac was low on memory, so Peeknook released the model to free it up. Your next capture will take a moment to warm up again.")
         }
     }
 }
