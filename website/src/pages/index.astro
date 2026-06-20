@@ -3,42 +3,30 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import DownloadCTA from "../components/DownloadCTA.astro";
 import { getRelease } from "../lib/release";
-import { sitePath } from "../lib/sitePages";
 
 const release = await getRelease();
-const base = import.meta.env.BASE_URL;
 ---
 
 <BaseLayout
   title="Peeknook"
-  description="Complete AI for Mac. Every surface. Private AI you customize."
+  description="Complete AI for Mac, in the notch. Every surface. AI you customize."
   current="home"
 >
   <section class="home-hero">
     <div class="home-hero-copy">
-      <h1>Complete AI for Mac</h1>
-      <p class="home-hero-tagline">Every surface. Private AI you customize.</p>
+      <h1>Complete AI for Mac, in the notch</h1>
+      <p class="home-hero-tagline">Every surface. AI you customize.</p>
     </div>
     <div class="home-actions">
       <DownloadCTA href={release.dmgURL} />
     </div>
     <figure class="home-demo">
       <div class="demo-squircle">
-        {/* Drop the product capture here — swap .demo-placeholder for
-            <img class="demo-media" src=… alt=… /> or
+        {/* Light gradient stand-in until the product capture is recorded —
+            swap .demo-gradient for
             <video class="demo-media" autoplay muted loop playsinline …>. */}
         <span class="demo-notch" aria-hidden="true"></span>
-        <div class="demo-placeholder" aria-hidden="true">
-          <img
-            class="demo-placeholder-mark"
-            src={sitePath(base, "logo-mark.svg")}
-            alt=""
-            width="44"
-            height="44"
-            decoding="async"
-          />
-          <span class="demo-placeholder-label">Demo</span>
-        </div>
+        <span class="demo-gradient" aria-hidden="true"></span>
       </div>
     </figure>
   </section>
