@@ -1,6 +1,6 @@
 # Peeknook
 
-**Complete AI for Mac, in the MacBook notch.** Local-first, private, and built on [OpenNook](https://github.com/glendonC/opennook).
+**Complete AI for Mac, in the notch.** Every surface. AI you customize. Local-first, private, and built on [OpenNook](https://github.com/glendonC/opennook).
 
 ## Using Peeknook (download)
 
