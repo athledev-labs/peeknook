@@ -28,12 +28,12 @@ type GitHubRelease = {
 
 /** Offline / API-failure fallback — bump when cutting a release if builds run without network. */
 const FALLBACK: ReleaseInfo = {
-  version: "0.1.0",
-  tagName: "v0.1.0",
-  dmgURL: `${ALLOWED_DOWNLOAD_PREFIX}v0.1.0/Peeknook-0.1.0.dmg`,
-  dmgSHA256: "2e2b8c6cc278c2fd12767483d13ae8bdcac26270128b7fa5f5e3b3c70c3cc7a5",
-  zipURL: `${ALLOWED_DOWNLOAD_PREFIX}v0.1.0/Peeknook.zip`,
-  releasesURL: `${RELEASES_HOST}/${REPO}/releases/tag/v0.1.0`,
+  version: "0.2.0",
+  tagName: "v0.2.0",
+  dmgURL: `${ALLOWED_DOWNLOAD_PREFIX}v0.2.0/Peeknook-0.2.0.dmg`,
+  dmgSHA256: "2f9ea980c3a01332c68f95f60e649e4a31516fc8af28e3683667c6f98b8b4547",
+  zipURL: `${ALLOWED_DOWNLOAD_PREFIX}v0.2.0/Peeknook.zip`,
+  releasesURL: `${RELEASES_HOST}/${REPO}/releases/tag/v0.2.0`,
   latestReleasesURL: `${RELEASES_HOST}/${REPO}/releases/latest`,
 };
 
