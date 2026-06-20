@@ -27,7 +27,7 @@ Free and fully open-source under **[Apache-2.0](LICENSE)**. Built on
 - [How it works](#how-it-works)
 - [Privacy](#privacy)
 - [Models (Ollama)](#models-ollama)
-- [Development](#development)
+- [Contributing](#contributing)
 - [Licenses](#licenses)
 
 ---
@@ -142,100 +142,22 @@ Peeknook does not ship model weights. You download them through Ollama. Applicab
 
 ---
 
-## Development
+## Contributing
 
-### Requirements
-
-- macOS 15+
-- [OpenNook](https://github.com/glendonC/opennook) as a sibling checkout (`../opennook`) or edit
-  `Package.swift` to use the Git URL
-- Xcode 16+ / Swift 5.9 command line tools
-
-### Build & run
+Peeknook welcomes contributions. Build, test, project layout, and conventions live in
+**[CONTRIBUTING.md](CONTRIBUTING.md)**; architecture and the invariants you must not break are in
+**[CLAUDE.md](CLAUDE.md)**.
 
 ```sh
-cd peeknook
 swift build
-swift run Peeknook
+swift run Peeknook    # dev binary identity
 swift test
 ```
 
-`swift run Peeknook` is the fastest way to hack on the project.
-
-For a signed `.app`:
-
-```sh
-brew install xcodegen            # one-time: the script generates the project with XcodeGen
-./Scripts/regenerate-xcodeproj.sh
-open Peeknook.xcodeproj
-```
-
-`regenerate-xcodeproj.sh` runs **XcodeGen** (`xcodegen generate`) against `project.yml`, so XcodeGen
-must be installed first; the script exits with an install hint if it is missing. Like the SPM build,
-the generated Xcode project / signed `.app` resolves OpenNook from the sibling `../opennook` checkout
-(the script requires it locally; set `OPENNOOK_PACKAGE_PATH` to point at an existing clone).
-`Package.swift` itself falls back to the Git URL when no sibling checkout is present, which is enough
-for `swift build` / `swift test` but not for `regenerate-xcodeproj.sh`.
-
-### Developing vs using the shipped app
-
-`swift run Peeknook` is **not** the same macOS identity as the notarized **Peeknook.app**
-(`com.peeknook.app`) you distribute to users.
-
-macOS ties **Screen Recording**, **Accessibility**, and **Camera** to the app bundle ID. If you build
-from source, System Settings may list a separate entry (often **Terminal**, **Swift**, or the debug
-binary path) from the **Peeknook** app in `/Applications`. Granting permission to one does **not**
-grant it to the other.
-
-| Goal | Use |
-|------|-----|
-| Day-to-day development | `swift build` / `swift run Peeknook`: grant TCC to the binary System Settings shows |
-| Pre-release / user-like testing | `./Scripts/release.sh` (or Xcode Release archive), then install the exported `.app`: grant TCC to **Peeknook** |
-| What you ship | Notarized `.app` from [Releases](https://github.com/glendonC/peeknook/releases/latest) |
-
-> For permission or Gatekeeper issues while developing, prefer testing the **signed `.app`** before
-> filing bugs. Production users should install from the website or GitHub Releases, not `swift run`.
-> If a downloaded build is ever blocked,
-> [INSTALL.md > If macOS blocks the app](INSTALL.md#if-macos-blocks-the-app) has the one-time
-> Open-Anyway steps.
-
-### First launch (from source)
-
-End-user setup (Ollama.app, Get ready, permissions) is in **[INSTALL.md](INSTALL.md)**. For
-contributors testing from source, expanded home shows **Get ready** until:
-
-1. Ollama is running
-2. Gemma 4 model is downloaded (in-app **Download model** via Ollama API)
-3. **Screen Recording** is granted (required, the vision model sees a screenshot)
-
-Capture (⌘⇧P) stays disabled until then. **Accessibility** is optional and only supplements the
-screenshot with selected text. Optional **Test capture** step unlocks the normal home screen.
-
-### Add another nook module
-
-Edit `Sources/PeeknookHost/HostModuleRegistry.swift`:
-
-```swift
-host.register(
-    NookModuleDescriptor(id: "com.you.myapp", displayName: "My App", icon: "star")
-) { context in MyModule(context: context) }
-```
-
-Use a unique reverse-DNS `id` per module (persistence and hotkeys key off it). Set
-`host.defaultModule` in `PeeknookHostConfiguration.swift` if Peek should not open first.
-
-### Project layout
-
-| Target | Role |
-|--------|------|
-| `PeeknookCore` | Session orchestrator, capture/inference protocols, settings |
-| `PeeknookUI` | Notch home, compact glyph, settings panels |
-| `PeeknookHost` | `NookModule` + `NookHostConfiguration` assembly |
-| `Peeknook` | Executable entry point |
-
-Product preferences use the `peeknook.*` `UserDefaults` keys on the module suite
-(`opennook.module.com.peeknook.app`). Do not write under `opennook.*`. Contributor guidance lives in
-[CLAUDE.md](CLAUDE.md).
+Found a security issue? Report it through a
+[private advisory](https://github.com/glendonC/peeknook/security/advisories/new) — see
+[SECURITY.md](SECURITY.md). By participating you agree to the
+[Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Licenses
 
