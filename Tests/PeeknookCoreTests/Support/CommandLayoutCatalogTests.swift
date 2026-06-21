@@ -61,10 +61,10 @@ final class CommandLayoutCatalogTests: XCTestCase {
     func testLiveChipPendingCueKeysExistInTheCatalog() throws {
         let catalogKeys = try loadCatalogKeys()
         let chipKeys = [
-            "Seeing latest screen — ask when ready",
+            "Seeing latest screen, ask when ready",
             "Live session armed, auto-respond off, seeing latest screen",
             "Live session armed, auto-respond on, seeing latest screen",
-            "Paused — context full",
+            "Paused, context full",
             "Live session armed, auto-respond off, paused, context full",
             "Live session armed, auto-respond on, paused, context full",
         ]

@@ -167,7 +167,7 @@ struct PeekHomeResultView: View {
                 // disabled at critical), so the "ask when ready" cue would mislead — suppress it so the
                 // chip matches `liveChipAccessibilityLabel`, where the paused state supersedes it.
                 Text(verbatim: "·").foregroundStyle(theme.tertiaryLabel).peekDecorative()
-                Text(peek: "Seeing latest screen — ask when ready")
+                Text(peek: "Seeing latest screen, ask when ready")
                     .font(.system(size: 11))
                     .foregroundStyle(theme.secondaryLabel)
             } else if let refresh = lastLiveRefreshLabel {
@@ -181,7 +181,7 @@ struct PeekHomeResultView: View {
             }
             if liveTimerPaused {
                 Text(verbatim: "·").foregroundStyle(theme.tertiaryLabel).peekDecorative()
-                Text(peek: "Paused — context full")
+                Text(peek: "Paused, context full")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(Color.orange)
             }

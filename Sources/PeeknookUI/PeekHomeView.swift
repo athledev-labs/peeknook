@@ -239,6 +239,18 @@ public struct PeekHomeView: View {
         return 10
     }
 
+    /// Whether the idle-header region (`idleScrollContent`) has anything to render. Mirrors the
+    /// visibility conditions inside `idleScrollContent` so the greedy header ScrollView is only mounted
+    /// when it has real content — otherwise an empty scroll inflates to a blank gap during capture/
+    /// inference. (The context-warning and mode-picker rows are idle-only, so `.idle` already covers them.)
+    private var showsIdleHeader: Bool {
+        if case .idle = orchestrator.phase { return true }
+        if !setup.isReady, !orchestrator.phase.suppressesSetupBanner { return true }
+        if orchestrator.settings.persistConversation, orchestrator.archivePersistenceIssue != nil { return true }
+        if orchestrator.lastNotice != nil { return true }
+        return false
+    }
+
     private var homeColumn: some View {
         Group {
             if case .result = orchestrator.phase {
@@ -258,9 +270,15 @@ public struct PeekHomeView: View {
                 )
             } else {
                 VStack(alignment: .leading, spacing: 0) {
-                    PeekFadedScrollView(maxHeight: PeekPanelLayout.idleHomeMaxHeight) {
-                        idleScrollContent
-                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                    // A vertical ScrollView is greedy: it fills the height offered (up to maxHeight). On
+                    // idle the greeting fills it, but during capture/inference the greeting is hidden, so
+                    // an empty scroll would inflate to a tall blank gap above the loading/answer. Only
+                    // mount the idle header when it actually has content (greeting or a live banner).
+                    if showsIdleHeader {
+                        PeekFadedScrollView(maxHeight: PeekPanelLayout.idleHomeMaxHeight) {
+                            idleScrollContent
+                                .frame(maxWidth: .infinity, alignment: .topLeading)
+                        }
                     }
                     VStack(alignment: .leading, spacing: homePhaseSpacing) {
                         PeekHomePhaseContent(

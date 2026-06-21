@@ -35,13 +35,13 @@ final class ModelMemoryPolicyTests: XCTestCase {
         XCTAssertNil(ModelMemoryPolicy.fit(modelBytes: 0, snapshot: snapshot(physicalGB: 18, availableGB: 2)))
     }
 
-    func testWarningGigabytesReportCatalogSizeAndFree() {
+    func testWarningGigabytesReportCatalogSizeAndTotalRAM() {
         let gb = ModelMemoryPolicy.warningGigabytes(
             modelBytes: 10 * GB,
             snapshot: snapshot(physicalGB: 18, availableGB: 6)
         )
-        XCTAssertEqual(gb.needGB, 10) // catalog footprint, not the internal +20%
-        XCTAssertEqual(gb.freeGB, 6)
+        XCTAssertEqual(gb.needGB, 10)  // catalog footprint, not the internal +20%
+        XCTAssertEqual(gb.totalGB, 18) // total RAM, not the fluctuating instantaneously-free figure
     }
 
     func testCurrentSnapshotIsSane() {

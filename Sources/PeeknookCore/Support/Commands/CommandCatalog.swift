@@ -116,11 +116,14 @@ public extension CommandLayout {
             helpKey: "Ask a follow-up about this answer",
             placement: .result, defaultOrder: 3
         ),
+        // Pinned trailing (with Done) so the primary "read my screen again" action is always visible on a
+        // narrow panel instead of scrolling off the right edge. Fresh single-shot (replace), so it always
+        // reads the CURRENT screen and never stacks images past the model's context window.
         CommandDescriptor(
             id: "result.retake", kind: .button, action: .retake,
-            titleKey: "Retake", symbol: "arrow.triangle.2.circlepath.camera",
+            titleKey: "Capture", symbol: "camera.viewfinder",
             helpKey: "Capture a new screenshot and replace this chat",
-            placement: .result,
+            placement: .result, pinnedTrailing: true,
             requiredModules: [.screenCapture], requiredPermissions: [.screenRecording],
             defaultOrder: 4
         ),

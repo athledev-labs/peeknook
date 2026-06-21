@@ -22,8 +22,12 @@ public struct PeekCompactView: View {
 
     public var body: some View {
         Button(action: handleTap) {
+            // `sparkles.rectangle.stack` is a busy, multi-part glyph: its ink is spread across thin
+            // strokes, so it optically reads smaller and lighter than the host's solid `house` mark in
+            // the opposite compact slot, even though SF Symbols size to cap-height. Bold thickens the
+            // strokes (the biggest lever for a fine symbol) and a slightly larger size balances the two.
             Image(systemName: glyphName)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.system(size: 14, weight: .bold))
                 .symbolEffect(.pulse, isActive: isBusy)
         }
         .buttonStyle(.plain)

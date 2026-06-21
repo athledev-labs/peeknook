@@ -3,8 +3,11 @@
 import PeeknookDesign
 import SwiftUI
 
-/// Per-command liquid glass, visible on the notch's black panel (material alone blurs to nothing).
+/// Per-command liquid glass. On the dark notch panel the pill is white-tinted (material alone blurs to
+/// nothing); on a light panel a white tint is invisible, so it switches to a dark frost with a hairline
+/// border so the pill still reads. Dark-mode rendering is unchanged.
 struct PeekCommandPillGlass: View {
+    @Environment(\.colorScheme) private var colorScheme
     var cornerRadius: CGFloat = 7
     var isHovered: Bool = false
     var prominent: Bool = false
@@ -15,6 +18,11 @@ struct PeekCommandPillGlass: View {
             if prominent {
                 shape.fill(Color.accentColor.opacity(isHovered ? 0.22 : 0.16))
                 shape.strokeBorder(Color.accentColor.opacity(0.35), lineWidth: 0.5)
+            } else if colorScheme == .light {
+                // White-on-white vanishes, so darken the pill instead and lean on a hairline border,
+                // the way macOS light-mode controls read.
+                shape.fill(Color.black.opacity(isHovered ? 0.08 : 0.05))
+                shape.strokeBorder(Color.black.opacity(isHovered ? 0.18 : 0.12), lineWidth: 0.5)
             } else {
                 shape.fill(Color.white.opacity(isHovered ? 0.13 : 0.09))
                 shape.fill(

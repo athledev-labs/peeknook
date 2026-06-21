@@ -185,7 +185,7 @@
       "comment": "Tier B localization",
       "extractionState": "manual"
     },
-    "API key (saved — enter a new key to replace)": {
+    "API key (saved, enter a new key to replace)": {
       "comment": "Tier B localization",
       "extractionState": "manual"
     },
@@ -245,7 +245,7 @@
       "comment": "Profile editor: a11y hint on the primary ground pill (always on).",
       "extractionState": "manual"
     },
-    "Always shown — required": {
+    "Always shown (required)": {
       "comment": "Settings → Layout: a11y hint for a protected command's toggle.",
       "extractionState": "manual"
     },
@@ -269,7 +269,7 @@
       "comment": "Command-bar help: model dropdown.",
       "extractionState": "manual"
     },
-    "Answer text-only follow-ups with a smaller, faster model — without re-sending the screenshot. New captures always use your vision model.": {
+    "Answer text-only follow-ups with a smaller, faster model, without re-sending the screenshot. New captures always use your vision model.": {
       "comment": "Settings: fast follow-ups toggle detail.",
       "extractionState": "manual"
     },
@@ -777,7 +777,7 @@
       "comment": "Live chip: VoiceOver status while the auto-refresh timer is paused at full context.",
       "extractionState": "manual"
     },
-    "Paused — context full": {
+    "Paused, context full": {
       "comment": "Live chip: the auto-refresh timer is paused because the context window is full.",
       "extractionState": "manual"
     },
@@ -1057,7 +1057,7 @@
       "comment": "Tier B localization",
       "extractionState": "manual"
     },
-    "Optional format and ground rules folded into the prompt — e.g. “Answer in three bullet points.”": {
+    "Optional format and ground rules folded into the prompt, e.g. “Answer in three bullet points.”": {
       "comment": "Profile editor: note under the prompt-template field.",
       "extractionState": "manual"
     },
@@ -1313,7 +1313,7 @@
       "comment": "Tier B localization",
       "extractionState": "manual"
     },
-    "Standing guidance for every answer in this profile — e.g. “You are a patient chess coach.”": {
+    "Standing guidance for every answer in this profile, e.g. “You are a patient chess coach.”": {
       "comment": "Profile editor: instruction help.",
       "extractionState": "manual"
     },
@@ -1477,15 +1477,15 @@
       "comment": "Collapsible section title when sensitive content blocks web lookup.",
       "extractionState": "manual"
     },
-    "Web lookup skipped — wait a few seconds between searches.": {
+    "Web lookup skipped. Wait a few seconds between searches.": {
       "comment": "Web lookup table empty state when rate limited.",
       "extractionState": "manual"
     },
-    "Web lookup unavailable — check your network connection.": {
+    "Web lookup unavailable. Check your network connection.": {
       "comment": "Web lookup table empty state when fetch failed.",
       "extractionState": "manual"
     },
-    "Web lookup skipped — sensitive content detected.": {
+    "Web lookup skipped. Sensitive content detected.": {
       "comment": "Web lookup table empty state when secrets or password manager detected.",
       "extractionState": "manual"
     },
@@ -1761,7 +1761,7 @@
       "comment": "Command-bar help: Update & ask.",
       "extractionState": "manual"
     },
-    "Seeing latest screen — ask when ready": {
+    "Seeing latest screen, ask when ready": {
       "comment": "Live chip: a refreshed frame is parked, waiting to be answered.",
       "extractionState": "manual"
     },
@@ -1833,7 +1833,7 @@
       "comment": "Setup: model row when Ollama is off and the install state is unknown.",
       "extractionState": "manual"
     },
-    "Leave Ollama running and come back — Peeknook checks every few seconds.": {
+    "Leave Ollama running and come back. Peeknook checks every few seconds.": {
       "comment": "Setup: Ollama row reassurance about the 3s auto-detect.",
       "extractionState": "manual"
     },

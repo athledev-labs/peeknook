@@ -34,8 +34,11 @@ public enum SpeechVoiceCatalog {
         #if canImport(AVFoundation)
         let prefix = languagePrefix.lowercased()
         let voices = AVSpeechSynthesisVoice.speechVoices()
-            .filter { $0.language.lowercased().hasPrefix(prefix) }
+            .filter { $0.language.lowercased().hasPrefix(prefix) && !isNoveltyOrLegacy($0) }
             .sorted { lhs, rhs in
+                // Premium/Enhanced first (so a downloaded neural voice sits at the top), then by name.
+                let qL = qualityRank(for: lhs), qR = qualityRank(for: rhs)
+                if qL != qR { return qL > qR }
                 if lhs.name != rhs.name { return lhs.name < rhs.name }
                 return lhs.identifier < rhs.identifier
             }
@@ -60,17 +63,67 @@ public enum SpeechVoiceCatalog {
     }
 
     #if canImport(AVFoundation)
-    private static func qualityLabel(for voice: AVSpeechSynthesisVoice) -> String? {
+    /// The best installed voice to use when the user leaves the voice on "Automatic". macOS's own
+    /// `AVSpeechSynthesisVoice(language:)` default returns the *compact* system voice, which sounds
+    /// robotic; this prefers a Premium (the modern neural, "Siri"-class voices) or Enhanced voice when
+    /// the user has downloaded one, and otherwise returns nil so the caller keeps the system default
+    /// (we never downgrade to a `.default`-quality novelty voice like "Albert" or "Bells").
+    public static func bestAvailableVoice(forLanguage language: String) -> AVSpeechSynthesisVoice? {
+        let lang = language.lowercased()
+        let prefix = String(lang.prefix(2))
+        let upgraded = AVSpeechSynthesisVoice.speechVoices()
+            .filter { $0.language.lowercased().hasPrefix(prefix) && qualityRank(for: $0) >= 2 }
+            .sorted { lhs, rhs in
+                // Exact locale (e.g. en-US over en-AU) first, then higher quality, then a stable name.
+                let exactL = lhs.language.lowercased() == lang
+                let exactR = rhs.language.lowercased() == lang
+                if exactL != exactR { return exactL && !exactR }
+                let rankL = qualityRank(for: lhs), rankR = qualityRank(for: rhs)
+                if rankL != rankR { return rankL > rankR }
+                return lhs.name < rhs.name
+            }
+        return upgraded.first
+    }
+
+    /// Whether a saved identifier still maps to a voice we offer (not novelty/legacy). `speak()` uses
+    /// this so an old hidden pick (e.g. a stray "Whisper") falls back to the best voice instead of
+    /// being honored after we've removed it from the picker. Empty/unknown ids return false (→ Automatic).
+    public static func isOffered(identifier: String) -> Bool {
+        let trimmed = identifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, let voice = AVSpeechSynthesisVoice(identifier: trimmed) else { return false }
+        return !isNoveltyOrLegacy(voice)
+    }
+
+    /// Apple's novelty voices ("Bad News", "Bubbles", "Whisper", "Zarvox", …) and the retro Eloquence
+    /// family ("Eddy", "Grandma", … shipped in a dozen locales) sound robotic or comedic and bury the
+    /// few real voices in the picker. Both live in stable identifier namespaces, so hide them and keep
+    /// the genuine compact/enhanced/premium/Siri voices. Identifier-based, so it stays locale-proof.
+    private static func isNoveltyOrLegacy(_ voice: AVSpeechSynthesisVoice) -> Bool {
+        let id = voice.identifier.lowercased()
+        return id.contains(".speech.synthesis.voice.") || id.contains(".eloquence.")
+    }
+
+    /// 3 = Premium, 2 = Enhanced, 1 = default/compact. Drives both the menu label and the "Automatic"
+    /// upgrade so the two stay in sync.
+    private static func qualityRank(for voice: AVSpeechSynthesisVoice) -> Int {
         if #available(macOS 14.0, *) {
             switch voice.quality {
-            case .enhanced: return "Enhanced"
-            case .premium: return "Premium"
+            case .premium: return 3
+            case .enhanced: return 2
             default: break
             }
         }
-        if voice.identifier.localizedCaseInsensitiveContains("enhanced") { return "Enhanced" }
-        if voice.identifier.localizedCaseInsensitiveContains("premium") { return "Premium" }
-        return nil
+        if voice.identifier.localizedCaseInsensitiveContains("premium") { return 3 }
+        if voice.identifier.localizedCaseInsensitiveContains("enhanced") { return 2 }
+        return 1
+    }
+
+    private static func qualityLabel(for voice: AVSpeechSynthesisVoice) -> String? {
+        switch qualityRank(for: voice) {
+        case 3: return "Premium"
+        case 2: return "Enhanced"
+        default: return nil
+        }
     }
     #endif
 }

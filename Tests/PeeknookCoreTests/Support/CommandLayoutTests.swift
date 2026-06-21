@@ -82,9 +82,11 @@ final class CommandLayoutTests: XCTestCase {
 
     // MARK: Trailing-pin contract (uniform leading-scroll / trailing-pin split)
 
-    func testExactlyOnePinnedTrailingPerScrollingBar() {
+    func testPinnedTrailingPerScrollingBar() {
+        // idle pins Capture; result pins Capture + Done so the two primary actions ("read my screen
+        // again" and "finish") stay visible instead of scrolling off a narrow panel; active pins none.
         XCTAssertEqual(layout.forPlacement(.idle).filter(\.pinnedTrailing).map(\.id), ["idle.capture"])
-        XCTAssertEqual(layout.forPlacement(.result).filter(\.pinnedTrailing).map(\.id), ["result.done"])
+        XCTAssertEqual(layout.forPlacement(.result).filter(\.pinnedTrailing).map(\.id), ["result.retake", "result.done"])
         XCTAssertTrue(layout.forPlacement(.active).allSatisfy { !$0.pinnedTrailing })
     }
 

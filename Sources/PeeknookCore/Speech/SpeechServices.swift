@@ -64,10 +64,15 @@ public final class AppleSpeechSynthesizer: SpeechSynthesizingStateful {
         stopSpeaking()
         let utterance = AVSpeechUtterance(string: trimmed)
         let voiceID = voiceIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let voiceID, !voiceID.isEmpty, let voice = AVSpeechSynthesisVoice(identifier: voiceID) {
+        if let voiceID, SpeechVoiceCatalog.isOffered(identifier: voiceID),
+           let voice = AVSpeechSynthesisVoice(identifier: voiceID) {
             utterance.voice = voice
         } else {
-            utterance.voice = AVSpeechSynthesisVoice(language: Locale.preferredLanguages.first ?? "en-US")
+            // "Automatic" (or a saved voice we no longer offer, e.g. an old novelty "Whisper" pick):
+            // prefer the best installed neural voice over macOS's robotic compact default.
+            let language = Locale.preferredLanguages.first ?? "en-US"
+            utterance.voice = SpeechVoiceCatalog.bestAvailableVoice(forLanguage: language)
+                ?? AVSpeechSynthesisVoice(language: language)
         }
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate
         trackSpeaking = true

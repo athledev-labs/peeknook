@@ -208,7 +208,7 @@ struct PeekSettingsDataSection: View {
                 PeekSettingsFootprintRow(
                     icon: "memorychip",
                     title: "Loaded in Ollama",
-                    detail: "\(primary.name)\(extra) — weights Ollama is holding in memory after a capture",
+                    detail: "\(primary.name)\(extra): weights Ollama is holding in memory after a capture",
                     value: ram
                 )
             } else {

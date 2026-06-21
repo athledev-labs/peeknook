@@ -66,7 +66,7 @@ struct PeekSettingsVisionSection: View {
         PeekSettingsToggleRow(
             icon: "hare",
             title: "Fast follow-ups",
-            detail: "Answer text-only follow-ups with a smaller, faster model — without re-sending the screenshot. New captures always use your vision model.",
+            detail: "Answer text-only follow-ups with a smaller, faster model, without re-sending the screenshot. New captures always use your vision model.",
             isOn: fastTextFollowUpsBinding
         )
 
@@ -309,7 +309,7 @@ struct PeekSettingsVisionSection: View {
         // Write-only: commits to the Keychain on Return and never echoes the stored key back.
         PeekSettingsFormField(
             icon: "key",
-            title: apiKeyIsSet ? "API key (saved — enter a new key to replace)" : "API key (optional)",
+            title: apiKeyIsSet ? "API key (saved, enter a new key to replace)" : "API key (optional)",
             text: $apiKeyDraft,
             placeholder: "Leave blank for local servers",
             secure: true,

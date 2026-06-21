@@ -19,6 +19,12 @@ final class InferenceCoordinator {
     private var activeModelResidentInMemory = false
     private(set) var isPrewarming = false
 
+    /// The model tag we last surfaced a "may not fit in memory" notice for. The prewarm loop re-runs
+    /// every few seconds while the notch is open, so without this latch a low-memory model re-emits the
+    /// banner on every tick (and right after the user taps "Got it"). Warn once per model; cleared when
+    /// the model changes, fits again, or warms, so a genuinely new low-memory situation can warn afresh.
+    private var memoryWarnedModelTag: String?
+
     init(session: SessionOrchestrator) {
         self.session = session
         self.suggestions = SuggestionCoordinator(session: session)
@@ -65,6 +71,8 @@ final class InferenceCoordinator {
         Task {
             await self.refreshActiveModelResidency()
             guard !self.modelLikelyWarm else {
+                // Warm means it fit and loaded, so a later eviction + low memory can warn again.
+                self.memoryWarnedModelTag = nil
                 self.isPrewarming = false
                 return
             }
@@ -74,17 +82,32 @@ final class InferenceCoordinator {
             // pick a smaller tier first). Remote/cloud models run off-device, so RAM is irrelevant —
             // gate on `isRemoteEgress`. Unknown model size (custom tag) → skip, like the disk pre-check.
             if !session.activeInferenceEndpoint.isRemoteEgress(modelTag: session.activeAnswerModel.tag),
-               let modelBytes = TextModelCatalog.option(
+               let option = TextModelCatalog.option(
                    for: session.activeAnswerModel.tag, custom: session.settings.customModels
-               )?.estimatedDownloadBytes {
+               ),
+               let modelBytes = option.estimatedDownloadBytes {
                 let snapshot = SystemMemorySnapshot.current()
                 if ModelMemoryPolicy.fit(modelBytes: modelBytes, snapshot: snapshot) == .insufficient {
-                    let gb = ModelMemoryPolicy.warningGigabytes(modelBytes: modelBytes, snapshot: snapshot)
-                    session.emitNotice(.modelMayNotFitMemory(needGB: gb.needGB, freeGB: gb.freeGB))
+                    // Warn once per model. The prewarm loop ticks every few seconds, so re-emitting here
+                    // would re-pop the banner endlessly (and immediately undo the user's "Got it"). The
+                    // latch clears when the model changes, fits, or warms, so a fresh problem still warns.
+                    let currentTag = session.activeAnswerModel.tag
+                    if self.memoryWarnedModelTag != currentTag {
+                        self.memoryWarnedModelTag = currentTag
+                        let gb = ModelMemoryPolicy.warningGigabytes(modelBytes: modelBytes, snapshot: snapshot)
+                        // Only offer "pick a lighter model" when a smaller curated tier actually exists;
+                        // nil here means the user is already on the lightest model, so the banner tells them
+                        // to free memory instead of pointing at a model that isn't there.
+                        let lighter = TextModelCatalog.leanerAlternative(to: option)?.displayName
+                        session.emitNotice(.modelMayNotFitMemory(needGB: gb.needGB, totalGB: gb.totalGB, lighterModel: lighter))
+                    }
                     self.isPrewarming = false
                     return
                 }
             }
+            // Reached warm-up: the model fits (or is remote/unknown-size), so clear any prior warning
+            // latch — if it later regresses to low memory, the user should be told again.
+            self.memoryWarnedModelTag = nil
             // Endpoint-typed so a backend switch warms the server the next turn actually hits,
             // never a stale Ollama URL.
             let loaded = await session.inference.warmUp(

@@ -82,16 +82,18 @@ public enum ModelMemoryPolicy {
         return .insufficient
     }
 
-    /// GB figures for the user-facing warning ("needs ~N GB, you have ~M GB free"). `needGB` reports
-    /// the catalog-sized model footprint (what the user already saw on the download row), not the
-    /// internal +20% estimate, so the numbers stay consistent across the app.
+    /// GB figures for the user-facing warning. `needGB` is the catalog-sized model footprint (what the
+    /// user already saw on the download row), `totalGB` is the Mac's total RAM. The warning reports
+    /// total (a stable, understandable number) rather than the instantaneously-free figure, which
+    /// fluctuates and reads as alarming ("only 3 GB?!") when the Mac actually has plenty installed and
+    /// is merely busy. The copy explains that most of it is in use right now.
     public static func warningGigabytes(
         modelBytes: Int64,
         snapshot: SystemMemorySnapshot
-    ) -> (needGB: Int, freeGB: Int) {
+    ) -> (needGB: Int, totalGB: Int) {
         (
             needGB: max(1, Int((Double(modelBytes) / 1_000_000_000).rounded())),
-            freeGB: max(0, Int((Double(snapshot.availableBytes) / 1_000_000_000).rounded()))
+            totalGB: max(1, Int((Double(snapshot.physicalBytes) / 1_000_000_000).rounded()))
         )
     }
 }

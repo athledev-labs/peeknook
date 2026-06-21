@@ -24,10 +24,12 @@ public enum SessionNotice: Equatable, Sendable {
     /// already streamed; this only tells the user what was withheld. The archived/on-screen text keeps
     /// the original; the screenshot bitmap is not inspected.
     case secretsRedactedForRemote(count: Int)
-    /// The selected local model's resident footprint (`needGB`) is larger than the RAM currently free
-    /// (`freeGB`), so loading it risks swap-thrashing the whole Mac. A pre-flight heads-up shown before
-    /// capture; Peeknook also skips proactively warming such a model. Free up memory or pick a smaller tier.
-    case modelMayNotFitMemory(needGB: Int, freeGB: Int)
+    /// The selected local model's resident footprint is large relative to the RAM free right now, so
+    /// loading it may be slow. A pre-flight heads-up shown before capture; Peeknook also skips
+    /// proactively warming such a model. `needGB` is the model's footprint, `totalGB` is the Mac's total
+    /// RAM (the copy explains most of it is in use), and `lighterModel` is the display name of a smaller
+    /// curated tier the user could switch to, or nil when they're already on the lightest model.
+    case modelMayNotFitMemory(needGB: Int, totalGB: Int, lighterModel: String?)
     /// The system hit critical memory pressure while idle, so Peeknook released the resident local model
     /// (`keep_alive: 0`) to give memory back. The next capture pays a one-time cold start. A one-shot cue
     /// so the brief extra latency is explained rather than surprising.

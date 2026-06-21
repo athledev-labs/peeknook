@@ -47,13 +47,13 @@ struct PeekWebLookupTableView: View {
         if snapshot.lookupFailed {
             switch snapshot.lookupFailure {
             case .rateLimited:
-                return PeekLocalized("Web lookup skipped — wait a few seconds between searches.")
+                return PeekLocalized("Web lookup skipped. Wait a few seconds between searches.")
             case .unavailable:
-                return PeekLocalized("Web lookup unavailable — check your network connection.")
+                return PeekLocalized("Web lookup unavailable. Check your network connection.")
             case .sensitiveContent:
-                return PeekLocalized("Web lookup skipped — sensitive content detected.")
+                return PeekLocalized("Web lookup skipped. Sensitive content detected.")
             case .none:
-                return PeekLocalized("Web lookup unavailable — check your network connection.")
+                return PeekLocalized("Web lookup unavailable. Check your network connection.")
             }
         }
         return String(format: PeekLocalized("No web results for \"%@\"."), snapshot.query)

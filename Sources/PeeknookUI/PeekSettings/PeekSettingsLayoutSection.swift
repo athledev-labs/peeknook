@@ -119,7 +119,7 @@ struct PeekSettingsLayoutSection: View {
         .peekToggle(
             label: command.titleKey,
             isOn: visible,
-            hint: command.isCustomizable ? "Show or hide this command" : "Always shown — required",
+            hint: command.isCustomizable ? "Show or hide this command" : "Always shown (required)",
             toggle: {
                 guard command.isCustomizable else { return }
                 settings.setCommandHidden(command.id, in: selected, hidden: visible)

@@ -79,8 +79,8 @@ struct PeekSessionNoticeBanner: View {
         case .liveRefreshFailed: "Couldn't refresh"
         case .liveEnded: "Live ended"
         case .secretsRedactedForRemote: "Removed secrets before sending"
-        case .modelMayNotFitMemory: "Model may not fit in memory"
-        case .modelUnloadedUnderMemoryPressure: "Freed the model to ease memory"
+        case .modelMayNotFitMemory: "Your Mac's memory is almost full"
+        case .modelUnloadedUnderMemoryPressure: "Freed the model to free up RAM"
         }
     }
 
@@ -100,10 +100,14 @@ struct PeekSessionNoticeBanner: View {
             Text(peek: "The live session reached its time limit and turned off. Tap Go live to start watching again.")
         case .secretsRedactedForRemote(let count):
             Text(peek: "Removed \(count) likely secrets from the text before sending it to your remote model. Your saved chat keeps the original.")
-        case .modelMayNotFitMemory(let needGB, let freeGB):
-            Text(peek: "This model needs about \(needGB) GB, but only \(freeGB) GB is free right now. Capturing may slow your Mac — free up memory or pick a smaller model in Settings.")
+        case .modelMayNotFitMemory(let needGB, let totalGB, let lighterModel):
+            if let lighterModel {
+                Text(peek: "Peeknook's AI needs about \(needGB) GB of memory. Your Mac has \(totalGB) GB, but other apps are using most of it right now, so capturing may be slow. Close some apps to free up memory, or switch to a lighter model like \(lighterModel) from the menu at the bottom.")
+            } else {
+                Text(peek: "Peeknook's AI needs about \(needGB) GB of memory. Your Mac has \(totalGB) GB, but other apps are using most of it right now, so capturing may be slow. Closing apps you aren't using (like extra browser tabs) will free up memory.")
+            }
         case .modelUnloadedUnderMemoryPressure:
-            Text(peek: "Your Mac was low on memory, so Peeknook released the model to free it up. Your next capture will take a moment to warm up again.")
+            Text(peek: "Your Mac was low on RAM, so Peeknook released the model to free it up. Your next capture will take a moment to warm up again.")
         }
     }
 
@@ -122,10 +126,14 @@ struct PeekSessionNoticeBanner: View {
             PeekLocalized("The live session reached its time limit and turned off. Tap Go live to start watching again.")
         case .secretsRedactedForRemote(let count):
             PeekLocalized("Removed \(count) likely secrets from the text before sending it to your remote model. Your saved chat keeps the original.")
-        case .modelMayNotFitMemory(let needGB, let freeGB):
-            PeekLocalized("This model needs about \(needGB) GB, but only \(freeGB) GB is free right now. Capturing may slow your Mac — free up memory or pick a smaller model in Settings.")
+        case .modelMayNotFitMemory(let needGB, let totalGB, let lighterModel):
+            if let lighterModel {
+                PeekLocalized("Peeknook's AI needs about \(needGB) GB of memory. Your Mac has \(totalGB) GB, but other apps are using most of it right now, so capturing may be slow. Close some apps to free up memory, or switch to a lighter model like \(lighterModel) from the menu at the bottom.")
+            } else {
+                PeekLocalized("Peeknook's AI needs about \(needGB) GB of memory. Your Mac has \(totalGB) GB, but other apps are using most of it right now, so capturing may be slow. Closing apps you aren't using (like extra browser tabs) will free up memory.")
+            }
         case .modelUnloadedUnderMemoryPressure:
-            PeekLocalized("Your Mac was low on memory, so Peeknook released the model to free it up. Your next capture will take a moment to warm up again.")
+            PeekLocalized("Your Mac was low on RAM, so Peeknook released the model to free it up. Your next capture will take a moment to warm up again.")
         }
     }
 }

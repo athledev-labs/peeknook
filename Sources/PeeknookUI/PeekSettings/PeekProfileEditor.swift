@@ -90,7 +90,7 @@ struct PeekProfileEditor: View {
                 )
                 .accessibilityLabel(Text(peek: "Profile instruction"))
             PeekSettingsNote(
-                text: "Standing guidance for every answer in this profile — e.g. “You are a patient chess coach.”"
+                text: "Standing guidance for every answer in this profile, e.g. “You are a patient chess coach.”"
             )
         }
     }
@@ -240,7 +240,7 @@ struct PeekProfileEditor: View {
                 )
                 .accessibilityLabel(Text(peek: "Profile prompt template"))
             PeekSettingsNote(
-                text: "Optional format and ground rules folded into the prompt — e.g. “Answer in three bullet points.”"
+                text: "Optional format and ground rules folded into the prompt, e.g. “Answer in three bullet points.”"
             )
         }
     }

@@ -207,7 +207,7 @@ public struct PeekSetupView: View {
         let model = TextModelCatalog.displayName(for: profile.suggestedTextModel)
         let base = PeekLocalized("Runs the AI privately on your Mac. Recommended for \(profile.physicalMemoryGB) GB RAM: \(model).")
         // F10: name the live 3-second auto-detect so the user knows to leave Ollama running and wait.
-        return "\(base) \(PeekLocalized("Leave Ollama running and come back — Peeknook checks every few seconds."))"
+        return "\(base) \(PeekLocalized("Leave Ollama running and come back. Peeknook checks every few seconds."))"
     }
 
     /// F9: when the local Ollama app isn't installed, the correct first action is to download it — so
