@@ -179,7 +179,8 @@ final class SettingsAndPromptTests: XCTestCase {
     }
 
     func testInferenceModelOptionMenuDetail() {
-        let option = TextModelCatalog.offered[1]
+        // Look up by tag, not list position — the curated order is not part of this contract.
+        let option = TextModelCatalog.offered.first { $0.tag == "gemma4:e4b" }!
         XCTAssertEqual(option.displayName, "Gemma 4 E4B")
         XCTAssertEqual(option.menuDetail, "gemma4:e4b · Ollama · ~10 GB")
     }

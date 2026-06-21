@@ -13,19 +13,17 @@ public struct SystemProfile: Sendable, Equatable {
         return SystemProfile(physicalMemoryGB: gb, suggestedTextModel: recommendedModel(forPhysicalMemoryGB: gb))
     }
 
-    /// The largest local Gemma 4 tag that leaves real headroom for macOS and the user's other apps.
-    /// A resident vision model is the dominant memory cost, so the thresholds are deliberately
-    /// conservative: total RAM must comfortably exceed the model's working set, not merely fit it.
-    /// e4b (~10 GB resident) on an 18–24 GB Mac left almost no room and could thrash the whole
-    /// system, so e4b now needs ≥32 GB and 26b (~18 GB resident) needs ≥48 GB; everything below
-    /// gets e2b. Pure (no global reads) so the tiers are unit-testable.
+    /// The suggested default answer model for a Mac with this much RAM. A resident vision model is the
+    /// dominant memory cost, so the per-model floors are deliberately conservative: total RAM must
+    /// comfortably exceed the model's working set, not merely fit it.
+    ///
+    /// The RAM→model policy itself lives in the catalog, not here: each curated model carries a
+    /// ``InferenceModelOption/recommendedRAMFloorGB`` and ``TextModelCatalog/recommendedTag(forPhysicalMemoryGB:)``
+    /// picks the most capable model the Mac can afford. With today's floors that means e2b below 16 GB,
+    /// Qwen2.5-VL 7B (reads detailed screens well, fits where Gemma e4b's ~10 GB resident could not)
+    /// through the common 16–31 GB range, then e4b (≥32 GB) and 26b (≥48 GB). Re-tiering is a one-line
+    /// catalog edit; this method just delegates so there is no parallel ladder to keep in sync.
     public static func recommendedModel(forPhysicalMemoryGB gb: Int) -> String {
-        if gb < 32 {
-            return "gemma4:e2b"
-        } else if gb < 48 {
-            return "gemma4:e4b"
-        } else {
-            return "gemma4:26b"
-        }
+        TextModelCatalog.recommendedTag(forPhysicalMemoryGB: gb)
     }
 }

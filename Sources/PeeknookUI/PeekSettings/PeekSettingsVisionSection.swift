@@ -203,7 +203,7 @@ struct PeekSettingsVisionSection: View {
 
         if visionSupport == false {
             PeekSettingsNote(
-                text: "⚠︎ This model can’t see your screen. Peeknook sends a screenshot with every capture, so a text-only model will ignore the image. Pick a vision model (like Gemma 4) for screen capture."
+                text: "⚠︎ This model can’t see your screen. Peeknook sends a screenshot with every capture, so a text-only model will ignore the image. Pick a vision model for screen capture."
             )
         }
 

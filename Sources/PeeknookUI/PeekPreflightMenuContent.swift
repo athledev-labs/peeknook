@@ -107,10 +107,15 @@ enum PeekPreflightMenuContent {
             } label: {
                 ValueMenuRow(
                     title: option.displayName,
-                    subtitle: option.downloadHint ?? option.tag,
+                    // What the model is good (and bad) at in plain language, not just a file size.
+                    // Custom tags carry no summary, so they fall back to their size hint or the tag.
+                    subtitle: option.capabilitySummary ?? option.downloadHint ?? option.tag,
                     selected: isSelected(option),
                     needsDownload: !isInstalled(option.tag)
                 )
+                // Cap the row width so the multi-line summary wraps instead of forcing the popover
+                // (which sizes to its content's ideal width) wide across the notch.
+                .frame(width: 240, alignment: .leading)
             }
             .buttonStyle(.plain)
         }

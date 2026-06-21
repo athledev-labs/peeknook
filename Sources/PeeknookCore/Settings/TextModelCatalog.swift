@@ -12,19 +12,32 @@ public struct InferenceModelOption: Identifiable, Equatable, Sendable {
     public let provider: String
     public let downloadHint: String?
     public let supportsVision: Bool
+    /// One plain-language line on what this model is good (and not good) at, for the picker subtitle.
+    /// File size tells a general user nothing about whether a model will misread their screenshot,
+    /// so curated tiers carry this instead. Nil for custom tags (no claim we can stand behind).
+    public let capabilitySummary: String?
+    /// The minimum total RAM (GB) at which this model is a sensible auto-suggested default — the model
+    /// is gated to more RAM precisely because its resident working set is larger. ``recommendedTag``
+    /// picks the highest-floor model a Mac can afford. `nil` means manual-only: a user can still
+    /// select it, but it is never auto-recommended (custom tags, or a tier we don't push by default).
+    public let recommendedRAMFloorGB: Int?
 
     public init(
         tag: String,
         displayName: String,
         provider: String,
         downloadHint: String? = nil,
-        supportsVision: Bool = true
+        supportsVision: Bool = true,
+        capabilitySummary: String? = nil,
+        recommendedRAMFloorGB: Int? = nil
     ) {
         self.tag = tag
         self.displayName = displayName
         self.provider = provider
         self.downloadHint = downloadHint
         self.supportsVision = supportsVision
+        self.capabilitySummary = capabilitySummary
+        self.recommendedRAMFloorGB = recommendedRAMFloorGB
     }
 
     /// Secondary line in the model picker menu.
@@ -87,31 +100,51 @@ public struct CustomModelEntry: Codable, Equatable, Sendable, Identifiable {
 }
 
 public enum TextModelCatalog {
-    /// Curated models shown in the home picker. Add entries here when a new backend ships.
+    /// Curated models shown in the home picker, ordered smallest→largest by download size. Add
+    /// entries here when a new backend ships. Note the families are interleaved by size, not grouped:
+    /// Qwen2.5-VL 7B is a smaller download than Gemma 4 E2B yet reads detailed screens better, which
+    /// is exactly why it is the suggested default for most Macs (see ``SystemProfile``).
     public static let offered: [InferenceModelOption] = [
+        InferenceModelOption(
+            tag: "qwen2.5vl:7b",
+            displayName: "Qwen2.5-VL 7B",
+            provider: "Ollama",
+            downloadHint: "~6 GB",
+            capabilitySummary: "Sharp at reading detailed screens (charts, tables, documents); fits most Macs.",
+            recommendedRAMFloorGB: 16
+        ),
         InferenceModelOption(
             tag: "gemma4:e2b",
             displayName: "Gemma 4 E2B",
             provider: "Ollama",
-            downloadHint: "~7 GB"
+            downloadHint: "~7 GB",
+            capabilitySummary: "Fastest, lightest. Great for text, code & quick questions; may misread detailed images (charts, tables, game boards).",
+            recommendedRAMFloorGB: 0
         ),
         InferenceModelOption(
             tag: "gemma4:e4b",
             displayName: "Gemma 4 E4B",
             provider: "Ollama",
-            downloadHint: "~10 GB"
+            downloadHint: "~10 GB",
+            capabilitySummary: "Balanced; reads most screens accurately.",
+            recommendedRAMFloorGB: 32
         ),
         InferenceModelOption(
             tag: "gemma4:26b",
             displayName: "Gemma 4 26B",
             provider: "Ollama",
-            downloadHint: "~18 GB"
+            downloadHint: "~18 GB",
+            capabilitySummary: "Most accurate at detailed images; needs lots of memory.",
+            recommendedRAMFloorGB: 48
         ),
         InferenceModelOption(
             tag: "gemma4:31b",
             displayName: "Gemma 4 31B",
             provider: "Ollama",
-            downloadHint: "~20 GB"
+            downloadHint: "~20 GB",
+            capabilitySummary: "Most accurate at detailed images; needs lots of memory."
+            // recommendedRAMFloorGB left nil: manual-only. 26b already covers the high-RAM tier, so
+            // 31b is a power-user pick the picker still offers but the default policy never auto-suggests.
         ),
     ]
 
@@ -140,14 +173,50 @@ public enum TextModelCatalog {
         option(for: tag, custom: custom)?.displayName ?? tag
     }
 
-    /// The next-smaller curated tier (`offered` is ordered smallest→largest), or nil for the smallest
-    /// tier or a custom tag with no defined ordering. Lets the download confirmation offer a lighter,
-    /// faster alternative before a user commits to a larger pull.
+    /// The curated tag to auto-suggest for a Mac with this much RAM: the most capable model the Mac can
+    /// afford, where capability is read off ``InferenceModelOption/recommendedRAMFloorGB`` (a model is
+    /// gated to more RAM precisely because it is heavier). Picks the highest floor that is ≤ `gb`;
+    /// models with a nil floor are manual-only and never returned. This is the single home of the
+    /// RAM→model policy, driven entirely by the catalog: adding or re-tiering a model is one edit to
+    /// ``offered``, with no parallel `if gb < N` ladder to keep in sync. ``SystemProfile`` delegates here.
+    public static func recommendedTag(forPhysicalMemoryGB gb: Int) -> String {
+        let affordable = offered.compactMap { option -> (tag: String, floor: Int)? in
+            guard let floor = option.recommendedRAMFloorGB, floor <= gb else { return nil }
+            return (option.tag, floor)
+        }
+        if let best = affordable.max(by: { $0.floor < $1.floor }) {
+            return best.tag
+        }
+        // No floored model fits (only if every floor exceeds `gb`). Fall back to the lowest-floor
+        // curated model so we always return something the user can install, never an empty string.
+        return offered
+            .compactMap { o in o.recommendedRAMFloorGB.map { (o.tag, $0) } }
+            .min(by: { $0.1 < $1.1 })?.0
+            ?? offered.first?.tag
+            ?? "gemma4:e2b"
+    }
+
+    /// The next-smaller curated tier **in the same model family** (`offered` is ordered
+    /// smallest→largest), or nil for the smallest tier in that family, a tag not in the catalog, or a
+    /// custom tag. Lets the download confirmation offer a lighter, faster alternative before a user
+    /// commits to a larger pull. Scoped to one family on purpose: across families the smaller-by-bytes
+    /// model can be the *more* capable one (Qwen2.5-VL 7B is a smaller download than Gemma 4 E2B yet
+    /// reads screens better), so the "a faster, lighter option" framing only holds within a family.
     public static func leanerAlternative(to option: InferenceModelOption) -> InferenceModelOption? {
         guard let index = offered.firstIndex(where: {
             OllamaSetupClient.normalizedTag($0.tag) == OllamaSetupClient.normalizedTag(option.tag)
-        }), index > 0 else { return nil }
-        return offered[index - 1]
+        }) else { return nil }
+        let targetFamily = modelFamily(option.tag)
+        for i in stride(from: index - 1, through: 0, by: -1) where modelFamily(offered[i].tag) == targetFamily {
+            return offered[i]
+        }
+        return nil
+    }
+
+    /// The repository name before the tag (`gemma4:e2b` → `gemma4`, `qwen2.5vl:7b` → `qwen2.5vl`),
+    /// used to keep ``leanerAlternative`` within a single family's size ladder.
+    static func modelFamily(_ tag: String) -> Substring {
+        OllamaSetupClient.normalizedTag(tag).prefix { $0 != ":" }
     }
 
     /// @deprecated Use ``displayName(for:)``, kept for tests migrating off short tags.
