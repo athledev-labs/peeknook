@@ -35,16 +35,18 @@ public struct OllamaHTTPClient: Sendable {
 
     // MARK: - Streaming chat
 
-    /// POSTs `/api/chat` with `stream:true`, `think:false`, `keep_alive`, and (quick mode only)
-    /// `options:{num_predict:256}`. On HTTP 400 whose error body mentions "think", retries ONCE
-    /// without `think`. On any other non-200 throws `InferenceError.http`. Returns the success
-    /// byte stream for the caller to parse chunk lines.
+    /// POSTs `/api/chat` with `stream:true`, `think:false`, `keep_alive`, `options:{num_ctx:…}`
+    /// (always, so the request never falls back to Ollama's 4096 default and overflows on a
+    /// capture), and (quick mode only) `num_predict:256`. On HTTP 400 whose error body mentions
+    /// "think", retries ONCE without `think`. On any other non-200 throws `InferenceError.http`.
+    /// Returns the success byte stream for the caller to parse chunk lines.
     public func chatStream(
         base: URL,
         model: String,
         messages: [OllamaChatMessage],
         quickMode: Bool,
-        keepAlive: String
+        keepAlive: String,
+        numCtx: Int
     ) async throws -> URLSession.AsyncBytes {
         let url = base.appendingPathComponent("api/chat")
 
@@ -56,7 +58,10 @@ public struct OllamaHTTPClient: Sendable {
                 "keep_alive": keepAlive
             ]
             if let think { dict["think"] = think }
-            if quickMode { dict["options"] = ["num_predict": 256] }
+            var options: [String: Any] = [:]
+            if numCtx > 0 { options["num_ctx"] = numCtx }
+            if quickMode { options["num_predict"] = 256 }
+            if !options.isEmpty { dict["options"] = options }
             return dict
         }
 

@@ -263,4 +263,61 @@ final class OllamaInferenceEngineHTTPTests: XCTestCase {
         let retry = String(data: OllamaURLProtocolStub.recordedBodies[1], encoding: .utf8) ?? ""
         XCTAssertFalse(retry.contains("\"think\""), "retry must omit the think field")
     }
+
+    // MARK: - num_ctx (sent on every model-loading call so a capture never overflows the 4096 default)
+
+    func testAnswerStreamSendsNumCtx() async throws {
+        let streamBody = """
+        {"message":{"content":"hi"},"done":true,"prompt_eval_count":10,"eval_count":2,"eval_duration":100000000}
+        """.data(using: .utf8)!
+        OllamaURLProtocolStub.responsesByPath = [
+            "/api/version": [.init(statusCode: 200, body: Data(), headers: [:])],
+            "/api/tags": [.init(
+                statusCode: 200,
+                body: #"{"models":[{"name":"gemma4:e4b"}]}"#.data(using: .utf8)!,
+                headers: [:]
+            )],
+            "/api/chat": [.init(statusCode: 200, body: streamBody, headers: [:])]
+        ]
+
+        let engine = OllamaInferenceEngine(session: makeStubSession(), contextTokens: 8_192)
+        let request = InferenceRequest(
+            mode: .general,
+            messages: [.init(role: .user, text: "explain", imageBase64: nil)],
+            model: "gemma4:e4b",
+            ollamaBaseURL: "http://stub.test:11434",
+            acceptInsecureRemoteOllama: true
+        )
+
+        for try await _ in engine.stream(request: request) {}
+
+        let body = String(data: try XCTUnwrap(OllamaURLProtocolStub.recordedBodies.first), encoding: .utf8) ?? ""
+        XCTAssertTrue(body.contains("\"num_ctx\":8192"), "answer stream must send num_ctx; body: \(body)")
+    }
+
+    func testFollowUpSendsNumCtx() async throws {
+        let success = #"{"message":{"content":"{\"suggestions\":[\"a\"]}"}}"#.data(using: .utf8)!
+        OllamaURLProtocolStub.responsesByPath = [
+            "/api/chat": [.init(statusCode: 200, body: success, headers: [:])]
+        ]
+
+        let engine = OllamaInferenceEngine(session: makeStubSession(), contextTokens: 8_192)
+        _ = await engine.generateFollowUps(request: followUpRequest())
+
+        let body = String(data: try XCTUnwrap(OllamaURLProtocolStub.recordedBodies.first), encoding: .utf8) ?? ""
+        XCTAssertTrue(body.contains("\"num_ctx\":8192"), "follow-up replays images and must send the same num_ctx; body: \(body)")
+    }
+
+    func testWarmUpSendsNumCtxSoTheAnswerCallHitsAWarmModel() async throws {
+        let success = #"{"message":{"content":"ok"},"done":true}"#.data(using: .utf8)!
+        OllamaURLProtocolStub.responsesByPath = [
+            "/api/chat": [.init(statusCode: 200, body: success, headers: [:])]
+        ]
+
+        let engine = OllamaInferenceEngine(session: makeStubSession(), contextTokens: 8_192)
+        _ = await engine.warmUp(model: "gemma4:e4b", baseURL: "http://stub.test:11434", acceptInsecureRemote: true)
+
+        let body = String(data: try XCTUnwrap(OllamaURLProtocolStub.recordedBodies.first), encoding: .utf8) ?? ""
+        XCTAssertTrue(body.contains("\"num_ctx\":8192"), "warm-up must load at the answer's num_ctx; body: \(body)")
+    }
 }

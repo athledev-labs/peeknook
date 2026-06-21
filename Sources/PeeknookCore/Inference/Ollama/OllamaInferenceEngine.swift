@@ -12,16 +12,22 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
     /// `keep_alive` window for every load-bearing call, scaled to this Mac's RAM tier so a low-RAM
     /// machine releases the resident model sooner. Injectable for tests; defaults to the live tier.
     private let keepAlive: String
+    /// `num_ctx` for every model-loading call (answer, follow-up, warm-up). Sent on all three so the
+    /// request never falls back to Ollama's 4096 default (which a capture overflows) and so warm-up
+    /// loads at the same context size the answer uses, avoiding a silent reload. Injectable for tests.
+    private let contextTokens: Int
 
     public init(
         session: URLSession = .shared,
         probeCache: OllamaProbeCache? = nil,
-        keepAlive: String = OllamaKeepAlivePolicy.recommended()
+        keepAlive: String = OllamaKeepAlivePolicy.recommended(),
+        contextTokens: Int = OllamaContextPolicy.recommended()
     ) {
         self.session = session
         self.client = OllamaHTTPClient(session: session)
         self.probeCache = probeCache
         self.keepAlive = keepAlive
+        self.contextTokens = contextTokens
     }
 
     public func health(baseURL: String, model: String, acceptInsecureRemote: Bool) async -> InferenceHealth {
@@ -139,7 +145,10 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
             messages: messages,
             quickMode: request.quickMode,
             // Keep the model warm so the next capture skips cold-start (window scaled to RAM tier).
-            keepAlive: keepAlive
+            keepAlive: keepAlive,
+            // Request a real context window so a capture's image tokens don't overflow Ollama's 4096
+            // default (scaled to RAM tier; matched by the follow-up and warm-up calls).
+            numCtx: contextTokens
         )
 
         for try await line in bytes.lines {
@@ -188,7 +197,9 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
                 messages: messages,
                 stream: false,
                 keepAlive: keepAlive,
-                options: ["num_predict": 120, "temperature": 0.4],
+                // Same num_ctx as the answer pass: this replays the conversation (images included),
+                // so it would overflow 4096 too, and a different size would reload the warm model.
+                options: ["num_predict": 120, "temperature": 0.4, "num_ctx": contextTokens],
                 format: PromptBuilder.followUpSchema,
                 timeout: 30 // parity with the original follow-up pass; the answer stream uses 120s
             )
@@ -330,7 +341,9 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
                 messages: [OllamaChatMessage(role: "user", content: "ok")],
                 stream: false,
                 keepAlive: keepAlive,
-                options: ["num_predict": 1],
+                // Warm at the answer's num_ctx so the model loads at the size the real call will use;
+                // a mismatch would make the answer call reload the weights (a fresh cold start).
+                options: ["num_predict": 1, "num_ctx": contextTokens],
                 format: nil
             )
             return true
