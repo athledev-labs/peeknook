@@ -99,19 +99,96 @@ final class ProfileStoreTests: XCTestCase {
     func testPersistAndReloadRoundTripsCatalog() throws {
         let store = makeStore()
         let copy = try XCTUnwrap(store.duplicate(.screenDefault, name: "Round trip"))
-        store.update(copy.with(
-            displayName: copy.displayName,
-            instruction: "Be brief.",
-            promptTemplate: nil,
-            modelBinding: ProfileModelBinding(backend: .ollama, tag: "gemma4:e2b"),
-            moduleOverrides: ModuleOverrides([.webLookup: true]),
-            toolSpec: nil
-        ))
+        store.update(copy.edited {
+            $0.instruction = "Be brief."
+            $0.modelBinding = ProfileModelBinding(backend: .ollama, tag: "gemma4:e2b")
+            $0.moduleOverrides = ModuleOverrides([.webLookup: true])
+        })
         let reloaded = ProfileStore(defaults: defaults)
         let restored = reloaded.profile(id: copy.id)
         XCTAssertEqual(restored.instruction, "Be brief.")
         XCTAssertEqual(restored.modelBinding?.tag, "gemma4:e2b")
         XCTAssertEqual(restored.moduleOverrides.value(for: .webLookup), true)
+    }
+
+    /// The reason the `mutate(inout Editable)` seam exists: changing ONE field through it leaves every
+    /// other field intact. The old `with(...)` factory took every field explicitly, so a setter that
+    /// forgot one silently wiped it; `mutate` makes that class of bug unrepresentable.
+    func testMutatePreservesEveryUneditedField() throws {
+        let store = makeStore()
+        let copy = try XCTUnwrap(store.duplicate(.screenDefault, name: "Rich"))
+        // Seed every editable field so a dropped one would be detectable.
+        store.setInstruction(id: copy.id, "Be precise.")
+        store.setPromptTemplate(id: copy.id, "Use bullet points.")
+        store.setModelBinding(id: copy.id, ProfileModelBinding(backend: .ollama, tag: "gemma4:e4b"))
+        store.setModuleOverride(id: copy.id, module: .webLookup, enabled: true)
+        store.setActiveGrounds([.systemAudio], for: copy.id)
+
+        // Change only the name through the seam.
+        store.rename(id: copy.id, to: "Renamed")
+
+        let after = ProfileStore(defaults: defaults).profile(id: copy.id)
+        XCTAssertEqual(after.displayName, "Renamed")
+        XCTAssertEqual(after.instruction, "Be precise.", "renaming must not drop the instruction")
+        XCTAssertEqual(after.promptTemplate, "Use bullet points.", "renaming must not drop the template")
+        XCTAssertEqual(after.modelBinding?.tag, "gemma4:e4b", "renaming must not drop the model binding")
+        XCTAssertEqual(after.moduleOverrides.value(for: .webLookup), true, "renaming must not drop overrides")
+        XCTAssertEqual(after.activeGrounds, [.screen, .systemAudio], "renaming must not drop active grounds")
+    }
+
+    /// Freezes the persisted field count AND pins the schema: each built-in encodes to exactly the six
+    /// legacy keys and round-trips by value, and the catalog schema version + namespace are unchanged. A
+    /// new persisted field, a renamed key, or a schema bump makes this fail — the M1 freeze canary.
+    func testBuiltInsEncodeExactlyTheSixLegacyKeysAndRoundTripByValue() throws {
+        for builtIn in GroundProfile.all {
+            let data = try JSONEncoder().encode(builtIn)
+            let object = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+            XCTAssertEqual(
+                Set(object.keys),
+                ["id", "displayNameKey", "symbol", "primaryGround", "activeGrounds", "isBuiltIn"],
+                "\(builtIn.id) persists only the legacy keys; a new field here means the count was unfrozen"
+            )
+            let decoded = try JSONDecoder().decode(GroundProfile.self, from: data)
+            XCTAssertEqual(decoded, builtIn, "\(builtIn.id) round-trips by value, not just by key set")
+        }
+        XCTAssertEqual(ProfileCatalog.currentSchemaVersion, 1, "the persisted schema version is unchanged")
+        XCTAssertEqual(ProfileCatalog.defaultsKey, "peeknook.profiles.v1", "the settings namespace is unchanged")
+    }
+
+    /// A built-in is immutable through the store: every editor mutator is a no-op on a built-in id, so
+    /// the two shipped profiles can never drift or enter the persisted catalog.
+    func testBuiltInIsImmutableThroughTheStore() {
+        let store = makeStore()
+        let id = GroundProfile.screenDefault.id
+        store.rename(id: id, to: "Renamed")
+        store.setInstruction(id: id, "Be brief.")
+        store.setModelBinding(id: id, ProfileModelBinding(backend: .ollama, tag: "x"))
+        store.setModuleOverride(id: id, module: .webLookup, enabled: true)
+        XCTAssertEqual(store.catalog.profiles, [], "no built-in mutation ever enters the catalog")
+        XCTAssertEqual(store.profile(id: id), .screenDefault, "the built-in is unchanged")
+    }
+
+    /// A tool profile's own ground survives an unrelated edit ONLY via the primary re-insertion in the
+    /// edit seam (`.tool` is deliberately absent from `multiGroundEligible`). Pins that load-bearing line.
+    func testToolProfileKeepsItsGroundThroughANonGroundsEdit() throws {
+        let store = makeStore()
+        let created = try XCTUnwrap(store.createToolProfile(name: "Solver"))
+        XCTAssertEqual(created.activeGrounds, [.tool])
+        store.setInstruction(id: created.id, "Explain the line.")   // a non-grounds edit
+        XCTAssertEqual(
+            ProfileStore(defaults: defaults).profile(id: created.id).activeGrounds, [.tool],
+            "the tool ground is re-inserted as primary and survives an unrelated edit + reload"
+        )
+    }
+
+    /// The new public edit choke point no-ops on an unknown id and on a built-in id, independent of any
+    /// one setter routing through it.
+    func testMutateIsNoOpOnUnknownAndBuiltInIDs() {
+        let store = makeStore()
+        store.mutate(id: "does.not.exist") { $0.displayName = "x" }
+        store.mutate(id: GroundProfile.screenDefault.id) { $0.instruction = "x" }
+        XCTAssertEqual(store.catalog.profiles, [], "neither an unknown nor a built-in id enters the catalog")
+        XCTAssertEqual(store.profile(id: GroundProfile.screenDefault.id), .screenDefault, "the built-in is unchanged")
     }
 
     func testMaxProfilesCapReturnsNil() {

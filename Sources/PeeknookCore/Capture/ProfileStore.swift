@@ -67,48 +67,35 @@ public final class ProfileStore {
         persist()
     }
 
+    /// THE edit choke point: mutate a user profile's editable fields through
+    /// ``GroundProfile/edited(_:)`` and persist. No-op for built-ins and unknown ids (built-ins never
+    /// enter the catalog, so `first(where:)` already excludes them, and `edited`/`update` refuse them
+    /// again as further nets). Every setter routes through here, so invariant re-application
+    /// (primary-ground re-insertion, eligibility sanitize) lives in exactly one place and no field can
+    /// be wiped by a caller forgetting to thread it through.
+    public func mutate(id: String, _ transform: (inout GroundProfile.Editable) -> Void) {
+        guard let existing = catalog.profiles.first(where: { $0.id == id }) else { return }
+        update(existing.edited(transform))
+    }
+
     public func rename(id: String, to name: String) {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty,
-              let existing = catalog.profiles.first(where: { $0.id == id }) else { return }
-        update(existing.with(
-            displayName: trimmed,
-            instruction: existing.instruction,
-            promptTemplate: existing.promptTemplate,
-            modelBinding: existing.modelBinding,
-            moduleOverrides: existing.moduleOverrides,
-            toolSpec: existing.toolSpec
-        ))
+        guard !trimmed.isEmpty else { return }
+        mutate(id: id) { $0.displayName = trimmed }
     }
 
     /// Stores the instruction capped at the limit (the read path fully sanitizes — see
     /// `ProfileInstruction.sanitized`); empty clears it.
     public func setInstruction(id: String, _ text: String) {
-        guard let existing = catalog.profiles.first(where: { $0.id == id }) else { return }
         let capped = text.isEmpty ? nil : String(text.prefix(ProfileInstruction.maxLength))
-        update(existing.with(
-            displayName: existing.displayName,
-            instruction: capped,
-            promptTemplate: existing.promptTemplate,
-            modelBinding: existing.modelBinding,
-            moduleOverrides: existing.moduleOverrides,
-            toolSpec: existing.toolSpec
-        ))
+        mutate(id: id) { $0.instruction = capped }
     }
 
     /// Stores the prompt template capped at the limit (the read path fully sanitizes — see
     /// `ProfileTemplate.sanitized`); empty clears it.
     public func setPromptTemplate(id: String, _ text: String) {
-        guard let existing = catalog.profiles.first(where: { $0.id == id }) else { return }
         let capped = text.isEmpty ? nil : String(text.prefix(ProfileTemplate.maxLength))
-        update(existing.with(
-            displayName: existing.displayName,
-            instruction: existing.instruction,
-            promptTemplate: capped,
-            modelBinding: existing.modelBinding,
-            moduleOverrides: existing.moduleOverrides,
-            toolSpec: existing.toolSpec
-        ))
+        mutate(id: id) { $0.promptTemplate = capped }
     }
 
     /// Stores a profile's tool spec, forcing the HTTP transport and clearing any `command`: a
@@ -117,7 +104,6 @@ public final class ProfileStore {
     /// whitespace url is allowed to persist (an in-progress edit) but normalizes to nil, leaving the
     /// spec ``ToolSpec/isUsable`` false so the profile degrades to no tool.
     public func setToolSpec(id: String, _ spec: ToolSpec) {
-        guard let existing = catalog.profiles.first(where: { $0.id == id }) else { return }
         let httpOnly = ToolSpec(
             transport: .http,
             url: spec.url,
@@ -128,14 +114,7 @@ public final class ProfileStore {
             outputLabel: spec.outputLabel,
             timeoutSeconds: spec.timeoutSeconds
         )
-        update(existing.with(
-            displayName: existing.displayName,
-            instruction: existing.instruction,
-            promptTemplate: existing.promptTemplate,
-            modelBinding: existing.modelBinding,
-            moduleOverrides: existing.moduleOverrides,
-            toolSpec: httpOnly
-        ))
+        mutate(id: id) { $0.toolSpec = httpOnly }
     }
 
     /// Creates a `.tool`-primary user profile under a fresh UUID id, seeded with a default HTTP
@@ -164,64 +143,28 @@ public final class ProfileStore {
 
     /// `nil` clears the binding (back to the global answer model).
     public func setModelBinding(id: String, _ binding: ProfileModelBinding?) {
-        guard let existing = catalog.profiles.first(where: { $0.id == id }) else { return }
-        update(existing.with(
-            displayName: existing.displayName,
-            instruction: existing.instruction,
-            promptTemplate: existing.promptTemplate,
-            modelBinding: binding,
-            moduleOverrides: existing.moduleOverrides,
-            toolSpec: existing.toolSpec
-        ))
+        mutate(id: id) { $0.modelBinding = binding }
     }
 
     /// `nil` clears the override (inherit global). Ineligible modules no-op (see ``ModuleOverrides``).
     public func setModuleOverride(id: String, module: ModuleID, enabled: Bool?) {
-        guard let existing = catalog.profiles.first(where: { $0.id == id }) else { return }
-        var overrides = existing.moduleOverrides
-        overrides.set(module, enabled)
-        update(existing.with(
-            displayName: existing.displayName,
-            instruction: existing.instruction,
-            promptTemplate: existing.promptTemplate,
-            modelBinding: existing.modelBinding,
-            moduleOverrides: overrides,
-            toolSpec: existing.toolSpec
-        ))
+        mutate(id: id) { $0.moduleOverrides.set(module, enabled) }
     }
 
     public func clearModuleOverrides(id: String) {
-        guard let existing = catalog.profiles.first(where: { $0.id == id }) else { return }
-        update(existing.with(
-            displayName: existing.displayName,
-            instruction: existing.instruction,
-            promptTemplate: existing.promptTemplate,
-            modelBinding: existing.modelBinding,
-            moduleOverrides: .none,
-            toolSpec: existing.toolSpec
-        ))
+        mutate(id: id) { $0.moduleOverrides = .none }
     }
 
     /// Sets a USER profile's active grounds, persisting immediately. No-op for built-ins and unknown
     /// ids (built-ins resolve through ``GroundProfile/all``, never this catalog, so `first(where:)`
-    /// already excludes them — `with`/`update` refuse them again as a second net). The passed set is
-    /// sanitized regardless of the caller: anything outside ``Ground/multiGroundEligible`` (camera,
-    /// file, voice input, agent) is dropped, and `primaryGround` is always kept so the profile can
-    /// still capture its lead ground. The fan-out at capture time applies the further `systemAudio`
-    /// opt-in gate (see ``CaptureCoordinator``), so storing `.systemAudio` here never arms the live tap.
+    /// already excludes them — `edited`/`update` refuse them again as a second net). The passed set is
+    /// sanitized by the edit seam (``GroundProfile/edited(_:)``) regardless of the caller: anything
+    /// outside ``Ground/multiGroundEligible`` (camera, file, voice input, agent) is dropped, and
+    /// `primaryGround` is always kept so the profile can still capture its lead ground. The fan-out at
+    /// capture time applies the further `systemAudio` opt-in gate (see ``CaptureCoordinator``), so
+    /// storing `.systemAudio` here never arms the live tap.
     public func setActiveGrounds(_ grounds: Set<Ground>, for id: String) {
-        guard let existing = catalog.profiles.first(where: { $0.id == id }) else { return }
-        var sanitized = grounds.intersection(Ground.multiGroundEligible)
-        sanitized.insert(existing.primaryGround)
-        update(existing.with(
-            displayName: existing.displayName,
-            instruction: existing.instruction,
-            promptTemplate: existing.promptTemplate,
-            modelBinding: existing.modelBinding,
-            moduleOverrides: existing.moduleOverrides,
-            toolSpec: existing.toolSpec,
-            activeGrounds: sanitized
-        ))
+        mutate(id: id) { $0.activeGrounds = grounds }
     }
 
     // MARK: - Import / export presets

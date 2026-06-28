@@ -105,14 +105,9 @@ final class ModuleOverrideGatingTests: XCTestCase {
         let store = ProfileStore(defaults: defaults)
         orchestrator.profileStore = store
         let copy = try XCTUnwrap(store.duplicate(.screenDefault, name: "Overridden"))
-        store.update(copy.with(
-            displayName: copy.displayName,
-            instruction: nil,
-            promptTemplate: nil,
-            modelBinding: nil,
-            moduleOverrides: ModuleOverrides([.suggestFollowUps: false, .speakAnswers: false]),
-            toolSpec: nil
-        ))
+        store.update(copy.edited {
+            $0.moduleOverrides = ModuleOverrides([.suggestFollowUps: false, .speakAnswers: false])
+        })
         orchestrator.settings.activeProfileID = copy.id
         orchestrator.settings.suggestFollowUps = true
 
@@ -154,14 +149,9 @@ final class ModuleOverrideGatingTests: XCTestCase {
         orchestrator.captureBlobStore = blobStore
 
         let copy = try XCTUnwrap(store.duplicate(.screenDefault, name: "No archive"))
-        store.update(copy.with(
-            displayName: copy.displayName,
-            instruction: nil,
-            promptTemplate: nil,
-            modelBinding: nil,
-            moduleOverrides: ModuleOverrides([.saveConversation: false]),
-            toolSpec: nil
-        ))
+        store.update(copy.edited {
+            $0.moduleOverrides = ModuleOverrides([.saveConversation: false])
+        })
         orchestrator.settings.activeProfileID = copy.id
 
         XCTAssertFalse(orchestrator.archiveWritesEnabled)

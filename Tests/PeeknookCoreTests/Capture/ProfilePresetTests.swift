@@ -114,6 +114,23 @@ final class ProfilePresetTests: XCTestCase {
         XCTAssertFalse(installed.first?.isBuiltIn ?? true)
     }
 
+    func testInstallableSanitizesIneligibleGroundsAtTheBoundary() {
+        // A hand-crafted/cross-version preset can name a known-but-non-foldable ground (.camera/.file) on
+        // a screen profile. The install boundary sanitizes it through the same invariant the edit seam
+        // uses, so such a ground can never enter the catalog — and a later edit is then a no-op on grounds.
+        let hostile = GroundProfile(
+            id: "h1", displayNameKey: "Screen", symbol: "macwindow",
+            primaryGround: .screen, activeGrounds: [.screen, .selectedText, .camera, .file, .voiceInput, .agent],
+            isBuiltIn: false, displayName: "Crafted"
+        )
+        let installed = ProfilePreset(profiles: [hostile]).installable(into: .empty)
+        XCTAssertEqual(installed.count, 1)
+        XCTAssertEqual(
+            installed.first?.activeGrounds, [.screen, .selectedText],
+            "non-foldable grounds drop at import; the primary and foldable supplements survive"
+        )
+    }
+
     func testInstallableRespectsCatalogCapacity() throws {
         let manyExisting = (0..<ProfileCatalog.maxProfiles).map { userProfile(id: "existing-\($0)") }
         let full = ProfileCatalog(profiles: manyExisting)

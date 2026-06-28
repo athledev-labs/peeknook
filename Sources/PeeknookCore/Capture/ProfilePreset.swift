@@ -102,6 +102,11 @@ public struct ProfilePreset: Codable, Equatable, Sendable {
     /// to expect`, but never an executable. Only an `http` (loopback) tool survives, and it is still
     /// re-validated through ``EndpointURLPolicy`` when the provider runs it. The recipient re-points a
     /// stripped tool at their own binary. See ``ToolSpec/shareableOrStripped``.
+    ///
+    /// `activeGrounds` is sanitized through the same ``GroundProfile/sanitizedActiveGrounds(_:primary:)``
+    /// the edit seam uses, so a hand-crafted preset can never seed a non-foldable ground (e.g. `.camera`
+    /// on a screen profile) into the catalog. With this boundary enforcing the invariant, every stored
+    /// profile already satisfies it, so a later edit is a pure no-op on grounds.
     public func installable(into catalog: ProfileCatalog) -> [GroundProfile] {
         let room = max(0, ProfileCatalog.maxProfiles - catalog.profiles.count)
         return profiles.prefix(room).map { source in
@@ -110,7 +115,7 @@ public struct ProfilePreset: Codable, Equatable, Sendable {
                 displayNameKey: source.displayNameKey,
                 symbol: source.symbol,
                 primaryGround: source.primaryGround,
-                activeGrounds: source.activeGrounds,
+                activeGrounds: GroundProfile.sanitizedActiveGrounds(source.activeGrounds, primary: source.primaryGround),
                 isBuiltIn: false,
                 displayName: source.displayName,
                 instruction: source.instruction,
