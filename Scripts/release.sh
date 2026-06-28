@@ -30,6 +30,13 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
+# Pre-flight: never cut a release that couples the default build to Noru (no shared App
+# Group, no Noru source/package linkage). See Scripts/check-release-guards.sh / CLAUDE.md
+# invariant 6. A first-party convenience build re-adds the App Group via a separate
+# entitlements variant gated behind PEEKNOOK_FIRST_PARTY_NORU, which the guard does not check.
+echo "==> Release guards (no Noru coupling)"
+"$ROOT/Scripts/check-release-guards.sh"
+
 BUILD_DIR="$ROOT/build"
 ARCHIVE_PATH="$BUILD_DIR/Peeknook.xcarchive"
 EXPORT_DIR="$BUILD_DIR/export"

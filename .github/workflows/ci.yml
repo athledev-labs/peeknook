@@ -34,3 +34,15 @@ jobs:
       - name: Swift test
         working-directory: peeknook
         run: swift test
+
+  # Fast, toolchain-free guard: the default release build must not couple to Noru
+  # (no shared App Group, no Noru source/package linkage). See Scripts/check-release-guards.sh
+  # and CLAUDE.md invariant 6. Runs on Linux so it fails fast and cheap, independent of the
+  # macOS test job.
+  release-guards:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Peeknook
+        uses: actions/checkout@v4
+      - name: No Noru coupling in the default release build
+        run: ./Scripts/check-release-guards.sh
