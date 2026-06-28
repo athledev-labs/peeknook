@@ -30,6 +30,13 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
+# Pre-flight: never cut a release that couples the default build to Noru (no shared App
+# Group, no Noru source/package linkage). See Scripts/check-release-guards.sh / CLAUDE.md
+# invariant 6. A first-party convenience build re-adds the App Group via a separate
+# entitlements variant gated behind PEEKNOOK_FIRST_PARTY_NORU, which the guard does not check.
+echo "==> Release guards (no Noru coupling)"
+"$ROOT/Scripts/check-release-guards.sh"
+
 BUILD_DIR="$ROOT/build"
 ARCHIVE_PATH="$BUILD_DIR/Peeknook.xcarchive"
 EXPORT_DIR="$BUILD_DIR/export"
@@ -66,6 +73,23 @@ error: PEEKNOOK_DEVELOPMENT_TEAM is required when notarization is enabled.
   export PEEKNOOK_DEVELOPMENT_TEAM="XXXXXXXXXX"
   export PEEKNOOK_NOTARY_KEYCHAIN_PROFILE="peeknook-notary"
   ./Scripts/release.sh
+EOF
+  exit 1
+fi
+
+# A distribution build (team set) with NO notary profile silently produces a SIGNED app inside an
+# UNSIGNED DMG wrapper, which Gatekeeper rejects on download ("Apple cannot check it"). That is how an
+# earlier release shipped a broken wrapper. Refuse it by default; an explicit override allows an
+# intentional signed-but-unnotarized LOCAL build.
+if [[ "$DISTRIBUTION_BUILD" == true && -z "$NOTARY_PROFILE" && "${PEEKNOOK_ALLOW_UNNOTARIZED:-}" != "1" ]]; then
+  cat >&2 <<'EOF'
+error: distribution build requested (PEEKNOOK_DEVELOPMENT_TEAM set) without notarization.
+This ships a signed app inside an UNSIGNED DMG that Gatekeeper rejects on download.
+
+  export PEEKNOOK_NOTARY_KEYCHAIN_PROFILE="peeknook-notary"   # then re-run ./Scripts/release.sh
+
+For an intentional signed-but-unnotarized LOCAL build only:
+  PEEKNOOK_ALLOW_UNNOTARIZED=1 ./Scripts/release.sh
 EOF
   exit 1
 fi
