@@ -27,11 +27,18 @@ public struct OpenAICompatibleInferenceEngine: InferenceEngine, Sendable {
         self.resolveAPIKey = resolveAPIKey
     }
 
+    /// The string-`baseURL` probe path (health / warm-up / served-models) through the same
+    /// ``EndpointURLPolicy`` gate the per-turn path uses via ``InferenceEndpoint/resolvedBaseURL()``.
+    /// These protocol methods carry a raw URL, not a built ``InferenceEndpoint``, so they gate here.
+    private func resolveBaseURL(_ string: String, acceptInsecureRemote: Bool) throws -> URL {
+        try EndpointURLPolicy.resolveOrThrow(string, acceptInsecureRemote: acceptInsecureRemote)
+    }
+
     // MARK: - Health
 
     public func health(baseURL: String, model: String, acceptInsecureRemote: Bool) async -> InferenceHealth {
         do {
-            let base = try EndpointURLPolicy.resolveOrThrow(baseURL, acceptInsecureRemote: acceptInsecureRemote)
+            let base = try resolveBaseURL(baseURL, acceptInsecureRemote: acceptInsecureRemote)
             let served = try await client.modelIDs(base: base, apiKey: resolveAPIKey(defaultKeyRef))
             guard !ModelTag.normalized(model).isEmpty else {
                 return .unavailable("Choose a model from the server's list in Settings.")
@@ -51,11 +58,7 @@ public struct OpenAICompatibleInferenceEngine: InferenceEngine, Sendable {
         AsyncThrowingStream { continuation in
             let task = Task {
                 do {
-                    let connection = request.endpoint.connection
-                    let base = try EndpointURLPolicy.resolveOrThrow(
-                        connection.baseURL,
-                        acceptInsecureRemote: connection.acceptInsecureRemote
-                    )
+                    let base = try request.endpoint.resolvedBaseURL(expecting: .openAICompatible)
                     try await streamChat(base: base, request: request, continuation: continuation)
                 } catch {
                     continuation.finish(throwing: error)
@@ -119,11 +122,7 @@ public struct OpenAICompatibleInferenceEngine: InferenceEngine, Sendable {
 
     public func generateFollowUps(request: InferenceRequest) async -> FollowUpGenerationResult {
         do {
-            let connection = request.endpoint.connection
-            let base = try EndpointURLPolicy.resolveOrThrow(
-                connection.baseURL,
-                acceptInsecureRemote: connection.acceptInsecureRemote
-            )
+            let base = try request.endpoint.resolvedBaseURL(expecting: .openAICompatible)
             var messages = Self.wireMessages(
                 from: request, systemPrompt: PromptBuilder.followUpSystemPrompt
             )
@@ -191,9 +190,7 @@ public struct OpenAICompatibleInferenceEngine: InferenceEngine, Sendable {
 
     @discardableResult
     public func warmUp(model: String, baseURL: String, acceptInsecureRemote: Bool) async -> Bool {
-        guard let base = try? EndpointURLPolicy.resolveOrThrow(
-            baseURL, acceptInsecureRemote: acceptInsecureRemote
-        ) else { return false }
+        guard let base = try? resolveBaseURL(baseURL, acceptInsecureRemote: acceptInsecureRemote) else { return false }
         do {
             _ = try await client.chatData(
                 base: base,
@@ -215,9 +212,7 @@ public struct OpenAICompatibleInferenceEngine: InferenceEngine, Sendable {
     /// Model ids the server lists on `/v1/models`; empty on any failure — the Settings picker
     /// shows its "no models found" hint instead of an error.
     public func listServedModels(baseURL: String, acceptInsecureRemote: Bool) async -> [String] {
-        guard let base = try? EndpointURLPolicy.resolveOrThrow(
-            baseURL, acceptInsecureRemote: acceptInsecureRemote
-        ) else { return [] }
+        guard let base = try? resolveBaseURL(baseURL, acceptInsecureRemote: acceptInsecureRemote) else { return [] }
         return (try? await client.modelIDs(base: base, apiKey: resolveAPIKey(defaultKeyRef))) ?? []
     }
 

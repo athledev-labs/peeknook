@@ -24,6 +24,33 @@ public extension InferenceEndpoint {
         }
     }
 
+    /// THE single point where an inference endpoint becomes a usable URL: its base URL run through
+    /// ``EndpointURLPolicy`` (the HTTPS / loopback gate). Every engine resolves its request URL through
+    /// this and nothing else, so no inference call — however the endpoint was constructed (global,
+    /// per-profile binding, or a future per-role binding) — can reach the network without passing the
+    /// gate. Constructing an ``InferenceEndpoint`` is cheap and non-throwing precisely because this is
+    /// where the cost (and the gate) lives; a new construction site is gated for free the moment it is
+    /// used. Throws ``InferenceError/insecureRemoteHTTP`` for a plain-HTTP non-loopback host without the
+    /// per-backend opt-in, or ``InferenceError/invalidBaseURL`` for an unusable URL.
+    func resolvedBaseURL() throws -> URL {
+        let (baseURL, acceptInsecureRemote) = connection
+        return try EndpointURLPolicy.resolveOrThrow(baseURL, acceptInsecureRemote: acceptInsecureRemote)
+    }
+
+    /// ``resolvedBaseURL()`` plus a backend mis-route guard, for an engine resolving the endpoint it was
+    /// handed: an engine only ever serves its own backend, so receiving another is a registry mis-route
+    /// (a programmer error). It traps in debug and, like any unusable endpoint, throws
+    /// ``InferenceError/invalidBaseURL`` in release rather than issuing a wrong-shaped request. Both
+    /// engines resolve their per-turn request URL through this one method, so the gate AND the mis-route
+    /// assertion live in a single place and the two engines stay symmetric.
+    func resolvedBaseURL(expecting backend: InferenceBackend) throws -> URL {
+        guard self.backend == backend else {
+            assertionFailure("\(backend) engine received a \(self.backend) endpoint")
+            throw InferenceError.invalidBaseURL
+        }
+        return try resolvedBaseURL()
+    }
+
     var backend: InferenceBackend {
         switch self {
         case .ollama: .ollama

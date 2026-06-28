@@ -45,7 +45,7 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
         AsyncThrowingStream { continuation in
             let task = Task {
                 do {
-                    let base = try resolveEndpoint(request.endpoint)
+                    let base = try request.endpoint.resolvedBaseURL(expecting: .ollama)
                     try await ensureModel(baseURL: base, model: request.model)
                     try await streamChat(
                         baseURL: base,
@@ -64,18 +64,6 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
 
     private func resolveBaseURL(_ string: String, acceptInsecureRemote: Bool) throws -> URL {
         try EndpointURLPolicy.resolveOrThrow(string, acceptInsecureRemote: acceptInsecureRemote)
-    }
-
-    private func resolveEndpoint(_ endpoint: InferenceEndpoint) throws -> URL {
-        switch endpoint {
-        case .ollama(let baseURL, let acceptInsecureRemote):
-            return try resolveBaseURL(baseURL, acceptInsecureRemote: acceptInsecureRemote)
-        case .openAICompatible:
-            // Defense-in-depth: the backend registry routes OpenAI-compatible endpoints to their
-            // own engine, so reaching this arm means a mis-route — fail loud, not "Invalid URL".
-            assertionFailure("OllamaInferenceEngine received an OpenAI-compatible endpoint")
-            throw InferenceError.invalidBaseURL
-        }
     }
 
     private func fetchVersion(baseURL: URL) async throws {
@@ -177,7 +165,7 @@ public struct OllamaInferenceEngine: InferenceEngine, Sendable {
 
     public func generateFollowUps(request: InferenceRequest) async -> FollowUpGenerationResult {
         do {
-            let base = try resolveEndpoint(request.endpoint)
+            let base = try request.endpoint.resolvedBaseURL(expecting: .ollama)
 
             // Replay the same conversation (with its images), then ask for suggestions,
             // constrained to the JSON schema.
