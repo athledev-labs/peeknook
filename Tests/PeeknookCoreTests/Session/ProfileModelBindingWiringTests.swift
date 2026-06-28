@@ -68,14 +68,9 @@ final class ProfileModelBindingWiringTests: XCTestCase {
         let store = ProfileStore(defaults: defaults)
         orchestrator.profileStore = store
         let copy = try XCTUnwrap(store.duplicate(.screenDefault, name: "Bound"))
-        store.update(copy.with(
-            displayName: copy.displayName,
-            instruction: nil,
-            promptTemplate: nil,
-            modelBinding: ProfileModelBinding(backend: .openAICompatible, tag: "qwen2-vl"),
-            moduleOverrides: .none,
-            toolSpec: nil
-        ))
+        store.update(copy.edited {
+            $0.modelBinding = ProfileModelBinding(backend: .openAICompatible, tag: "qwen2-vl")
+        })
         orchestrator.settings.activeProfileID = copy.id
 
         XCTAssertEqual(orchestrator.activeAnswerModel.tag, "qwen2-vl")
@@ -101,14 +96,9 @@ final class ProfileModelBindingWiringTests: XCTestCase {
         let usage = UsageStore(defaults: defaults)
         orchestrator.usage = usage
         let copy = try XCTUnwrap(store.duplicate(.screenDefault, name: "Bound"))
-        store.update(copy.with(
-            displayName: copy.displayName,
-            instruction: nil,
-            promptTemplate: nil,
-            modelBinding: ProfileModelBinding(backend: .ollama, tag: "llava:13b"),
-            moduleOverrides: .none,
-            toolSpec: nil
-        ))
+        store.update(copy.edited {
+            $0.modelBinding = ProfileModelBinding(backend: .ollama, tag: "llava:13b")
+        })
         orchestrator.settings.activeProfileID = copy.id
 
         orchestrator.beginCapture()

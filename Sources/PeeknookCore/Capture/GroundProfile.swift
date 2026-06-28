@@ -188,45 +188,95 @@ public extension GroundProfile {
             ?? .screenDefault
     }
 
-    /// Copy with edited user-profile fields (identity and `isBuiltIn` are never editable). For
-    /// ``ProfileStore`` and the profile editor. Every editable field is explicit so a caller can never
-    /// silently drop one (e.g. wipe `promptTemplate` by forgetting it).
-    ///
-    /// `activeGrounds` defaults to `nil` ("keep what's there") so the existing edit paths stay
-    /// unchanged. It is honored only for USER profiles — a built-in's grounds are part of its identity
-    /// and never change (a built-in always keeps its own `activeGrounds`). When honored, `primaryGround`
-    /// is re-inserted so a profile can never lose the ground its captures lead with; the broader
-    /// eligibility sanitize lives in ``ProfileStore/setActiveGrounds(_:for:)``.
-    func with(
-        displayName: String?,
-        instruction: String?,
-        promptTemplate: String?,
-        modelBinding: ProfileModelBinding?,
-        moduleOverrides: ModuleOverrides,
-        toolSpec: ToolSpec?,
-        activeGrounds: Set<Ground>? = nil
-    ) -> GroundProfile {
-        let resolvedGrounds: Set<Ground>
-        if let activeGrounds, !isBuiltIn {
-            var grounds = activeGrounds
-            grounds.insert(primaryGround)   // the primary ground is always active
-            resolvedGrounds = grounds
-        } else {
-            resolvedGrounds = self.activeGrounds   // built-ins (and no-op edits) keep their grounds
+    /// The editable surface of a profile: every field a user (or the future profile editor) can
+    /// change, and nothing else. The identity fields (`id`, `isBuiltIn`, `displayNameKey`, `symbol`,
+    /// `primaryGround`) are deliberately absent — they define the profile and never change through an
+    /// edit. Mutate one via ``GroundProfile/edited(_:)``, which re-applies the profile invariants in a
+    /// single place afterward, so a caller can never silently wipe a field by omission (the footgun the
+    /// old explicit-every-field `with(...)` factory invited: forget `promptTemplate`, lose it).
+    struct Editable: Equatable, Sendable {
+        public var displayName: String?
+        public var instruction: String?
+        public var promptTemplate: String?
+        public var modelBinding: ProfileModelBinding?
+        public var moduleOverrides: ModuleOverrides
+        public var toolSpec: ToolSpec?
+        /// The foldable capture grounds. Set this freely — ``GroundProfile/edited(_:)`` sanitizes the
+        /// result to ``Ground/multiGroundEligible`` and re-inserts the always-present `primaryGround`,
+        /// so a profile can never lose its lead ground nor carry a non-foldable one.
+        public var activeGrounds: Set<Ground>
+
+        public init(
+            displayName: String?,
+            instruction: String?,
+            promptTemplate: String?,
+            modelBinding: ProfileModelBinding?,
+            moduleOverrides: ModuleOverrides,
+            toolSpec: ToolSpec?,
+            activeGrounds: Set<Ground>
+        ) {
+            self.displayName = displayName
+            self.instruction = instruction
+            self.promptTemplate = promptTemplate
+            self.modelBinding = modelBinding
+            self.moduleOverrides = moduleOverrides
+            self.toolSpec = toolSpec
+            self.activeGrounds = activeGrounds
         }
-        return GroundProfile(
-            id: id,
-            displayNameKey: displayNameKey,
-            symbol: symbol,
-            primaryGround: primaryGround,
-            activeGrounds: resolvedGrounds,
-            isBuiltIn: isBuiltIn,
+    }
+
+    /// This profile's current editable state, seeded for an ``edited(_:)`` pass.
+    var editable: Editable {
+        Editable(
             displayName: displayName,
             instruction: instruction,
             promptTemplate: promptTemplate,
             modelBinding: modelBinding,
             moduleOverrides: moduleOverrides,
-            toolSpec: toolSpec
+            toolSpec: toolSpec,
+            activeGrounds: activeGrounds
+        )
+    }
+
+    /// The active-grounds invariant in ONE definition, shared by the edit seam (``edited(_:)``) and the
+    /// import boundary (``ProfilePreset/installable(into:)``): grounds reduced to the foldable
+    /// ``Ground/multiGroundEligible`` set with `primary` always re-inserted, so a stored profile can
+    /// never lose its lead ground nor carry a non-foldable one. A single definition keeps the two write
+    /// boundaries from ever drifting apart, and makes the seam's sanitize a provable no-op on data that
+    /// already passed the import boundary.
+    static func sanitizedActiveGrounds(_ grounds: Set<Ground>, primary: Ground) -> Set<Ground> {
+        var sanitized = grounds.intersection(Ground.multiGroundEligible)
+        sanitized.insert(primary)   // the primary ground is always active
+        return sanitized
+    }
+
+    /// The single profile-edit seam: returns a copy with the editable fields changed by `mutate`, then
+    /// re-applies the profile invariants in ONE place — the only reason this exists.
+    ///
+    /// - A **built-in is immutable**: it returns `self` unchanged. Its fields are part of its identity,
+    ///   and ``ProfileStore`` never persists a built-in anyway, so an edit must be a no-op.
+    /// - Otherwise `activeGrounds` is sanitized through ``sanitizedActiveGrounds(_:primary:)``, so the
+    ///   result can never lose its lead ground nor keep a non-foldable one.
+    ///
+    /// This replaces the explicit-every-field `with(...)` factory: a caller mutates only what it means
+    /// to, and no field can be silently dropped by forgetting to thread it through.
+    func edited(_ mutate: (inout Editable) -> Void) -> GroundProfile {
+        guard !isBuiltIn else { return self }
+        var draft = editable
+        mutate(&draft)
+        return GroundProfile(
+            id: id,
+            displayNameKey: displayNameKey,
+            symbol: symbol,
+            primaryGround: primaryGround,
+            activeGrounds: Self.sanitizedActiveGrounds(draft.activeGrounds, primary: primaryGround),
+            isBuiltIn: isBuiltIn,
+            displayName: draft.displayName,
+            instruction: draft.instruction,
+            promptTemplate: draft.promptTemplate,
+            modelBinding: draft.modelBinding,
+            moduleOverrides: draft.moduleOverrides,
+            toolSpec: draft.toolSpec
         )
     }
 }

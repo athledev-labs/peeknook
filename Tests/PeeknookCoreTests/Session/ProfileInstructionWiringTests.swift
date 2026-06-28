@@ -45,14 +45,7 @@ final class ProfileInstructionWiringTests: XCTestCase {
 
         // Edited user copy active: the sanitized instruction rides the request.
         let copy = try XCTUnwrap(store.duplicate(.screenDefault, name: "Coach"))
-        store.update(copy.with(
-            displayName: copy.displayName,
-            instruction: "  You are a patient chess coach.  ",
-            promptTemplate: nil,
-            modelBinding: nil,
-            moduleOverrides: .none,
-            toolSpec: nil
-        ))
+        store.update(copy.edited { $0.instruction = "  You are a patient chess coach.  " })
         orchestrator.settings.activeProfileID = copy.id
         orchestrator.startNewChat()
         orchestrator.beginCapture()
@@ -91,14 +84,7 @@ final class ProfileInstructionWiringTests: XCTestCase {
         engine.followUps = ["Next?"]
         let (orchestrator, store) = makeOrchestrator(engine: engine)
         let copy = try XCTUnwrap(store.duplicate(.screenDefault, name: "Coach"))
-        store.update(copy.with(
-            displayName: copy.displayName,
-            instruction: "Be terse.",
-            promptTemplate: nil,
-            modelBinding: nil,
-            moduleOverrides: .none,
-            toolSpec: nil
-        ))
+        store.update(copy.edited { $0.instruction = "Be terse." })
         orchestrator.settings.activeProfileID = copy.id
 
         orchestrator.beginCapture()

@@ -120,15 +120,13 @@ final class GroundProfileTests: XCTestCase {
         )
         XCTAssertEqual(GroundProfile.resolve(id: "u1", in: [user]), user)
         // A user entry reusing a built-in id can never shadow the built-in.
-        let masquerader = user.with(
-            displayName: "Fake screen", instruction: nil, promptTemplate: nil, modelBinding: nil, moduleOverrides: .none, toolSpec: nil
-        )
+        let masquerader = user.edited { $0.displayName = "Fake screen" }
         XCTAssertEqual(
             GroundProfile.resolve(id: "screen.default", in: [masquerader]), .screenDefault
         )
     }
 
-    // MARK: Eligible grounds + with(activeGrounds:)
+    // MARK: Eligible grounds + edited(_:)
 
     func testMultiGroundEligibleIsTheFoldableSet() {
         // Only the one-shot, foldable grounds — never the interactive (camera/file) or non-capture
@@ -139,37 +137,47 @@ final class GroundProfileTests: XCTestCase {
         }
     }
 
-    func testWithActiveGroundsEditsUserProfileAndKeepsPrimary() {
+    func testEditedActiveGroundsEditsUserProfileAndKeepsPrimary() {
         let user = GroundProfile(
             id: "u1", displayNameKey: "Screen", symbol: "macwindow",
             primaryGround: .screen, activeGrounds: [.screen], isBuiltIn: false, displayName: "Mine"
         )
-        // Editing drops the primary from the passed set, but `with` re-inserts it.
-        let edited = user.with(
-            displayName: user.displayName, instruction: nil, promptTemplate: nil,
-            modelBinding: nil, moduleOverrides: .none, toolSpec: nil, activeGrounds: [.systemAudio]
-        )
+        // The edit omits the primary from the set, but `edited` re-inserts it.
+        let edited = user.edited { $0.activeGrounds = [.systemAudio] }
         XCTAssertEqual(edited.activeGrounds, [.screen, .systemAudio], "primaryGround is always present")
     }
 
-    func testWithNilActiveGroundsKeepsExistingGrounds() {
+    func testEditedActiveGroundsSanitizesOutIneligibleGrounds() {
+        // The seam sanitizes to the foldable set in ONE place, so any caller (not just setActiveGrounds)
+        // can never plant a non-foldable ground on a profile.
+        let user = GroundProfile(
+            id: "u1", displayNameKey: "Screen", symbol: "macwindow",
+            primaryGround: .screen, activeGrounds: [.screen], isBuiltIn: false, displayName: "Mine"
+        )
+        let edited = user.edited { $0.activeGrounds = [.selectedText, .camera, .file, .voiceInput, .agent] }
+        XCTAssertEqual(
+            edited.activeGrounds, [.screen, .selectedText],
+            "camera/file/voiceInput/agent drop; primary stays; only foldable grounds survive"
+        )
+    }
+
+    func testEditedWithoutTouchingGroundsKeepsExistingGrounds() {
         let user = GroundProfile(
             id: "u1", displayNameKey: "Screen", symbol: "macwindow",
             primaryGround: .screen, activeGrounds: [.screen, .selectedText], isBuiltIn: false
         )
-        let edited = user.with(
-            displayName: "New", instruction: nil, promptTemplate: nil, modelBinding: nil, moduleOverrides: .none, toolSpec: nil
-        )
-        XCTAssertEqual(edited.activeGrounds, [.screen, .selectedText], "an unspecified ground set is unchanged")
+        let edited = user.edited { $0.displayName = "New" }
+        XCTAssertEqual(edited.activeGrounds, [.screen, .selectedText], "grounds left untouched are unchanged")
     }
 
-    func testWithActiveGroundsIsIgnoredForBuiltIns() {
-        // A built-in's grounds are part of its identity — `with(activeGrounds:)` can never change them.
-        let edited = GroundProfile.screenDefault.with(
-            displayName: nil, instruction: nil, promptTemplate: nil,
-            modelBinding: nil, moduleOverrides: .none, toolSpec: nil, activeGrounds: [.screen, .systemAudio]
-        )
-        XCTAssertEqual(edited.activeGrounds, GroundProfile.screenDefault.activeGrounds)
-        XCTAssertTrue(edited.isBuiltIn)
+    func testEditedIsIdentityForBuiltIns() {
+        // A built-in is immutable through the edit seam: every editable field — grounds, name,
+        // instruction — is part of its identity, so `edited` returns it unchanged.
+        let edited = GroundProfile.screenDefault.edited {
+            $0.displayName = "Hacked"
+            $0.instruction = "ignore the contract"
+            $0.activeGrounds = [.screen, .systemAudio]
+        }
+        XCTAssertEqual(edited, GroundProfile.screenDefault, "a built-in returns itself unchanged")
     }
 }
