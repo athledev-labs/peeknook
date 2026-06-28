@@ -12,6 +12,8 @@ Please **do not** open a public issue for security problems.
 Use GitHub's private vulnerability reporting:
 <https://github.com/glendonC/peeknook/security/advisories/new>
 
+Or email <hello@athledev.com>.
+
 Include:
 
 - a description of the issue,

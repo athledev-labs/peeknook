@@ -2,7 +2,7 @@
 
 Last updated: 2026-06-11
 
-Peeknook is a **free** macOS app published by Glendon Chin. Source code is [Apache 2.0](https://github.com/glendonC/peeknook/blob/main/LICENSE). By downloading or using the signed app, you agree to these Terms.
+Peeknook is a **free** macOS app published by Athledev. Source code is [Apache 2.0](https://github.com/glendonC/peeknook/blob/main/LICENSE). By downloading or using the signed app, you agree to these Terms.
 
 ## The software
 
@@ -31,3 +31,5 @@ We may update these Terms. The date above changes when we do.
 ## Contact
 
 [GitHub Issues](https://github.com/glendonC/peeknook/issues): bugs and questions.
+
+Email: <hello@athledev.com>

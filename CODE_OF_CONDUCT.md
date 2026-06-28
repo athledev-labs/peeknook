@@ -8,8 +8,9 @@ focus on what is best for the community. Harassment and personal attacks are not
 ## Reporting
 
 Report unacceptable behavior to the project maintainer
-([@glendonC](https://github.com/glendonC)) via a private GitHub message or a
-[private security advisory][advisory]. All reports will be handled with discretion.
+([@glendonC](https://github.com/glendonC)) via a private GitHub message, by email to
+<hello@athledev.com>, or a [private security advisory][advisory]. All reports will be handled with
+discretion.
 
 [advisory]: https://github.com/glendonC/peeknook/security/advisories/new
 
