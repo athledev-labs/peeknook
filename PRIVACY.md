@@ -124,6 +124,8 @@ You control the following opt-in or configuration-dependent features:
 
 [GitHub Issues](https://github.com/glendonC/peeknook/issues): privacy questions and bug reports.
 
+Email: <hello@athledev.com>
+
 ## Changes
 
 We may update this policy as features change. The in-app About section links to this document.
