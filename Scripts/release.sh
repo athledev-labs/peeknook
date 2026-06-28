@@ -77,6 +77,23 @@ EOF
   exit 1
 fi
 
+# A distribution build (team set) with NO notary profile silently produces a SIGNED app inside an
+# UNSIGNED DMG wrapper, which Gatekeeper rejects on download ("Apple cannot check it"). That is how an
+# earlier release shipped a broken wrapper. Refuse it by default; an explicit override allows an
+# intentional signed-but-unnotarized LOCAL build.
+if [[ "$DISTRIBUTION_BUILD" == true && -z "$NOTARY_PROFILE" && "${PEEKNOOK_ALLOW_UNNOTARIZED:-}" != "1" ]]; then
+  cat >&2 <<'EOF'
+error: distribution build requested (PEEKNOOK_DEVELOPMENT_TEAM set) without notarization.
+This ships a signed app inside an UNSIGNED DMG that Gatekeeper rejects on download.
+
+  export PEEKNOOK_NOTARY_KEYCHAIN_PROFILE="peeknook-notary"   # then re-run ./Scripts/release.sh
+
+For an intentional signed-but-unnotarized LOCAL build only:
+  PEEKNOOK_ALLOW_UNNOTARIZED=1 ./Scripts/release.sh
+EOF
+  exit 1
+fi
+
 if [[ "$DISTRIBUTION_BUILD" == true ]]; then
   if ! security find-identity -v -p codesigning 2>/dev/null | grep -q 'Developer ID Application'; then
     cat >&2 <<'EOF'
