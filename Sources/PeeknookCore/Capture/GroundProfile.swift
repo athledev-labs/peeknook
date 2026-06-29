@@ -39,6 +39,10 @@ public struct GroundProfile: Equatable, Sendable, Identifiable {
     /// runner). Meaningful only for a `.tool`-primary profile; nil = no tool. Sanitized + tolerant on
     /// decode (see ``ToolSpec``). Schema only in slice 1 — no provider runs it yet.
     public let toolSpec: ToolSpec?
+    /// Optional per-profile output shaping (today: translation languages). Nil = no shaping (requests
+    /// stay byte-identical to before). Tolerant + sanitized on decode (see ``ProfileOutputConfig``).
+    /// This is DATA, never a behavior name — the first field added through the M1 edit seam.
+    public let outputConfig: ProfileOutputConfig?
 
     public init(
         id: String,
@@ -52,7 +56,8 @@ public struct GroundProfile: Equatable, Sendable, Identifiable {
         promptTemplate: String? = nil,
         modelBinding: ProfileModelBinding? = nil,
         moduleOverrides: ModuleOverrides = .none,
-        toolSpec: ToolSpec? = nil
+        toolSpec: ToolSpec? = nil,
+        outputConfig: ProfileOutputConfig? = nil
     ) {
         self.id = id
         self.displayNameKey = displayNameKey
@@ -66,6 +71,7 @@ public struct GroundProfile: Equatable, Sendable, Identifiable {
         self.modelBinding = modelBinding
         self.moduleOverrides = moduleOverrides
         self.toolSpec = toolSpec
+        self.outputConfig = outputConfig
     }
 
     /// Union of the required permissions of every active ground. Supplementary grounds (AX via
@@ -90,6 +96,7 @@ extension GroundProfile: Codable {
     private enum CodingKeys: String, CodingKey {
         case id, displayNameKey, symbol, primaryGround, activeGrounds, isBuiltIn
         case displayName, instruction, promptTemplate, modelBinding, moduleOverrides, toolSpec
+        case outputConfig
     }
 
     public init(from decoder: Decoder) throws {
@@ -118,6 +125,10 @@ extension GroundProfile: Codable {
         modelBinding = ((try? container.decodeIfPresent(ProfileModelBinding.self, forKey: .modelBinding)) ?? nil)
         moduleOverrides = ((try? container.decodeIfPresent(ModuleOverrides.self, forKey: .moduleOverrides)) ?? nil) ?? .none
         toolSpec = ((try? container.decodeIfPresent(ToolSpec.self, forKey: .toolSpec)) ?? nil)
+        // An emptied/all-nil config never lingers: normalize it to nil so a stale `outputConfig: {}`
+        // (or a blob whose only language field was malformed) carries no phantom config forward.
+        let decodedOutputConfig = ((try? container.decodeIfPresent(ProfileOutputConfig.self, forKey: .outputConfig)) ?? nil)
+        outputConfig = (decodedOutputConfig?.isEmpty == true) ? nil : decodedOutputConfig
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -137,6 +148,9 @@ extension GroundProfile: Codable {
             try container.encode(moduleOverrides, forKey: .moduleOverrides)
         }
         try container.encodeIfPresent(toolSpec, forKey: .toolSpec)
+        // Conditional like the rest: a built-in (no output config) still encodes exactly the six legacy
+        // keys, so the M1 freeze canary stays green; only a profile that set languages carries this key.
+        try container.encodeIfPresent(outputConfig, forKey: .outputConfig)
     }
 }
 
@@ -201,6 +215,8 @@ public extension GroundProfile {
         public var modelBinding: ProfileModelBinding?
         public var moduleOverrides: ModuleOverrides
         public var toolSpec: ToolSpec?
+        /// Per-profile output shaping (translation languages today). Nil = none.
+        public var outputConfig: ProfileOutputConfig?
         /// The foldable capture grounds. Set this freely — ``GroundProfile/edited(_:)`` sanitizes the
         /// result to ``Ground/multiGroundEligible`` and re-inserts the always-present `primaryGround`,
         /// so a profile can never lose its lead ground nor carry a non-foldable one.
@@ -213,6 +229,7 @@ public extension GroundProfile {
             modelBinding: ProfileModelBinding?,
             moduleOverrides: ModuleOverrides,
             toolSpec: ToolSpec?,
+            outputConfig: ProfileOutputConfig?,
             activeGrounds: Set<Ground>
         ) {
             self.displayName = displayName
@@ -221,6 +238,7 @@ public extension GroundProfile {
             self.modelBinding = modelBinding
             self.moduleOverrides = moduleOverrides
             self.toolSpec = toolSpec
+            self.outputConfig = outputConfig
             self.activeGrounds = activeGrounds
         }
     }
@@ -234,6 +252,7 @@ public extension GroundProfile {
             modelBinding: modelBinding,
             moduleOverrides: moduleOverrides,
             toolSpec: toolSpec,
+            outputConfig: outputConfig,
             activeGrounds: activeGrounds
         )
     }
@@ -276,7 +295,8 @@ public extension GroundProfile {
             promptTemplate: draft.promptTemplate,
             modelBinding: draft.modelBinding,
             moduleOverrides: draft.moduleOverrides,
-            toolSpec: draft.toolSpec
+            toolSpec: draft.toolSpec,
+            outputConfig: draft.outputConfig.flatMap { $0.isEmpty ? nil : $0.sanitized }
         )
     }
 }

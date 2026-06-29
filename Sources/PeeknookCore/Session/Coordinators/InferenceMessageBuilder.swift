@@ -93,6 +93,7 @@ struct InferenceMessageBuilder {
     func inferenceMessages(
         from conversation: [ChatTurn],
         webLookup: WebLookupSnapshot? = nil,
+        translation: TranslationDirective? = nil,
         policy: InferenceReplayPolicy = .inference,
         imageBase64ByTurnID: [Int: String] = [:],
         redaction: RedactionContext? = nil
@@ -117,7 +118,11 @@ struct InferenceMessageBuilder {
                 guard firstLegIDs.contains(turn.id) else { continue } // folded composite leg, already emitted
                 let unitIndex = unitIndexByID[turn.id] ?? 0
                 let assembly = promptAssembly(continuingSession: unitIndex > 0)
-                let lookup = lastUnitIDs.contains(turn.id) ? webLookup : nil
+                let isLastUnit = lastUnitIDs.contains(turn.id)
+                let lookup = isLastUnit ? webLookup : nil
+                // Translate is a directive for the CURRENT capture only: it rides the last image unit's
+                // message, never a replayed prior screenshot, so resuming a thread re-translates nothing.
+                let turnTranslation = isLastUnit ? translation : nil
                 let unit = units[unitIndex].sorted { $0.id < $1.id }
 
                 if unit.count > 1 {
@@ -137,7 +142,8 @@ struct InferenceMessageBuilder {
                     messages.append(InferenceMessage(
                         role: .user,
                         text: PromptBuilder.multiGroundUserMessage(
-                            payloads: payloads, assembly: assembly, webLookup: lookup, redaction: redaction
+                            payloads: payloads, assembly: assembly, webLookup: lookup,
+                            translation: turnTranslation, redaction: redaction
                         ),
                         imagesBase64: payloads.compactMap(\.imageBase64)
                     ))
@@ -150,6 +156,7 @@ struct InferenceMessageBuilder {
                             assembly: assembly,
                             webLookup: lookup,
                             question: turn.question,   // a live-promoted frame folds its note into this message
+                            translation: turnTranslation,
                             redaction: redaction
                         ),
                         imageBase64: includeImage ? (imageBase64ByTurnID[turn.id] ?? capture.screenshotBase64) : nil

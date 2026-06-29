@@ -52,7 +52,8 @@ public final class ProfileStore {
             promptTemplate: source.promptTemplate,
             modelBinding: source.modelBinding,
             moduleOverrides: source.moduleOverrides,
-            toolSpec: source.toolSpec
+            toolSpec: source.toolSpec,
+            outputConfig: source.outputConfig
         )
         catalog.profiles.append(copy)
         persist()
@@ -153,6 +154,14 @@ public final class ProfileStore {
 
     public func clearModuleOverrides(id: String) {
         mutate(id: id) { $0.moduleOverrides = .none }
+    }
+
+    /// Stores the profile's output config (translation languages). The edit seam normalizes an
+    /// all-empty config to nil, so clearing both languages persists no config at all — the field never
+    /// lingers as an empty blob. Sanitization (trim + cap + empty->nil) runs here and again on decode.
+    public func setOutputConfig(id: String, _ config: ProfileOutputConfig) {
+        let sanitized = config.sanitized
+        mutate(id: id) { $0.outputConfig = sanitized.isEmpty ? nil : sanitized }
     }
 
     /// Sets a USER profile's active grounds, persisting immediately. No-op for built-ins and unknown

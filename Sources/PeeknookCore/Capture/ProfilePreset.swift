@@ -122,7 +122,8 @@ public struct ProfilePreset: Codable, Equatable, Sendable {
                 promptTemplate: source.promptTemplate,
                 modelBinding: source.modelBinding,
                 moduleOverrides: source.moduleOverrides,
-                toolSpec: source.toolSpec?.shareableOrStripped
+                toolSpec: source.toolSpec?.shareableOrStripped,
+                outputConfig: source.outputConfig
             )
         }
     }
