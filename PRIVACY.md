@@ -122,7 +122,7 @@ You control the following opt-in or configuration-dependent features:
 
 ## Contact
 
-[GitHub Issues](https://github.com/glendonC/peeknook/issues): privacy questions and bug reports.
+[GitHub Issues](https://github.com/athledev-labs/peeknook/issues): privacy questions and bug reports.
 
 Email: <hello@athledev.com>
 

@@ -10,7 +10,7 @@ patched.
 Please **do not** open a public issue for security problems.
 
 Use GitHub's private vulnerability reporting:
-<https://github.com/glendonC/peeknook/security/advisories/new>
+<https://github.com/athledev-labs/peeknook/security/advisories/new>
 
 Or email <hello@athledev.com>.
 

@@ -17,7 +17,7 @@ Free and fully open-source under **[Apache-2.0](LICENSE)**. Built on
 [OpenNook](https://github.com/athledev-labs/opennook).
 
 **→ Download for macOS: [peeknook.com](https://peeknook.com)** ·
-[GitHub Releases](https://github.com/glendonC/peeknook/releases/latest)
+[GitHub Releases](https://github.com/athledev-labs/peeknook/releases/latest)
 
 ---
 
@@ -34,7 +34,7 @@ Free and fully open-source under **[Apache-2.0](LICENSE)**. Built on
 
 ## Install
 
-Download the signed, notarized app from **[Releases](https://github.com/glendonC/peeknook/releases/latest)**
+Download the signed, notarized app from **[Releases](https://github.com/athledev-labs/peeknook/releases/latest)**
 or **[peeknook.com](https://peeknook.com)** — no Terminal required.
 
 **Requirements:** macOS 15+, plus a local model for inference (an [Ollama](https://ollama.com)
@@ -155,7 +155,7 @@ swift test
 ```
 
 Found a security issue? Report it through a
-[private advisory](https://github.com/glendonC/peeknook/security/advisories/new) — see
+[private advisory](https://github.com/athledev-labs/peeknook/security/advisories/new) — see
 [SECURITY.md](SECURITY.md). By participating you agree to the
 [Code of Conduct](CODE_OF_CONDUCT.md).
 

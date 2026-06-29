@@ -9,7 +9,7 @@ Quick answers for installing and using Peeknook on macOS.
 ### What do I need before Peeknook works?
 
 - **macOS 15** or later on an **Apple Silicon** Mac
-- **Peeknook.app** from [GitHub Releases](https://github.com/glendonC/peeknook/releases/latest)
+- **Peeknook.app** from [GitHub Releases](https://github.com/athledev-labs/peeknook/releases/latest)
 - **[Ollama.app](https://ollama.com/download)** running locally (not the Homebrew formula)
 - A **vision model** pull (Gemma 4 recommended; about **7-20 GB** depending on tag)
 - **Screen Recording** permission for **Peeknook** in System Settings
@@ -103,7 +103,7 @@ Rebind capture and brief in **Settings > Capture**.
 
 ### How do I verify my DMG?
 
-Compare the SHA-256 on [GitHub Releases](https://github.com/glendonC/peeknook/releases/latest) or in [Docs > Advanced](https://glendonc.github.io/peeknook/docs/#verify-checksum):
+Compare the SHA-256 on [GitHub Releases](https://github.com/athledev-labs/peeknook/releases/latest) or in [Docs > Advanced](https://glendonc.github.io/peeknook/docs/#verify-checksum):
 
 ```sh
 shasum -a 256 ~/Downloads/Peeknook*.dmg
@@ -115,13 +115,13 @@ Open **System Settings > Privacy & Security** and click **Open Anyway**, or righ
 
 ### How do I get updates?
 
-v1 has no in-app updater. Check [GitHub Releases](https://github.com/glendonC/peeknook/releases/latest) or the [Changelog](https://glendonc.github.io/peeknook/changelog/).
+v1 has no in-app updater. Check [GitHub Releases](https://github.com/athledev-labs/peeknook/releases/latest) or the [Changelog](https://glendonc.github.io/peeknook/changelog/).
 
 ---
 
 ## Report a bug
 
-Open a [GitHub Issue](https://github.com/glendonC/peeknook/issues). Include:
+Open a [GitHub Issue](https://github.com/athledev-labs/peeknook/issues). Include:
 
 - macOS version
 - Peeknook version (**Settings > About**)
