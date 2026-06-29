@@ -23,6 +23,17 @@ extension SessionOrchestrator {
         // switch/delete thread, purge, collapse/hide) still routes through the full `stopLiveSession()`.
         if settings.livePersistAcrossDone && isLiveArmed {
             liveCoordinator.cancelLiveWork()
+            // `cancelLiveWork()` cancelled the timer loop, which for a CAPPED session is ALSO the
+            // mandatory auto-disarm watcher. Restart it (deadline-gated) so a session left parked at the
+            // idle home still disarms on its own deadline — without this, the watcher stays dead until
+            // Resume or the next capture turn, so a walk-away with the nook open would keep the Live chip
+            // past the cap. Uncapped sessions stay byte-identical: with `expiresAt == nil` we don't
+            // restart, so a quiesced `.manual`/`.timer` session has no loop at idle, exactly as before.
+            // For a capped `.timer` session the restarted loop only WATCHES the deadline at idle —
+            // `refresh()`'s `.result` guard parks nothing while at the home screen.
+            if livePolicy?.expiresAt != nil {
+                liveCoordinator.ensureTimerLoopRunning()
+            }
         } else {
             stopLiveSession()
         }

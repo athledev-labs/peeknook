@@ -347,6 +347,31 @@ final class LivePersistAcrossDoneTests: XCTestCase {
         XCTAssertFalse(parkedAfter, "the timer is cancelled on disarm")
     }
 
+    /// The walk-away case: a CAPPED session quiesced across Done must auto-disarm at its deadline EVEN IF
+    /// the user never resumes (nook left open at the idle home). Before the fix the quiesce cancelled the
+    /// only deadline watcher, so the cap went unenforced until Resume / the next capture; now `finishChat`
+    /// restarts the watcher when a cap is set. Built deterministically: arm, set an already-elapsed
+    /// deadline, then Done — the restarted watcher's first decide() returns .expire with no resume.
+    func testCappedPersistedSessionAutoDisarmsAtIdleWithoutResume() async {
+        let o = await armedManual(persist: true)
+        o.livePolicy?.expiresAt = Date().addingTimeInterval(-1)   // the cap has already elapsed
+        o.finishChat()                                            // quiesce at idle; the watcher restarts (cap set)
+        let disarmed = await o.waitUntil(timeout: 2) { !o.isLiveArmed }
+        XCTAssertTrue(disarmed, "a capped session parked at idle auto-disarms with NO resume — the watcher stays alive")
+        XCTAssertEqual(o.lastNotice, .liveEnded)
+        if case .idle = o.phase {} else { XCTFail("stays idle after auto-disarm, got \(o.phase)") }
+    }
+
+    /// Byte-identical guard: an UNCAPPED persisted session must NOT gain a watcher from the fix — it stays
+    /// armed at the idle home indefinitely (the `expiresAt == nil` gate keeps the no-loop quiesce intact).
+    func testUncappedPersistedSessionStaysArmedAtIdleWithNoWatcher() async {
+        let o = await armedManual(persist: true)   // no cap (expiresAt nil)
+        o.finishChat()
+        let disarmed = await o.waitUntil(timeout: 0.4) { !o.isLiveArmed }
+        XCTAssertFalse(disarmed, "an uncapped persisted session has no deadline watcher and stays armed (byte-identical)")
+        XCTAssertTrue(o.isLiveArmed)
+    }
+
     /// A session extended past Done is still BOUNDED by the deadline: resuming after it has passed
     /// auto-disarms at once (the loop's first decide() returns .expire). Proves the extended lifetime
     /// can never become indefinite. Built deterministically: arm with a FUTURE deadline, quiesce (which
