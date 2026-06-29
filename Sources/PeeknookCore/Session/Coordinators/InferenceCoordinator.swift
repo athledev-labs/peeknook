@@ -177,11 +177,11 @@ final class InferenceCoordinator {
         guard session.lifecycle.isCurrentSession(sessionGen), !Task.isCancelled else { return }
 
         // Route by role: a pure text follow-up (capture == nil) the user opted into answers with the
-        // text-only model. Resolved once here; model, endpoint, and engine all read from `route`, so
-        // they can never disagree (the seam-2 fix). A `.primaryVision` turn resolves the identity pair,
-        // byte-identical to pre-router behavior.
+        // text-only model; every capture / Add-image turn takes `.primaryVision` (the identity pair,
+        // byte-identical to pre-router behavior). The route itself resolves inside `assembleRequest`
+        // below, so model, endpoint, and engine all read from one `assembled.route` and can never
+        // disagree (the seam-2 fix).
         let role = session.turnRole(forFollowUp: capture == nil)
-        let route = session.routing(for: role)
 
         // The `.textOnly` route forces replay to 0 so the non-vision model PROVABLY receives no
         // screenshot — zeroing the budget empties `replayImageIDs`, the preload, and the per-message
@@ -209,14 +209,6 @@ final class InferenceCoordinator {
            })?.id {
             imageBase64ByTurnID[latestVisionImageID] = base64
         }
-        // When this turn streams to a remote host or an Ollama `:cloud` tag, redact secret spans
-        // (API keys, tokens, JWTs, PEM, labeled secrets) out of the SENT text legs before assembly.
-        // A local/loopback non-cloud turn passes `nil`, so the assembled messages stay byte-identical
-        // (no inspection at all). The archived turns and on-screen conversation keep the original text;
-        // the screenshot bitmap is out of scope — only text legs are inspected.
-        let redaction = route.endpoint.isRemoteEgress(modelTag: route.model.tag)
-            ? RedactionContext()
-            : nil
         // A translate directive applies ONLY to a turn that introduced a new capture (capture != nil) —
         // never to a pure text follow-up, which would otherwise re-translate a replayed prior screenshot.
         // It resolves through the same gating profile the module gates use, so a camera turn under a
@@ -224,24 +216,24 @@ final class InferenceCoordinator {
         let translation = capture != nil
             ? session.translationDirective(forTurnGround: capture?.ground)
             : nil
-        let request = InferenceRequest(
-            mode: session.settings.mode,
-            agentSystemAppendix: session.activeAgentAppendix,
-            profileTemplate: session.activeProfileTemplate,
-            messages: builder.inferenceMessages(
+        // Assemble through the single shared seam: it resolves the role's route, derives the SAME
+        // remote-egress redaction rule the suggestion pass uses (a `RedactionContext` only for a remote
+        // host or an Ollama `:cloud` tag, else `nil` so the messages stay byte-identical), folds the
+        // messages with it, and wraps the request envelope — so the "strip secrets before egress" rule
+        // can never fork across callers.
+        let assembled = session.assembleRequest(role: role, quickMode: session.settings.quickMode) { redaction in
+            builder.inferenceMessages(
                 from: budgeted,
                 webLookup: session.webLookupSnapshot,
                 translation: translation,
                 policy: inferencePolicy,
                 imageBase64ByTurnID: imageBase64ByTurnID,
                 redaction: redaction
-            ),
-            model: route.model.tag,
-            endpoint: route.endpoint,
-            quickMode: session.settings.quickMode
-        )
-        let redactedSecretCount = redaction?.hitCount ?? 0
-        let stream = session.inference(for: route.endpoint).stream(request: request)
+            )
+        }
+        let route = assembled.route
+        let redactedSecretCount = assembled.redactedSecretCount
+        let stream = session.inference(for: route.endpoint).stream(request: assembled.request)
 
         do {
             var finalStats: InferenceStats?
