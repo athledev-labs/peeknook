@@ -11,6 +11,11 @@ public enum SessionPhase: Equatable, Sendable {
     /// `@MainActor AnyObject` and would break this enum's derived `Equatable`/`Sendable` — the
     /// orchestrator holds it instead (`activeCameraSession`).
     case cameraLive
+    /// Ephemeral live caption surface (on-device transcription to translated subtitles). Like
+    /// `.cameraLive` it is deliberately payload-free: the transient caption state + transcriber are a
+    /// `@MainActor` controller-shaped concern the orchestrator holds (`liveCaption`), so keeping them out
+    /// of the enum preserves its derived `Equatable`/`Sendable` and avoids per-token FSM churn.
+    case captioning
     case inferring
     case result(String)
     case failed(SessionFailure)

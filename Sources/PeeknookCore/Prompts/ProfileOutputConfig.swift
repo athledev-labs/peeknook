@@ -17,17 +17,27 @@ public struct ProfileOutputConfig: Equatable, Sendable {
     public var sourceLanguage: String?
     /// The language to translate the captured text into. Nil = no translation.
     public var targetLanguage: String?
+    /// Per-profile opt-in to let a CAPTION session translate over a remote / `:cloud` route. Default
+    /// false: captions are local-only by default because audio is conversational-PII-dense and the
+    /// screen-secret redactor does not cover it. Distinct from the global remote toggle and from the
+    /// translate target — enabling translation never implies remote egress. Meaningless without a target
+    /// language (a caption needs one), so ``sanitized`` zeroes it when `targetLanguage` is nil.
+    public var captionAllowRemote: Bool
 
-    public init(sourceLanguage: String? = nil, targetLanguage: String? = nil) {
+    public init(sourceLanguage: String? = nil, targetLanguage: String? = nil, captionAllowRemote: Bool = false) {
         self.sourceLanguage = sourceLanguage
         self.targetLanguage = targetLanguage
+        self.captionAllowRemote = captionAllowRemote
     }
 
-    /// Trim + cap each field; empty/whitespace becomes nil.
+    /// Trim + cap each language field (empty/whitespace becomes nil); drop a caption opt-in that has no
+    /// target language to attach to.
     public var sanitized: ProfileOutputConfig {
-        ProfileOutputConfig(
+        let target = Self.sanitizedLanguage(targetLanguage)
+        return ProfileOutputConfig(
             sourceLanguage: Self.sanitizedLanguage(sourceLanguage),
-            targetLanguage: Self.sanitizedLanguage(targetLanguage)
+            targetLanguage: target,
+            captionAllowRemote: target == nil ? false : captionAllowRemote   // no orphan opt-in without a target
         )
     }
 
@@ -67,7 +77,7 @@ public struct ProfileOutputConfig: Equatable, Sendable {
 // MARK: - Tolerant Codable (per-field shielded, like the rest of the profile)
 
 extension ProfileOutputConfig: Codable {
-    private enum CodingKeys: String, CodingKey { case sourceLanguage, targetLanguage }
+    private enum CodingKeys: String, CodingKey { case sourceLanguage, targetLanguage, captionAllowRemote }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -77,14 +87,19 @@ extension ProfileOutputConfig: Codable {
         // both — the [String: V] throw-trap this codebase has been bitten by before.
         let source = ((try? c.decodeIfPresent(String.self, forKey: .sourceLanguage)) ?? nil)
         let target = ((try? c.decodeIfPresent(String.self, forKey: .targetLanguage)) ?? nil)
+        let allowRemote = ((try? c.decodeIfPresent(Bool.self, forKey: .captionAllowRemote)) ?? nil) ?? false
         self.sourceLanguage = Self.sanitizedLanguage(source)
         self.targetLanguage = Self.sanitizedLanguage(target)
+        // Drop an orphan opt-in (a flag with no target language can't mean anything), mirroring `sanitized`.
+        self.captionAllowRemote = (self.targetLanguage != nil) && allowRemote
     }
 
     public func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encodeIfPresent(sourceLanguage, forKey: .sourceLanguage)
         try c.encodeIfPresent(targetLanguage, forKey: .targetLanguage)
+        // Encode only when true, so a default config stays byte-identical (the key never appears).
+        if captionAllowRemote { try c.encode(true, forKey: .captionAllowRemote) }
     }
 }
 

@@ -78,6 +78,13 @@ extension SessionOrchestrator {
     }
 
     public func cancel() {
+        // Escape/cancel during captioning routes through the caption's full disarm, never the
+        // result-preserving path: the FSM rejects `.cancelPreservingResult`/`.cancelToIdle` from
+        // `.captioning` (defense in depth), so without this top-guard a cancel would tear down session
+        // work yet leave the surface armed. Keyed on the PHASE (authoritative), not `liveCaption`
+        // presence, so a transient nil-surface-while-`.captioning` window can't fall through.
+        // `stopCaption()` clears the tap, drops the shared `livePolicy`, and returns to idle.
+        if case .captioning = phase { stopCaption(); return }
         abortSessionWork()
         streamedAnswer = ""
         stopVoiceInput()
@@ -122,6 +129,10 @@ extension SessionOrchestrator {
     /// aborts in-flight work but must NOT disarm Live, so disarm has its own choke point that only the
     /// explicit exits (Stop live, Done, New chat, switch thread, nook-collapse) call.
     public func stopLiveSession() {
+        // A caption surface shares this single disarm choke point: tear its tap down FIRST (idempotent,
+        // a no-op when not captioning), so every exit that disarms Live also disarms a caption. Run
+        // before the guard so a caption torn down independently of a Live frame still clears the tap.
+        captionCoordinator.clearCaptionSurface()
         guard isLiveArmed || lifecycle.pendingLiveCapture != nil else { return }
         livePolicy = nil
         lastLiveRefreshAt = nil
