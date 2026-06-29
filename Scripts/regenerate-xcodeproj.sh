@@ -17,7 +17,7 @@ error: OpenNook not found at:
 Peeknook.xcodeproj needs a local OpenNook checkout for XcodeGen (Package.swift can fall back to git for \`swift test\`).
 
 Fix:
-  git clone https://github.com/glendonC/opennook.git "$ROOT/../opennook"
+  git clone https://github.com/athledev-labs/opennook.git "$ROOT/../opennook"
 
 Or point at an existing clone:
   export OPENNOOK_PACKAGE_PATH="/path/to/opennook"

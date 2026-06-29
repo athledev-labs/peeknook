@@ -12,7 +12,7 @@ let siblingOpenNookManifest = URL(fileURLWithPath: #filePath)
 let opennookDependency: Package.Dependency =
     FileManager.default.fileExists(atPath: siblingOpenNookManifest.path)
     ? .package(path: "../opennook")
-    : .package(url: "https://github.com/glendonC/opennook.git", from: "0.3.0")
+    : .package(url: "https://github.com/athledev-labs/opennook.git", from: "0.4.0")
 
 let package = Package(
     name: "Peeknook",

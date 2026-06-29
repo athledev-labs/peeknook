@@ -14,7 +14,7 @@ OpenAI-compatible server). Saved conversations are opt-in and encrypted. No acco
 round-trip.
 
 Free and fully open-source under **[Apache-2.0](LICENSE)**. Built on
-[OpenNook](https://github.com/glendonC/opennook).
+[OpenNook](https://github.com/athledev-labs/opennook).
 
 **→ Download for macOS: [peeknook.com](https://peeknook.com)** ·
 [GitHub Releases](https://github.com/glendonC/peeknook/releases/latest)
@@ -135,7 +135,7 @@ Peeknook does not ship model weights. You download them through Ollama. Applicab
 | Component | License / terms |
 |-----------|-----------------|
 | Peeknook app source | [Apache 2.0](LICENSE) |
-| OpenNook host | [Apache 2.0](https://github.com/glendonC/opennook/blob/main/LICENSE) |
+| OpenNook host | [Apache 2.0](https://github.com/athledev-labs/opennook/blob/main/LICENSE) |
 | Ollama (runtime, user-installed) | [MIT](https://github.com/ollama/ollama/blob/main/LICENSE) |
 | Gemma 4 weights (default recommendation) | [Gemma Terms of Use](https://ai.google.dev/gemma/terms) |
 | Other models you add | Each publisher's license |
