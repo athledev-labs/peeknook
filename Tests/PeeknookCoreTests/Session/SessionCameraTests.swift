@@ -204,7 +204,7 @@ final class SessionOrchestratorCameraTests: XCTestCase {
         _ = await orchestrator.waitUntil { session.captureStillCount == 1 }
         orchestrator.cancelCameraLive()
 
-        XCTAssertEqual(orchestrator.phase, .idle)
+        _ = await orchestrator.waitUntil { orchestrator.phase == .idle }
         // Deterministically wait for the cancelled capture to resolve (it drops, never commits) rather
         // than sleeping a fixed interval and hoping the window was long enough.
         let resolved = await orchestrator.waitUntil { session.captureStillFinishedCount == 1 }
