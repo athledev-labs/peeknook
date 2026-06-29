@@ -35,7 +35,8 @@ public enum PeeknookServices {
             webLookup: dependencies.webLookup,
             speechRecognizer: dependencies.speechRecognizer,
             speechSynthesizer: dependencies.answerSpeechSynthesizer,
-            previewSpeechSynthesizer: dependencies.previewSpeechSynthesizer
+            previewSpeechSynthesizer: dependencies.previewSpeechSynthesizer,
+            streamingTranscriber: dependencies.streamingTranscriber
         )
         orchestrator.setup = setup
         orchestrator.usage = usage

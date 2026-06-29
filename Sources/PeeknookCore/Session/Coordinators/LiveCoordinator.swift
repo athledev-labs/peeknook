@@ -269,11 +269,19 @@ final class LiveCoordinator {
                 case .expire:
                     // The mandatory auto-disarm timeout fired. Funnel through the SINGLE disarm choke
                     // point (no new teardown path), then surface a one-shot notice so the chip's
-                    // disappearance is explained. `stopLiveSession()` nils `livePolicy`, so the next loop
-                    // guard would return anyway — but returning here ends the loop immediately.
+                    // disappearance is explained. The caption surface reuses THIS loop to enforce its own
+                    // mandatory cap (it sets a `.manual`-trigger `livePolicy` with a deadline, so the loop
+                    // only ever reaches `.expire`), so fork on which experience is armed: a caption ends
+                    // through its full disarm (`stopCaption()` → idle) with `.captionEnded`, a Live session
+                    // through `stopLiveSession()` with `.liveEnded`. Returning ends the loop immediately.
                     guard !Task.isCancelled, session.isLiveArmed else { return }
-                    session.stopLiveSession()
-                    session.emitNotice(.liveEnded)
+                    if session.isCaptioning {
+                        session.stopCaption()
+                        session.emitNotice(.captionEnded)
+                    } else {
+                        session.stopLiveSession()
+                        session.emitNotice(.liveEnded)
+                    }
                     return
                 case .sleep(let delay):
                     try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))

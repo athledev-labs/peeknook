@@ -306,6 +306,10 @@ public struct PeekHomeView: View {
                             // The live-camera bar has its OWN dispatch (.cancel must tear the
                             // session down) — never route it through PeekHomeActiveControls.
                             PeekCameraLiveControls(orchestrator: orchestrator)
+                        } else if case .captioning = orchestrator.phase {
+                            // The caption bar's one action is Stop (the disarm choke point) — like the
+                            // camera bar it must not route through the generic active controls.
+                            PeekCaptionControls(orchestrator: orchestrator)
                         } else {
                             PeekHomeActiveControls(
                                 orchestrator: orchestrator,

@@ -124,6 +124,27 @@ public extension SessionFailure {
         )
     }
 
+    /// Maps a ``StreamingTranscribing`` start failure to a recovery card (the caption surface fails like
+    /// the camera's `cameraLiveFailed`). A `.notAuthorized` becomes the typed Speech Recognition
+    /// permission card; an unavailable on-device recognizer / missing source-language pack becomes a
+    /// guided "captions need on-device speech recognition" card.
+    static func from(captionStartError error: Error) -> SessionFailure {
+        guard let speech = error as? SpeechRecognitionError else {
+            return .generic(message: (error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
+        }
+        switch speech {
+        case .notAuthorized:
+            return .permissionRequired(.speechRecognition)
+        case .unavailable, .onDeviceUnavailable:
+            return SessionFailure(
+                kind: .generic,
+                title: "Captions need on-device speech recognition",
+                message: "Live captions transcribe on this Mac, but on-device speech recognition isn't available for the source language. Add the language in System Settings, or choose a different source language.",
+                primaryRecovery: .openSetup
+            )
+        }
+    }
+
     /// A required capture permission for the active profile isn't granted. Typed groundwork for the
     /// per-profile readiness matrix — the camera PR routes a failed `readiness(for:)` through this so
     /// each missing permission gets its own recovery, instead of the opaque `.setupIncomplete`.

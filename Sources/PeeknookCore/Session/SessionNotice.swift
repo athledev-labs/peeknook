@@ -19,6 +19,17 @@ public enum SessionNotice: Equatable, Sendable {
     /// (the "Keep watching" cap the user cannot turn off) and disarmed itself. A one-shot cue so the
     /// Live chip's disappearance is explained ("Live ended — tap Go live to continue").
     case liveEnded
+    /// The ephemeral caption surface ended on its own: the mandatory caption auto-disarm cap fired, or
+    /// the audio went silent past the timeout. A one-shot cue so the caption chip's disappearance is
+    /// explained (mirrors ``liveEnded`` for the caption surface).
+    case captionEnded
+    /// Captions were asked to translate over a remote / `:cloud` route, but the active profile has not
+    /// opted into remote caption egress (``ProfileOutputConfig/captionAllowRemote``). Captions are
+    /// local-only by default — the tap never starts; the user is told to choose a local model or opt in.
+    case captionRemoteBlocked
+    /// A caption session was requested without a target language. Captions are translated subtitles, so a
+    /// target is required; the user is told to set one on the profile.
+    case captionNeedsTargetLanguage
     /// `count` likely secrets (API keys, tokens, JWTs, PEM, labeled secrets) were stripped from the
     /// text sent to a remote or `:cloud` model on the turn just answered. Non-blocking — the answer
     /// already streamed; this only tells the user what was withheld. The archived/on-screen text keeps

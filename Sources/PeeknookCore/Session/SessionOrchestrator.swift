@@ -71,6 +71,14 @@ public final class SessionOrchestrator {
     /// `openCameraLive()`, cleared by `stopCameraPreview()` (the single teardown choke point).
     public internal(set) var activeCameraSession: (any CameraSessionControlling)?
 
+    /// The transient state the ephemeral `.captioning` surface renders, or nil when not captioning. Held
+    /// here — not as a phase payload — for the same reason as `activeCameraSession`: it keeps
+    /// `SessionPhase` a value-type enum. Set by `armCaption()`, cleared by `clearCaptionSurface()` inside
+    /// the single disarm choke point. NEVER archived; a caption is ephemeral by construction.
+    public internal(set) var liveCaption: CaptionState?
+    /// True while the caption surface is armed (a convenience over `liveCaption`, mirroring `isLiveArmed`).
+    public var isCaptioning: Bool { liveCaption != nil }
+
     /// The armed live session, or nil when not armed. Transient — never persisted; set ONLY by an
     /// explicit user toggle (`armLive`, added in a later slice) and cleared by ``stopLiveSession()``.
     /// Its presence is the master "Live" control; Live OFF (nil) is byte-identical to pre-Live.
@@ -129,6 +137,10 @@ public final class SessionOrchestrator {
     let speechRecognizer: any SpeechRecognizing
     let answerSpeechSynthesizer: any SpeechSynthesizing
     let previewSpeechSynthesizer: any SpeechSynthesizing
+    /// The on-device streaming transcription seam the caption surface drives. Defaults to the
+    /// fail-closed ``UnavailableStreamingTranscriber`` so unit-constructed orchestrators and hosts that
+    /// don't wire a real one simply can't arm captions (no behavior change).
+    let streamingTranscriber: any StreamingTranscribing
 
     // Internal domain coordinators (see Coordinators/ and internal/engineering/ORCHESTRATOR_SPINE.md).
     // Lazy so each can hold a weak back-reference to the facade; @ObservationIgnored because they
@@ -137,6 +149,7 @@ public final class SessionOrchestrator {
     @ObservationIgnored private(set) lazy var archiveCoordinator = ArchiveCoordinator(session: self)
     @ObservationIgnored private(set) lazy var cameraCoordinator = CameraCoordinator(session: self)
     @ObservationIgnored private(set) lazy var liveCoordinator = LiveCoordinator(session: self)
+    @ObservationIgnored private(set) lazy var captionCoordinator = CaptionCoordinator(session: self)
     @ObservationIgnored private(set) lazy var captureCoordinator = CaptureCoordinator(session: self)
     @ObservationIgnored private(set) lazy var inferenceCoordinator = InferenceCoordinator(session: self)
     /// Watches for critical system memory pressure to release the resident local model. Started by
@@ -216,7 +229,8 @@ public final class SessionOrchestrator {
         webLookup: any WebLookupProviding = WebLookupRunner(),
         speechRecognizer: any SpeechRecognizing = StubSpeechRecognizer(),
         speechSynthesizer: any SpeechSynthesizing = StubSpeechSynthesizer(),
-        previewSpeechSynthesizer: (any SpeechSynthesizing)? = nil
+        previewSpeechSynthesizer: (any SpeechSynthesizing)? = nil,
+        streamingTranscriber: any StreamingTranscribing = UnavailableStreamingTranscriber()
     ) {
         self.settings = settings
         self.captureRegistry = captureRegistry
@@ -225,6 +239,7 @@ public final class SessionOrchestrator {
         self.speechRecognizer = speechRecognizer
         self.answerSpeechSynthesizer = speechSynthesizer
         self.previewSpeechSynthesizer = previewSpeechSynthesizer ?? speechSynthesizer
+        self.streamingTranscriber = streamingTranscriber
         speechCoordinator.wireCallbacks()
     }
 
@@ -237,7 +252,8 @@ public final class SessionOrchestrator {
         webLookup: any WebLookupProviding = WebLookupRunner(),
         speechRecognizer: any SpeechRecognizing = StubSpeechRecognizer(),
         speechSynthesizer: any SpeechSynthesizing = StubSpeechSynthesizer(),
-        previewSpeechSynthesizer: (any SpeechSynthesizing)? = nil
+        previewSpeechSynthesizer: (any SpeechSynthesizing)? = nil,
+        streamingTranscriber: any StreamingTranscribing = UnavailableStreamingTranscriber()
     ) {
         self.init(
             settings: settings,
@@ -246,7 +262,8 @@ public final class SessionOrchestrator {
             webLookup: webLookup,
             speechRecognizer: speechRecognizer,
             speechSynthesizer: speechSynthesizer,
-            previewSpeechSynthesizer: previewSpeechSynthesizer
+            previewSpeechSynthesizer: previewSpeechSynthesizer,
+            streamingTranscriber: streamingTranscriber
         )
     }
 
@@ -516,6 +533,21 @@ public final class SessionOrchestrator {
         return capture
     }
 
+    // MARK: - Live caption (delegates to CaptionCoordinator)
+
+    /// The "Caption" command: arm the ephemeral, local-by-default translated-caption surface. Legal from
+    /// idle/result/failed. Refuses (one-shot notice, no phase entry) without a target language or on a
+    /// non-opted-in remote route — see ``CaptionCoordinator/arm()``.
+    public func armCaption() {
+        captionCoordinator.arm()
+    }
+
+    /// Stop the caption surface (the "Stop" command) and the host's unconditional collapse teardown.
+    /// Idempotent — a no-op outside `.captioning`.
+    public func stopCaption() {
+        captionCoordinator.stop()
+    }
+
     // MARK: - Capture (delegates to CaptureCoordinator)
 
     /// Hotkey / compact affordance entry: capture → preview → infer. Starts a fresh chat only when
@@ -623,7 +655,7 @@ public final class SessionOrchestrator {
         let tag = activeAnswerModel.tag
         guard !endpoint.isRemoteEgress(modelTag: tag), modelLikelyWarm else { return }
         switch phase {
-        case .capturing, .previewing, .inferring, .cameraLive: return
+        case .capturing, .previewing, .inferring, .cameraLive, .captioning: return
         default: break
         }
         Task {

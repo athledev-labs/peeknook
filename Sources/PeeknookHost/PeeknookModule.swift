@@ -149,15 +149,19 @@ public final class PeeknookModule: NookModule {
         // loop below can never see them. These hooks fire the camera cancel unconditionally — it is
         // a no-op outside `.cameraLive` and idempotent against the loop's own pin release. Without
         // this, a `.stayResident` module would keep the camera running with no visible UI.
-        // They ALSO disarm any live session: an armed thread must never linger with no visible chip,
-        // and there is no orchestrator re-show hook to re-arm on expand — collapse is a full disarm.
+        // They ALSO disarm any live session AND tear down any caption tap: a continuous capture must
+        // never linger with no visible chip, and there is no orchestrator re-show hook to re-arm on
+        // expand — collapse is a full disarm. `stopCaption()` also exits the `.captioning` phase (its
+        // folded `stopLiveSession()` makes the explicit call above idempotent).
         configuration.onCompact = { [weak self] in
             self?.orchestrator.cancelCameraLive()
             self?.orchestrator.stopLiveSession()
+            self?.orchestrator.stopCaption()
         }
         configuration.onHide = { [weak self] in
             self?.orchestrator.cancelCameraLive()
             self?.orchestrator.stopLiveSession()
+            self?.orchestrator.stopCaption()
         }
         configuration.onReady = { [weak self] coordinator in
             self?.registerHotkeys(on: coordinator)
@@ -238,16 +242,18 @@ public final class PeeknookModule: NookModule {
     }
 
     /// Pin the nook open while a phase needs the panel on screen — the post-capture confirm
-    /// (`.previewing`) and the live camera (`.cameraLive`) — expanding to Home on entry and
-    /// releasing the pin on exit. This loop observes *phase changes only*: collapse/hide are
-    /// driven by the configuration's `onCompact`/`onHide` hooks (see `makeConfiguration`), which
-    /// cancel the camera and thereby move the phase, after which this loop releases the pin.
+    /// (`.previewing`), the live camera (`.cameraLive`), and the live caption surface
+    /// (`.captioning`) — expanding to Home on entry and releasing the pin on exit. A continuous
+    /// caption MUST stay indicated, so its panel is pinned exactly like the live camera. This loop
+    /// observes *phase changes only*: collapse/hide are driven by the configuration's
+    /// `onCompact`/`onHide` hooks (see `makeConfiguration`), which disarm the camera/caption and
+    /// thereby move the phase, after which this loop releases the pin.
     private func startPreviewPhaseHandling(on coordinator: AppCoordinator) {
         previewPhaseTask?.cancel()
         previewPhaseTask = Task { @MainActor [weak self] in
             guard let self else { return }
             let pinning = context.services.resolve(NookPresentationPinningKey.self)
-            enum PinnedPhase { case capturePreview, cameraLive }
+            enum PinnedPhase { case capturePreview, cameraLive, captioning }
             var activePin: PinnedPhase?
 
             while !Task.isCancelled {
@@ -263,6 +269,7 @@ public final class PeeknookModule: NookModule {
                 switch self.orchestrator.phase {
                 case .previewing: pinned = .capturePreview
                 case .cameraLive: pinned = .cameraLive
+                case .captioning: pinned = .captioning
                 default: pinned = nil
                 }
 
@@ -273,6 +280,7 @@ public final class PeeknookModule: NookModule {
                     switch pinned {
                     case .capturePreview: previewPinHandle = pinning.pin(reason: "capture-preview")
                     case .cameraLive: previewPinHandle = pinning.pin(reason: "camera-live")
+                    case .captioning: previewPinHandle = pinning.pin(reason: "caption-surface")
                     }
                 } else if pinned == nil, activePin != nil {
                     previewPinHandle?.release()
@@ -285,9 +293,10 @@ public final class PeeknookModule: NookModule {
     }
 
     /// `.stayResident` keeps this module alive across module switches — never leave the camera
-    /// running, or a live session armed, behind another module's surface.
+    /// running, a live session armed, or a caption tap open behind another module's surface.
     public func prepareForSwitchAway() async {
         orchestrator.cancelCameraLive()
         orchestrator.stopLiveSession()
+        orchestrator.stopCaption()
     }
 }

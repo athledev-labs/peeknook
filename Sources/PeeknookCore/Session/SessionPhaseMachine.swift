@@ -33,6 +33,14 @@ public enum SessionEvent: Sendable, Equatable {
     case cancelCameraLive
     /// `.cameraLive` → `.failed` (startPreview / captureStill error surface).
     case cameraLiveFailed(SessionFailure)
+    /// idle/result/failed → `.captioning` (arm the ephemeral caption surface).
+    case openCaption
+    /// `.captioning` → `.idle`. Outside `.captioning` this is a **no-op, not a reject**, so every disarm
+    /// choke point (Stop, New chat, switch/delete thread, collapse/hide/switch-away) can fire it
+    /// unconditionally on teardown, exactly like ``cancelCameraLive``.
+    case cancelCaption
+    /// `.captioning` → `.failed` (transcriber start / on-device-unavailable surface).
+    case captionFailed(SessionFailure)
 }
 
 /// Guards the FSM needs that are not encoded in the phase enum itself.
@@ -118,9 +126,14 @@ public struct SessionPhaseMachine: Sendable {
             phase = .result(answer)
             return .applied(phase)
         case .cancelPreservingResult(let answer):
+            // A caption surface must never be cancel-preserved into a result: Escape/cancel during
+            // captioning routes through full disarm (`stopCaption`) instead. Reject here as the
+            // defense-in-depth backstop (the orchestrator's `cancel()` already guards before this).
+            if case .captioning = phase { return .rejected }
             phase = .result(answer)
             return .applied(phase)
         case .cancelToIdle:
+            if case .captioning = phase { return .rejected }
             phase = .idle
             return .applied(phase)
         case .dismissToIdle:
@@ -150,6 +163,16 @@ public struct SessionPhaseMachine: Sendable {
             guard case .cameraLive = phase else { return .rejected }
             phase = .failed(failure)
             return .applied(phase)
+        case .openCaption:
+            return applyOpenCaption()
+        case .cancelCaption:
+            guard case .captioning = phase else { return .noOp }
+            phase = .idle
+            return .applied(phase)
+        case .captionFailed(let failure):
+            guard case .captioning = phase else { return .rejected }
+            phase = .failed(failure)
+            return .applied(phase)
         }
     }
 
@@ -158,8 +181,8 @@ public struct SessionPhaseMachine: Sendable {
         case .idle, .result, .failed:
             phase = .capturing
             return .applied(phase)
-        case .capturing, .previewing, .cameraLive, .inferring:
-            // ⌘⇧P during the live camera preview is a documented no-op, not a default fallthrough.
+        case .capturing, .previewing, .cameraLive, .captioning, .inferring:
+            // ⌘⇧P during the live camera preview / caption surface is a documented no-op, not a fallthrough.
             return .rejected
         }
     }
@@ -172,7 +195,17 @@ public struct SessionPhaseMachine: Sendable {
         case .idle, .result, .failed, .capturing:
             phase = .cameraLive
             return .applied(phase)
-        case .previewing, .cameraLive, .inferring:
+        case .previewing, .cameraLive, .captioning, .inferring:
+            return .rejected
+        }
+    }
+
+    private mutating func applyOpenCaption() -> SessionTransitionResult {
+        switch phase {
+        case .idle, .result, .failed:
+            phase = .captioning
+            return .applied(phase)
+        case .capturing, .previewing, .cameraLive, .captioning, .inferring:
             return .rejected
         }
     }
