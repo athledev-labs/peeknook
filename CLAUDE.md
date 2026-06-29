@@ -4,7 +4,7 @@ Guidance for contributors and AI assistants working in this repository.
 
 ## Overview
 
-Peeknook is local-first AI for Mac in the MacBook notch, built on [OpenNook](https://github.com/glendonC/opennook). The user triggers capture with **⌘⇧P**, optionally previews what will be sent, and receives a short streamed answer from an Ollama vision model (Gemma 4). Inference is **local-first by default** (defaults to local Ollama at `http://127.0.0.1:11434`); pointing at a **remote Ollama server** or selecting Ollama **`:cloud` tags** is opt-in and HTTPS-gated (plain HTTP to a non-loopback host is rejected unless the user enables "Allow insecure HTTP"). Capture is always user-triggered: there is no ambient/background recording and no stealth overlay. See [PRIVACY.md](PRIVACY.md) for the full data-flow breakdown.
+Peeknook is local-first AI for Mac in the MacBook notch, built on [OpenNook](https://github.com/athledev-labs/opennook). The user triggers capture with **⌘⇧P**, optionally previews what will be sent, and receives a short streamed answer from an Ollama vision model (Gemma 4). Inference is **local-first by default** (defaults to local Ollama at `http://127.0.0.1:11434`); pointing at a **remote Ollama server** or selecting Ollama **`:cloud` tags** is opt-in and HTTPS-gated (plain HTTP to a non-loopback host is rejected unless the user enables "Allow insecure HTTP"). Capture is always user-triggered: there is no ambient/background recording and no stealth overlay. See [PRIVACY.md](PRIVACY.md) for the full data-flow breakdown.
 
 ## Build, test, and run
 

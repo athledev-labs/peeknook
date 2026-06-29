@@ -4,7 +4,7 @@ Copyright 2026 Athledev
 Licensed under the Apache License, Version 2.0.
 
 This product depends on:
-- OpenNook (Apache-2.0): https://github.com/glendonC/opennook
+- OpenNook (Apache-2.0): https://github.com/athledev-labs/opennook
 - NookSurface (MIT), via OpenNook
 
 Model weights are not distributed with this application. Users pull models through

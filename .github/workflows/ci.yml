@@ -20,7 +20,7 @@ jobs:
       - name: Checkout OpenNook
         uses: actions/checkout@v4
         with:
-          repository: glendonC/opennook
+          repository: athledev-labs/opennook
           ref: v0.3.0
           path: opennook
 
