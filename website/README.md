@@ -28,7 +28,7 @@ Markdown pages render from the repo root at build time:
 | `/terms/` | `TERMS.md` |
 | `/faq/` | `FAQ.md` |
 
-Changelog and download metadata fetch [GitHub Releases](https://github.com/glendonC/peeknook/releases) at build time.
+Changelog and download metadata fetch [GitHub Releases](https://github.com/athledev-labs/peeknook/releases) at build time.
 
 ## Deploy
 

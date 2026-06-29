@@ -2,7 +2,7 @@
 
 Peeknook is local-first AI in your MacBook notch. You trigger capture with **⌘⇧P**, Peek sends a screenshot to a vision model on your Mac, and streams a short answer. This guide is for **downloading the app**: no Terminal required.
 
-**Website:** [peeknook docs](https://glendonc.github.io/peeknook/docs/) · **Download:** [GitHub Releases](https://github.com/glendonC/peeknook/releases/latest)
+**Website:** [peeknook docs](https://glendonc.github.io/peeknook/docs/) · **Download:** [GitHub Releases](https://github.com/athledev-labs/peeknook/releases/latest)
 
 ---
 
@@ -17,7 +17,7 @@ Peeknook is local-first AI in your MacBook notch. You trigger capture with **⌘
 
 ## 1. Install Peeknook
 
-1. Download the signed **`.dmg`** from [GitHub Releases](https://github.com/glendonC/peeknook/releases/latest).
+1. Download the signed **`.dmg`** from [GitHub Releases](https://github.com/athledev-labs/peeknook/releases/latest).
 2. Open the DMG and drag **Peeknook** into **Applications**.
 3. Launch Peeknook from Applications.
 
@@ -117,7 +117,7 @@ Rebind capture and brief shortcuts in **Settings > Capture**.
 
 ## Verify your download (optional)
 
-On [GitHub Releases](https://github.com/glendonC/peeknook/releases/latest) or in [Docs > Advanced](https://glendonc.github.io/peeknook/docs/#verify-checksum), compare the published **SHA-256** checksum with your `.dmg` file:
+On [GitHub Releases](https://github.com/athledev-labs/peeknook/releases/latest) or in [Docs > Advanced](https://glendonc.github.io/peeknook/docs/#verify-checksum), compare the published **SHA-256** checksum with your `.dmg` file:
 
 ```sh
 shasum -a 256 ~/Downloads/Peeknook*.dmg
@@ -134,7 +134,7 @@ By default, inference stays on this Mac and capture runs only when you press **�
 ## Getting help
 
 - [FAQ](https://glendonc.github.io/peeknook/faq/): Ollama, permissions, common fixes
-- [GitHub Issues](https://github.com/glendonC/peeknook/issues): bug reports
+- [GitHub Issues](https://github.com/athledev-labs/peeknook/issues): bug reports
 
 ---
 
