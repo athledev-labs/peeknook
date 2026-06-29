@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-const REPO = "glendonC/peeknook";
+const REPO = "athledev-labs/peeknook";
 const RELEASES_HOST = "https://github.com";
 const ALLOWED_DOWNLOAD_PREFIX = `${RELEASES_HOST}/${REPO}/releases/download/`;
 

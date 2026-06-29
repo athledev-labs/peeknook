@@ -45,7 +45,7 @@ versa.
 |------|-----|
 | Day-to-day development | `swift build` / `swift run Peeknook`: grant TCC to the binary System Settings shows |
 | Pre-release / user-like testing | `./Scripts/release.sh` (or Xcode Release archive), then install the exported `.app`: grant TCC to **Peeknook** |
-| What you ship | Notarized `.app` from [Releases](https://github.com/glendonC/peeknook/releases/latest) |
+| What you ship | Notarized `.app` from [Releases](https://github.com/athledev-labs/peeknook/releases/latest) |
 
 ### First launch (from source)
 

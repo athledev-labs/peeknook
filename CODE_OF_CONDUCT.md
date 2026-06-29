@@ -12,7 +12,7 @@ Report unacceptable behavior to the project maintainer
 <hello@athledev.com>, or a [private security advisory][advisory]. All reports will be handled with
 discretion.
 
-[advisory]: https://github.com/glendonC/peeknook/security/advisories/new
+[advisory]: https://github.com/athledev-labs/peeknook/security/advisories/new
 
 Maintainers who do not follow or enforce the Code of Conduct in good faith may face temporary or
 permanent repercussions as determined by other project leadership.

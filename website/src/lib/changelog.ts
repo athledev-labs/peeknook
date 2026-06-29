@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { marked } from "marked";
 
-const REPO = "glendonC/peeknook";
+const REPO = "athledev-labs/peeknook";
 
 export type ChangelogEntry = {
   tagName: string;
@@ -25,7 +25,7 @@ const FALLBACK: ChangelogEntry[] = [
     tagName: "v0.1.0",
     version: "0.1.0",
     publishedAt: "2026-06-07T02:46:33Z",
-    url: "https://github.com/glendonC/peeknook/releases/tag/v0.1.0",
+    url: "https://github.com/athledev-labs/peeknook/releases/tag/v0.1.0",
     bodyHtml: marked.parse(
       `First notarized direct-download release.
 

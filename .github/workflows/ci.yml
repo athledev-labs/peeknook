@@ -15,13 +15,12 @@ jobs:
           path: peeknook
 
       # Sibling checkout satisfies Package.swift ../opennook path pin.
-      # Pinned to the v0.3.0 tag: it is the first release with the OpenNook APIs
-      # Peeknook uses (moduleBreadcrumb, NookContentInsets, the accent controls).
+      # Pinned to the v0.4.0 tag on athledev-labs/opennook.
       - name: Checkout OpenNook
         uses: actions/checkout@v4
         with:
           repository: athledev-labs/opennook
-          ref: v0.3.0
+          ref: v0.4.0
           path: opennook
 
       # OpenNook's Liquid Glass surface style references the macOS 26 SDK
