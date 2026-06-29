@@ -1,14 +1,14 @@
 # Contributing to Peeknook
 
 Thanks for the interest. Peeknook is a small, opinionated app built on
-[OpenNook](https://github.com/glendonC/opennook). For anything larger than a typo or a one-file fix,
+[OpenNook](https://github.com/athledev-labs/opennook). For anything larger than a typo or a one-file fix,
 **open an issue first** to align on approach — and read [CLAUDE.md](CLAUDE.md), the full contributor
 guide (architecture, invariants, conventions). This file is the short version.
 
 ## Requirements
 
 - macOS 15+
-- [OpenNook](https://github.com/glendonC/opennook) as a sibling checkout (`../opennook`), or edit
+- [OpenNook](https://github.com/athledev-labs/opennook) as a sibling checkout (`../opennook`), or edit
   `Package.swift` to use the Git URL
 - Xcode 16+ / Swift 5.9 command line tools
 
