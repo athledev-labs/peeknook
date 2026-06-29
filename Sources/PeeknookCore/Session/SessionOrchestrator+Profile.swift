@@ -71,6 +71,15 @@ extension SessionOrchestrator {
         ground == .camera ? .cameraStudy : resolvedActiveProfile
     }
 
+    /// The translation directive a capture turn carries, projected from the same gating profile its
+    /// module gates use (so a camera turn under a translate-configured screen profile resolves through
+    /// the `cameraStudy` literal and carries NONE — a screen profile's output shaping never leaks into
+    /// a camera-shutter turn, exactly like its module overrides). Nil unless the profile set a target
+    /// language; the projection keys on the PRESENCE of that data, never on its value (invariant 1).
+    func translationDirective(forTurnGround ground: Ground?) -> TranslationDirective? {
+        gatingProfile(forTurnGround: ground).outputConfig?.translationDirective
+    }
+
     /// Thread-level archive writes gate on the thread's latest capture ground (camera threads
     /// gate on the literal), so the blob write and the thread save share one verdict and can
     /// never disagree and orphan a blob.

@@ -217,6 +217,13 @@ final class InferenceCoordinator {
         let redaction = route.endpoint.isRemoteEgress(modelTag: route.model.tag)
             ? RedactionContext()
             : nil
+        // A translate directive applies ONLY to a turn that introduced a new capture (capture != nil) —
+        // never to a pure text follow-up, which would otherwise re-translate a replayed prior screenshot.
+        // It resolves through the same gating profile the module gates use, so a camera turn under a
+        // translate-configured screen profile carries none (gatingProfile → cameraStudy → nil).
+        let translation = capture != nil
+            ? session.translationDirective(forTurnGround: capture?.ground)
+            : nil
         let request = InferenceRequest(
             mode: session.settings.mode,
             agentSystemAppendix: session.activeAgentAppendix,
@@ -224,6 +231,7 @@ final class InferenceCoordinator {
             messages: builder.inferenceMessages(
                 from: budgeted,
                 webLookup: session.webLookupSnapshot,
+                translation: translation,
                 policy: inferencePolicy,
                 imageBase64ByTurnID: imageBase64ByTurnID,
                 redaction: redaction

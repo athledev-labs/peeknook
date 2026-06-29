@@ -84,6 +84,7 @@ enum PromptBuilder {
         assembly: PromptAssembly,
         webLookup: WebLookupSnapshot? = nil,
         question: String? = nil,
+        translation: TranslationDirective? = nil,
         redaction: RedactionContext? = nil
     ) -> String {
         var sections: [String] = []
@@ -93,6 +94,16 @@ enum PromptBuilder {
         }
 
         sections.append(captureContextSection(capture: capture, webLookup: webLookup, redaction: redaction))
+
+        // A translate turn is one fixed directive: translate the captured text and emit only the
+        // translation. Every "answer/recommend" framing below (answer depth, the continuing-session
+        // reminder, a live-promoted question) is omitted because it directly fights "output ONLY the
+        // translation". The session brief stays — it is the user's own standing content, not a framing.
+        if let translation {
+            sections.append(translateTaskSection(translation))
+            return sections.joined(separator: "\n\n")
+        }
+
         sections.append(depthSection(assembly.answerDepth))
 
         if assembly.continuingSession {
@@ -125,6 +136,7 @@ enum PromptBuilder {
         payloads: [MediaPayload],
         assembly: PromptAssembly,
         webLookup: WebLookupSnapshot? = nil,
+        translation: TranslationDirective? = nil,
         redaction: RedactionContext? = nil
     ) -> String {
         var sections: [String] = []
@@ -134,6 +146,14 @@ enum PromptBuilder {
         }
 
         sections.append(multiGroundContextSection(payloads: payloads, webLookup: webLookup, redaction: redaction))
+
+        // Same translate short-circuit as the single-ground path (see ``captureUserMessage``): a fixed
+        // directive replaces every answer framing, depth included, across ALL attached views.
+        if let translation {
+            sections.append(translateTaskSection(translation))
+            return sections.joined(separator: "\n\n")
+        }
+
         sections.append(depthSection(assembly.answerDepth))
 
         if assembly.continuingSession {
@@ -183,6 +203,15 @@ enum PromptBuilder {
         ## Session brief (reminder)
         \(brief)
         """
+    }
+
+    /// The task line for a translate turn. The languages are interpolated as plain data — the model
+    /// reads the labels directly and nothing in the builder branches on their value (invariant 1). The
+    /// "from <source>" clause appears only when the profile pinned a source language; otherwise the
+    /// model auto-detects. "Output ONLY the translation" keeps the answer free of commentary.
+    private static func translateTaskSection(_ directive: TranslationDirective) -> String {
+        let from = directive.sourceLanguage.map { " from \($0)" } ?? ""
+        return "## Task\nTranslate the captured text\(from) into \(directive.targetLanguage); output ONLY the translation, nothing else."
     }
 
     private static func captureContextSection(

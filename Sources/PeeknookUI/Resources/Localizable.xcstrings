@@ -113,6 +113,18 @@
       "comment": "Profiles settings: seeded name for a newly created tool profile.",
       "extractionState": "manual"
     },
+    "Translate into": {
+      "comment": "Profile editor: target-language field label for the translate output setting.",
+      "extractionState": "manual"
+    },
+    "From (optional)": {
+      "comment": "Profile editor: optional source-language field label for the translate output setting.",
+      "extractionState": "manual"
+    },
+    "Set a language to translate the captured text into it and return only the translation. Leave blank for normal answers.": {
+      "comment": "Profile editor: note under the translate output fields.",
+      "extractionState": "manual"
+    },
     "Accessibility": {
       "comment": "Setup: secondary action to open the Accessibility permission.",
       "extractionState": "manual"

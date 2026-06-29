@@ -15,6 +15,8 @@ struct PeekProfileEditor: View {
     @Environment(\.nookResolvedTheme) private var theme
     @State private var instructionDraft = ""
     @State private var templateDraft = ""
+    @State private var targetLangDraft = ""
+    @State private var sourceLangDraft = ""
     @State private var didLoadDraft = false
     @State private var servedModels: [String] = []
 
@@ -41,6 +43,13 @@ struct PeekProfileEditor: View {
 
             templateField
 
+            // Output shaping (translate). A tool profile routes its capture to an external endpoint,
+            // not to the vision model for a written answer, so the translate field would be a dead
+            // control there; every standard capture profile shows it.
+            if profile.primaryGround != .tool {
+                translateField
+            }
+
             modelBindingRow
 
             moduleOverrideRows
@@ -49,6 +58,8 @@ struct PeekProfileEditor: View {
         .task(id: profileID) {
             instructionDraft = profile.instruction ?? ""
             templateDraft = profile.promptTemplate ?? ""
+            targetLangDraft = profile.outputConfig?.targetLanguage ?? ""
+            sourceLangDraft = profile.outputConfig?.sourceLanguage ?? ""
             didLoadDraft = true
             if orchestrator.settings.answerBackend == .openAICompatible {
                 servedModels = await settings.openAICompatibleServedModels()
@@ -253,6 +264,69 @@ struct PeekProfileEditor: View {
                 guard didLoadDraft else { return }
                 store.setPromptTemplate(id: profileID, templateDraft)
             }
+        )
+    }
+
+    // MARK: - Translate (output shaping)
+
+    /// A target language turns this profile into a translator: it folds a fixed task line into every
+    /// capture and returns only the translation. The optional source language is shown only once a
+    /// target is set (a source alone does nothing).
+    private var translateField: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            PeekSettingsFormField(
+                icon: "character.bubble",
+                title: "Translate into",
+                text: targetLanguageBinding,
+                placeholder: "e.g. Japanese"
+            )
+            if !targetLangDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                PeekSettingsFormField(
+                    icon: "character.book.closed",
+                    title: "From (optional)",
+                    text: sourceLanguageBinding,
+                    placeholder: "Auto-detect"
+                )
+            }
+            PeekSettingsNote(
+                text: "Set a language to translate the captured text into it and return only the translation. Leave blank for normal answers."
+            )
+        }
+    }
+
+    /// Buffered in a local draft and only prefix-capped here (never trimmed on keystroke), exactly like
+    /// the instruction/template fields: a per-keystroke trim would strip the transient trailing space
+    /// between two words and revert it before the next character lands, so a multi-word label like
+    /// "Brazilian Portuguese" could never be typed. Trimming/collapsing runs on the persist + read path
+    /// (``ProfileOutputConfig/sanitized``), not against the live field editor.
+    private var targetLanguageBinding: Binding<String> {
+        Binding(
+            get: { targetLangDraft },
+            set: { newValue in
+                targetLangDraft = String(newValue.prefix(ProfileOutputConfig.maxLanguageLength))
+                guard didLoadDraft else { return }
+                persistOutputConfig()
+            }
+        )
+    }
+
+    private var sourceLanguageBinding: Binding<String> {
+        Binding(
+            get: { sourceLangDraft },
+            set: { newValue in
+                sourceLangDraft = String(newValue.prefix(ProfileOutputConfig.maxLanguageLength))
+                guard didLoadDraft else { return }
+                persistOutputConfig()
+            }
+        )
+    }
+
+    /// Persists both language drafts as one config; the store sanitizes (collapse + cap) and drops a
+    /// target-less config to nil, so clearing the target also removes any orphan source.
+    private func persistOutputConfig() {
+        store.setOutputConfig(
+            id: profileID,
+            ProfileOutputConfig(sourceLanguage: sourceLangDraft, targetLanguage: targetLangDraft)
         )
     }
 
