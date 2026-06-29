@@ -53,13 +53,21 @@ public struct PeeknookDependencies {
         self.streamingTranscriber = streamingTranscriber
     }
 
-    /// The production continuous transcriber for the caption surface. Returns the fail-closed
-    /// ``UnavailableStreamingTranscriber`` today; the rotating SFSpeechRecognizer implementation (which is
-    /// device-only and not unit-testable) lands behind this one swap point in a follow-up, gated on the
-    /// Speech / ScreenCaptureKit frameworks being importable.
+    /// The production continuous transcriber for the caption surface. On Apple platforms it's the real
+    /// rotating SFSpeechRecognizer tap (``RotatingSFSpeechTranscriber``); elsewhere — and on any build
+    /// without the Speech / ScreenCaptureKit frameworks — it's the fail-closed
+    /// ``UnavailableStreamingTranscriber`` so arming a caption can never silently tap nothing. This is the
+    /// ONE swap point: a future engine (macOS 26 SpeechAnalyzer, or an alternative on-device recognizer)
+    /// is a new ``StreamingTranscribing`` conformer returned here, never a widened call site or a branch
+    /// in the coordinator. Constructing the tap is cheap and side-effect-free; it stays dormant until the
+    /// user enables `captionEnabled` and arms a caption (which is also where it taps any audio).
     @MainActor
     public static func makeProductionStreamingTranscriber() -> any StreamingTranscribing {
-        UnavailableStreamingTranscriber()
+        #if canImport(ScreenCaptureKit) && canImport(Speech) && canImport(AVFoundation)
+        return RotatingSFSpeechTranscriber()
+        #else
+        return UnavailableStreamingTranscriber()
+        #endif
     }
 
     /// Production defaults: live capture, Ollama inference, on-device speech when available.
