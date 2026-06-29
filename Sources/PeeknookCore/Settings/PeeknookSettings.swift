@@ -125,6 +125,12 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     /// forward on every user interaction, and — together with `livePersistAcrossDone` — lets the
     /// session run past Done bounded by that deadline. Clamped to ≥ 0 at read time, never at decode.
     public var liveMaxArmedSeconds: Double
+    // Caption surface (the ephemeral Live caption — see ``CaptionState`` / ``SessionOrchestrator/armCaption()``).
+    /// Master opt-in for the live caption feature: makes the caption arm command reachable. Off by
+    /// default — when off no caption trigger is reachable and behavior is byte-identical to pre-caption.
+    /// The per-profile remote-egress opt-in is separate (``ProfileOutputConfig/captionAllowRemote``);
+    /// captions are local-only by default regardless of this master flag.
+    public var captionEnabled: Bool
 
     public init(
         mode: PracticeMode = .general,
@@ -169,7 +175,8 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         liveTimerIntervalSeconds: Double = 5,
         liveRateCapSeconds: Double = 5,
         livePersistAcrossDone: Bool = false,
-        liveMaxArmedSeconds: Double = 0
+        liveMaxArmedSeconds: Double = 0,
+        captionEnabled: Bool = false
     ) {
         self.mode = mode
         self.previewBeforeInfer = previewBeforeInfer
@@ -214,6 +221,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         self.liveRateCapSeconds = liveRateCapSeconds
         self.livePersistAcrossDone = livePersistAcrossDone
         self.liveMaxArmedSeconds = liveMaxArmedSeconds
+        self.captionEnabled = captionEnabled
     }
 
     /// True when inference is configured to a host other than the default local Ollama loopback.
@@ -257,7 +265,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, systemAudioEnabled, accessibilityTreeEnabled, customModels, commandOverrides, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, highlightSpeechWhileReading, speechVoiceIdentifier, briefHotkey, inferenceImageReplay, captureQuality, acceptInsecureRemoteOllama, activeProfileID, cameraHotkey, answerBackend, openAICompatibleBaseURL, openAICompatibleModelTag, acceptInsecureRemoteOpenAICompatible, catalogBaseURL, fastTextFollowUps, textOnlyBackend, textOnlyModelTag, compositeCaptureEnabled, liveEnabled, liveRefreshTriggerRaw, liveAutoRespond, liveTimerIntervalSeconds, liveRateCapSeconds, livePersistAcrossDone, liveMaxArmedSeconds
+        case mode, previewBeforeInfer, ollamaBaseURL, textModel, quickMode, captureScope, suggestFollowUps, captureHotkey, persistConversation, webLookupEnabled, systemAudioEnabled, accessibilityTreeEnabled, customModels, commandOverrides, displayName, showGreeting, renderAnswerMarkdown, voiceInputEnabled, speakAnswersEnabled, highlightSpeechWhileReading, speechVoiceIdentifier, briefHotkey, inferenceImageReplay, captureQuality, acceptInsecureRemoteOllama, activeProfileID, cameraHotkey, answerBackend, openAICompatibleBaseURL, openAICompatibleModelTag, acceptInsecureRemoteOpenAICompatible, catalogBaseURL, fastTextFollowUps, textOnlyBackend, textOnlyModelTag, compositeCaptureEnabled, liveEnabled, liveRefreshTriggerRaw, liveAutoRespond, liveTimerIntervalSeconds, liveRateCapSeconds, livePersistAcrossDone, liveMaxArmedSeconds, captionEnabled
     }
 
     // Tolerant decode, a saved blob missing a newer key keeps the rest of the user's
@@ -324,6 +332,7 @@ public struct PeeknookSettings: Codable, Equatable, Sendable {
         // Default 0 = no cap (byte-identical to today). Clamped to >= 0 at read time, never here, so a
         // hand-edited negative can't trip the full-reset bomb (mirrors the interval/rate-cap rule).
         self.liveMaxArmedSeconds = try c.decodeIfPresent(Double.self, forKey: .liveMaxArmedSeconds) ?? 0
+        self.captionEnabled = try c.decodeIfPresent(Bool.self, forKey: .captionEnabled) ?? false
     }
 
     public static let `default` = PeeknookSettings(

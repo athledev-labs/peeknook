@@ -14,6 +14,11 @@ public struct PeeknookDependencies {
     public var conversationArchive: ConversationArchiveStore?
     public var storageFootprint: any StorageFootprinting
     public var credentialStore: any CredentialStoring
+    /// The continuous on-device transcriber that drives the ephemeral caption surface. Defaults to the
+    /// fail-closed ``UnavailableStreamingTranscriber`` so a caption can never silently tap nothing; the
+    /// real rotating SFSpeechRecognizer tap is wired in ``production()`` via
+    /// ``makeProductionStreamingTranscriber()``. Dormant until the user enables `captionEnabled`.
+    public var streamingTranscriber: any StreamingTranscribing
     /// Shared Ollama health-probe coalescer. Created here so the Ollama inference engine (built in this
     /// bag) and the setup refresh (wired in `makeStack`) share ONE cache and their overlapping
     /// `/api/version` + `/api/tags` probes on a Settings open collapse to a single request.
@@ -30,7 +35,8 @@ public struct PeeknookDependencies {
         conversationArchive: ConversationArchiveStore? = nil,
         storageFootprint: (any StorageFootprinting)? = nil,
         credentialStore: any CredentialStoring = InMemoryCredentialStore(),
-        probeCache: OllamaProbeCache = OllamaProbeCache()
+        probeCache: OllamaProbeCache = OllamaProbeCache(),
+        streamingTranscriber: any StreamingTranscribing = UnavailableStreamingTranscriber()
     ) {
         self.captureRegistry = captureRegistry
         self.inferenceRegistry = inferenceRegistry
@@ -44,6 +50,16 @@ public struct PeeknookDependencies {
             ?? StorageFootprintService(archive: conversationArchive)
         self.credentialStore = credentialStore
         self.probeCache = probeCache
+        self.streamingTranscriber = streamingTranscriber
+    }
+
+    /// The production continuous transcriber for the caption surface. Returns the fail-closed
+    /// ``UnavailableStreamingTranscriber`` today; the rotating SFSpeechRecognizer implementation (which is
+    /// device-only and not unit-testable) lands behind this one swap point in a follow-up, gated on the
+    /// Speech / ScreenCaptureKit frameworks being importable.
+    @MainActor
+    public static func makeProductionStreamingTranscriber() -> any StreamingTranscribing {
+        UnavailableStreamingTranscriber()
     }
 
     /// Production defaults: live capture, Ollama inference, on-device speech when available.
@@ -110,7 +126,8 @@ public struct PeeknookDependencies {
                 catalogBaseURL: OllamaCatalogClient.defaultCatalogBaseURL
             ),
             credentialStore: credentialStore,
-            probeCache: probeCache
+            probeCache: probeCache,
+            streamingTranscriber: makeProductionStreamingTranscriber()
         )
     }
 
@@ -131,7 +148,8 @@ public struct PeeknookDependencies {
         conversationArchive: ConversationArchiveStore? = nil,
         cameraSession: (any CaptureProviding)? = nil,
         credentialStore: any CredentialStoring = InMemoryCredentialStore(),
-        openAICompatibleInference: (any InferenceEngine)? = nil
+        openAICompatibleInference: (any InferenceEngine)? = nil,
+        streamingTranscriber: any StreamingTranscribing = UnavailableStreamingTranscriber()
     ) -> PeeknookDependencies {
         let preview = previewSpeechSynthesizer ?? answerSpeechSynthesizer
         var providers: [Ground: any CaptureProviding] = [.screen: capture]
@@ -162,7 +180,8 @@ public struct PeeknookDependencies {
             previewSpeechSynthesizer: preview,
             modelCatalog: modelCatalog,
             conversationArchive: conversationArchive,
-            credentialStore: credentialStore
+            credentialStore: credentialStore,
+            streamingTranscriber: streamingTranscriber
         )
     }
 }

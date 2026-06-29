@@ -66,6 +66,9 @@ struct PeekSessionNoticeBanner: View {
         case .threadUnavailable: "exclamationmark.triangle"
         case .liveRefreshFailed: "arrow.clockwise"
         case .liveEnded: "antenna.radiowaves.left.and.right.slash"
+        case .captionEnded: "captions.bubble"
+        case .captionRemoteBlocked: "lock.shield"
+        case .captionNeedsTargetLanguage: "character.bubble"
         case .secretsRedactedForRemote: "eye.slash"
         case .modelMayNotFitMemory: "memorychip"
         case .modelUnloadedUnderMemoryPressure: "bolt.badge.clock"
@@ -78,6 +81,9 @@ struct PeekSessionNoticeBanner: View {
         case .threadUnavailable: "Couldn't open that chat"
         case .liveRefreshFailed: "Couldn't refresh"
         case .liveEnded: "Live ended"
+        case .captionEnded: "Captions ended"
+        case .captionRemoteBlocked: "Captions stay on this Mac"
+        case .captionNeedsTargetLanguage: "Set a caption language"
         case .secretsRedactedForRemote: "Removed secrets before sending"
         case .modelMayNotFitMemory: "Your Mac's memory is almost full"
         case .modelUnloadedUnderMemoryPressure: "Freed the model to free up RAM"
@@ -98,6 +104,12 @@ struct PeekSessionNoticeBanner: View {
             Text(peek: "Peeknook couldn't capture the latest screen. The live chat is still on, so you can try Refresh again.")
         case .liveEnded:
             Text(peek: "The live session reached its time limit and turned off. Tap Go live to start watching again.")
+        case .captionEnded:
+            Text(peek: "The live captions reached their time limit or the audio went quiet, so they turned off. Start captions again whenever you like.")
+        case .captionRemoteBlocked:
+            Text(peek: "Live captions translate on this Mac by default. The selected model runs on a remote server, so captions didn't start. Choose a local model, or allow remote captions for this profile.")
+        case .captionNeedsTargetLanguage:
+            Text(peek: "Live captions are translated subtitles, so they need a language to translate into. Set a target language on this profile, then start captions again.")
         case .secretsRedactedForRemote(let count):
             Text(peek: "Removed \(count) likely secrets from the text before sending it to your remote model. Your saved chat keeps the original.")
         case .modelMayNotFitMemory(let needGB, let totalGB, let lighterModel):
@@ -124,6 +136,12 @@ struct PeekSessionNoticeBanner: View {
             PeekLocalized("Peeknook couldn't capture the latest screen. The live chat is still on, so you can try Refresh again.")
         case .liveEnded:
             PeekLocalized("The live session reached its time limit and turned off. Tap Go live to start watching again.")
+        case .captionEnded:
+            PeekLocalized("The live captions reached their time limit or the audio went quiet, so they turned off. Start captions again whenever you like.")
+        case .captionRemoteBlocked:
+            PeekLocalized("Live captions translate on this Mac by default. The selected model runs on a remote server, so captions didn't start. Choose a local model, or allow remote captions for this profile.")
+        case .captionNeedsTargetLanguage:
+            PeekLocalized("Live captions are translated subtitles, so they need a language to translate into. Set a target language on this profile, then start captions again.")
         case .secretsRedactedForRemote(let count):
             PeekLocalized("Removed \(count) likely secrets from the text before sending it to your remote model. Your saved chat keeps the original.")
         case .modelMayNotFitMemory(let needGB, let totalGB, let lighterModel):
