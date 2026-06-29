@@ -111,7 +111,7 @@ final class ScreenCaptureKitSystemAudioTranscriber: NSObject, SystemAudioTranscr
             if error != nil || result?.isFinal == true { collector.finish() }
         }
 
-        let stream = try await Self.makeAudioStream()
+        let stream = try await SystemAudioTap.makeStream()
         let output = AudioStreamOutput { sampleBuffer in
             request.appendAudioSampleBuffer(sampleBuffer)
         }
@@ -127,24 +127,6 @@ final class ScreenCaptureKitSystemAudioTranscriber: NSObject, SystemAudioTranscr
         let transcript = await collector.waitForFinal(timeout: 3)
         task.cancel()
         return transcript
-    }
-
-    /// Build an audio-only `SCStream` over the main display's shareable content (system audio is a
-    /// display-scoped capture in ScreenCaptureKit).
-    private static func makeAudioStream() async throws -> SCStream {
-        let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
-        guard let display = content.displays.first else {
-            throw CaptureError.failed("No display is available to capture system audio from.")
-        }
-        let filter = SCContentFilter(display: display, excludingWindows: [])
-        let config = SCStreamConfiguration()
-        config.capturesAudio = true
-        config.excludesCurrentProcessAudio = true   // don't capture Peeknook's own output
-        // Minimal video footprint: audio is what we want, but SCStream requires a video config.
-        config.width = 2
-        config.height = 2
-        config.minimumFrameInterval = CMTime(value: 1, timescale: 1)
-        return SCStream(filter: filter, configuration: config, delegate: nil)
     }
 
     private static let audioQueue = DispatchQueue(label: "com.peeknook.systemaudio.capture")
@@ -181,20 +163,6 @@ private final class TranscriptCollector: @unchecked Sendable {
         }
         lock.lock(); defer { lock.unlock() }
         return latest.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-}
-
-/// Bridges `SCStream`'s audio sample-buffer callback to a closure that feeds the recognizer.
-private final class AudioStreamOutput: NSObject, SCStreamOutput, @unchecked Sendable {
-    private let onAudio: (CMSampleBuffer) -> Void
-
-    init(onAudio: @escaping (CMSampleBuffer) -> Void) {
-        self.onAudio = onAudio
-    }
-
-    func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
-        guard type == .audio, sampleBuffer.isValid, sampleBuffer.dataReadiness == .ready else { return }
-        onAudio(sampleBuffer)
     }
 }
 
