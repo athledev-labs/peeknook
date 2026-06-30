@@ -53,26 +53,64 @@ public struct PeeknookDependencies {
         self.streamingTranscriber = streamingTranscriber
     }
 
-    /// The production continuous transcriber for the caption surface. On Apple platforms it's the real
-    /// rotating SFSpeechRecognizer tap (``RotatingSFSpeechTranscriber``); elsewhere — and on any build
-    /// without the Speech / ScreenCaptureKit frameworks — it's the fail-closed
-    /// ``UnavailableStreamingTranscriber`` so arming a caption can never silently tap nothing. This is the
-    /// ONE swap point: a future engine (macOS 26 SpeechAnalyzer, or an alternative on-device recognizer)
-    /// is a new ``StreamingTranscribing`` conformer returned here, never a widened call site or a branch
-    /// in the coordinator. Constructing the tap is cheap and side-effect-free; it stays dormant until the
-    /// user enables `captionEnabled` and arms a caption (which is also where it taps any audio).
+    /// The production continuous transcriber for the caption surface. On Apple platforms it's the
+    /// on-device audio tap ``RotatingSFSpeechTranscriber`` — captions transcribe what's PLAYING and
+    /// translate it. Elsewhere — and on any build without the Speech / AVFoundation frameworks — it's the
+    /// fail-closed ``UnavailableStreamingTranscriber`` so arming a caption can never silently tap nothing.
+    ///
+    /// SCREEN-TEXT IS DELIBERATELY NOT IN THE DEFAULT PATH. The ``ScreenTextCaptionSource`` /
+    /// ``FusingStreamingTranscriber`` machinery (OCR of the frozen window, fused with audio) stays in the
+    /// tree behind this seam, fully tested, for a FUTURE opt-in scoped to content that actually carries
+    /// burned-in/rendered subtitles. Wired as the universal default it does net harm: a browser window is
+    /// mostly chrome (the video title, the related-video rail, Share/Save buttons) and most video has no
+    /// on-screen subtitle to read, so OCR emits page furniture, not a caption. Audio is the honest source.
+    /// Bringing screen-text back means a user-facing opt-in plus a confidence gate that stays silent
+    /// unless it's reading a genuine subtitle region — not a blanket fuser.
+    ///
+    /// This is the ONE swap point: a future engine (macOS 26 SpeechAnalyzer, an alternative recognizer, a
+    /// MusicKit lyric source, or the opt-in screen-text fuser) is a new ``StreamingTranscribing`` conformer
+    /// wired HERE — never a widened call site or a branch in the coordinator. Constructing the tap is cheap
+    /// and side-effect-free; it stays dormant until the user enables `captionEnabled` and arms a caption.
     @MainActor
     public static func makeProductionStreamingTranscriber() -> any StreamingTranscribing {
-        #if canImport(ScreenCaptureKit) && canImport(Speech) && canImport(AVFoundation)
+        #if canImport(Speech) && canImport(AVFoundation)
         return RotatingSFSpeechTranscriber()
         #else
         return UnavailableStreamingTranscriber()
         #endif
     }
 
-    /// Production defaults: live capture, Ollama inference, on-device speech when available.
+    /// The production on-screen-text reader for a caption's source language: on-device Vision OCR
+    /// (hinted with the source locale) of the FROZEN target window. On a build without Vision /
+    /// ScreenCaptureKit it degrades to the fail-soft ``UnavailableScreenTextReader`` so the fuser simply
+    /// runs audio-only.
+    ///
+    /// Deliberately OCR-ONLY, not the ``CompositeScreenTextReader`` a11y-fast-path: OCR re-resolves the
+    /// frozen `windowID` on every poll, so a caption reads EXACTLY the one armed surface (the bounded-
+    /// capture invariant). ``AccessibilityScreenTextReader`` cannot yet pin a `CGWindowID` to an
+    /// `AXUIElement` window through public API, so it walks the app's focused/main window — which in a
+    /// multi-window app can drift to a DIFFERENT window than the one armed. Until that pinning exists the
+    /// accessibility reader + composite stay tested-but-unwired; wiring them would reintroduce a
+    /// wrong-window read (and, on a `captionAllowRemote` profile, a wrong-window egress).
     @MainActor
-    public static func production() -> PeeknookDependencies {
+    static func makeProductionScreenTextReader(locale: Locale) -> any OnScreenTextReading {
+        #if canImport(Vision) && canImport(ScreenCaptureKit)
+        return VisionOCRScreenTextReader(recognitionLanguages: [locale.identifier])
+        #else
+        return UnavailableScreenTextReader()
+        #endif
+    }
+
+    /// Production defaults: live capture, Ollama inference, on-device speech when available.
+    ///
+    /// `streamingTranscriberOverride` lets the host inject the on-device Whisper caption engine
+    /// (`WhisperKitStreamingTranscriber`, in the isolated `PeeknookWhisper` target so Core never links the
+    /// Core ML stack). When `nil` — tests, or a build without that target — it falls back to the in-Core
+    /// ``makeProductionStreamingTranscriber()`` (SFSpeech), so captions still arm.
+    @MainActor
+    public static func production(
+        streamingTranscriberOverride: (any StreamingTranscribing)? = nil
+    ) -> PeeknookDependencies {
         #if canImport(Speech) && canImport(AVFoundation)
         let speechRecognizer: any SpeechRecognizing = AppleSpeechRecognizer()
         let answerSpeechSynthesizer: any SpeechSynthesizing = AppleSpeechSynthesizer()
@@ -135,7 +173,7 @@ public struct PeeknookDependencies {
             ),
             credentialStore: credentialStore,
             probeCache: probeCache,
-            streamingTranscriber: makeProductionStreamingTranscriber()
+            streamingTranscriber: streamingTranscriberOverride ?? makeProductionStreamingTranscriber()
         )
     }
 

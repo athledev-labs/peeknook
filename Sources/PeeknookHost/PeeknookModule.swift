@@ -4,6 +4,7 @@ import Foundation
 import NookApp
 import PeeknookCore
 import PeeknookUI
+import PeeknookWhisper
 import SwiftUI
 
 /// Quiet contextual label for the home top bar, breadcrumb drill-ins still win.
@@ -38,6 +39,10 @@ public final class PeeknookModule: NookModule {
     private weak var appCoordinator: AppCoordinator?
     private var previewPhaseTask: Task<Void, Never>?
     private var previewPinHandle: NookPresentationPinHandle?
+    /// The user's `keepNookOpen` preference saved while a caption holds the nook latched open, restored
+    /// when the caption ends. Non-nil ONLY for the life of a `.captioning` surface. See the caption
+    /// keep-open latch in ``startPreviewPhaseHandling(on:)``.
+    private var captionKeepNookOpenSaved: Bool?
 
     public init(context: NookModuleContext) {
         self.context = context
@@ -52,7 +57,9 @@ public final class PeeknookModule: NookModule {
                 cameraSession: StubCameraSession()
             )
         } else {
-            dependencies = .production()
+            // Inject the on-device Whisper caption engine. Constructing it is cheap and side-effect-free
+            // beyond kicking a background model load; it stays dormant until the user enables captions.
+            dependencies = .production(streamingTranscriberOverride: WhisperKitStreamingTranscriber())
         }
         let stack = PeeknookServices.makeStack(
             settings: loaded,
@@ -149,14 +156,25 @@ public final class PeeknookModule: NookModule {
         // loop below can never see them. These hooks fire the camera cancel unconditionally — it is
         // a no-op outside `.cameraLive` and idempotent against the loop's own pin release. Without
         // this, a `.stayResident` module would keep the camera running with no visible UI.
-        // They ALSO disarm any live session AND tear down any caption tap: a continuous capture must
-        // never linger with no visible chip, and there is no orchestrator re-show hook to re-arm on
-        // expand — collapse is a full disarm. `stopCaption()` also exits the `.captioning` phase (its
-        // folded `stopLiveSession()` makes the explicit call above idempotent).
+        // They ALSO disarm any live session: a continuous capture must never linger with no visible chip.
+        //
+        // CAPTION EXCEPTION (collapse only): a live caption's whole purpose is to subtitle ANOTHER window
+        // you are watching, and watching it means clicking away from the notch — so a collapse must NOT
+        // end it. While captioning, `onCompact` keeps the tap armed and RE-ASSERTS the surface open, so
+        // the caption stays always-indicated and still bounded by its mandatory cap + Stop. (The phase
+        // loop also latches `keepNookOpen` for the life of the surface, so a hover-exit normally never
+        // compacts at all; this is the belt-and-suspenders for an explicit collapse.) `onHide` and
+        // `prepareForSwitchAway` still HARD-disarm the caption: a hidden nook or another module's surface
+        // cannot keep it indicated, so it must end, exactly like the camera.
         configuration.onCompact = { [weak self] in
-            self?.orchestrator.cancelCameraLive()
-            self?.orchestrator.stopLiveSession()
-            self?.orchestrator.stopCaption()
+            guard let self else { return }
+            self.orchestrator.cancelCameraLive()
+            if self.orchestrator.isCaptioning {
+                self.appCoordinator?.showHome()   // re-open; keep the caption armed + indicated
+                return
+            }
+            self.orchestrator.stopLiveSession()
+            self.orchestrator.stopCaption()
         }
         configuration.onHide = { [weak self] in
             self?.orchestrator.cancelCameraLive()
@@ -273,6 +291,24 @@ public final class PeeknookModule: NookModule {
                 default: pinned = nil
                 }
 
+                // CAPTION KEEP-OPEN LATCH. A caption must stay readable while you watch the window it
+                // subtitles, so for the life of the `.captioning` surface force `keepNookOpen` on (saving
+                // the user's prior choice) and restore it when the surface ends. This is what reliably
+                // holds the nook open across a hover-exit: the presentation pin's transient override is
+                // re-applied by the broker only on a ref-count edge, but `showNook()` below reprojects
+                // `keepNookOpen` every time — so latching the preference is the race-free way to make the
+                // surface ignore hover-exit. Set BEFORE `showNook()` (so it projects the latched value)
+                // and restored BEFORE the pin release (so the broker's reset reads the restored value).
+                if pinned == .captioning {
+                    if captionKeepNookOpenSaved == nil {
+                        captionKeepNookOpenSaved = coordinator.appState.keepNookOpen
+                        coordinator.appState.keepNookOpen = true
+                    }
+                } else if let saved = captionKeepNookOpenSaved {
+                    coordinator.appState.keepNookOpen = saved
+                    captionKeepNookOpenSaved = nil
+                }
+
                 if let pinned, pinned != activePin {
                     coordinator.showHome()
                     coordinator.showNook()
@@ -298,5 +334,11 @@ public final class PeeknookModule: NookModule {
         orchestrator.cancelCameraLive()
         orchestrator.stopLiveSession()
         orchestrator.stopCaption()
+        // Restore the caption keep-open latch eagerly: switching to another module's surface can take over
+        // before the phase loop observes the disarm, and that module must not inherit a forced-open nook.
+        if let saved = captionKeepNookOpenSaved {
+            appCoordinator?.appState.keepNookOpen = saved
+            captionKeepNookOpenSaved = nil
+        }
     }
 }

@@ -27,10 +27,27 @@ public struct TranscriptSegment: Sendable, Equatable {
 /// Implementations MUST keep `requiresOnDeviceRecognition = true` (no network fallback, ever) and fail
 /// closed — throw ``SpeechRecognitionError/onDeviceUnavailable`` — when on-device recognition or the
 /// requested locale's model is unavailable, BEFORE any audio is tapped.
+///
+/// Two callbacks, by design: `onSegment` is low-frequency, discrete, and content-bearing; `onLevel` is
+/// high-frequency, continuous, and content-FREE (a normalized 0...1 loudness reading for the surface's
+/// audio meter). Folding the level into `TranscriptSegment` would force a meter update to fabricate a
+/// segment or make every segment consumer branch in its hot path, so they stay separate seams that
+/// happen to share one tap. A conformer that cannot meter simply never calls `onLevel` (the meter rests
+/// at 0) — the level signal is additive and never widens the segment path.
 public protocol StreamingTranscribing: Sendable {
-    /// Begin transcribing system audio in `locale`, delivering rolling segments via `onSegment` until
-    /// ``stop()``. Throws before tapping audio when on-device recognition is unavailable.
-    func start(locale: Locale, onSegment: @escaping @Sendable (TranscriptSegment) -> Void) async throws
+    /// Begin transcribing system audio per `plan`, delivering rolling segments via `onSegment` and a
+    /// normalized 0...1 audio level via `onLevel` (loudness only, no content) until ``stop()``. Throws
+    /// before tapping audio when on-device recognition is unavailable. `onLevel` is optional for a
+    /// conformer to drive; segments are the contract.
+    ///
+    /// `plan` carries the source-language hint and whether to translate to English in-engine (one pass).
+    /// A conformer that cannot translate (e.g. `SFSpeechRecognizer`) honors `plan.sourceLocale` and
+    /// transcribes regardless of mode; the production English-direct route uses the Whisper conformer.
+    func start(
+        plan: CaptionTranscriptionPlan,
+        onSegment: @escaping @Sendable (TranscriptSegment) -> Void,
+        onLevel: @escaping @Sendable (Float) -> Void
+    ) async throws
     /// Stop transcribing. SYNCHRONOUS and idempotent: it must synchronously stop delivering segments (set
     /// a drop-all flag the audio handler checks at the top) so no segment lands after this returns, then
     /// may finish the underlying capture asynchronously.
@@ -57,7 +74,11 @@ public enum RecognizerRolloverPolicy: Sendable {
 /// "on-device unavailable" recovery rather than silently tapping nothing.
 public struct UnavailableStreamingTranscriber: StreamingTranscribing {
     public init() {}
-    public func start(locale: Locale, onSegment: @escaping @Sendable (TranscriptSegment) -> Void) async throws {
+    public func start(
+        plan: CaptionTranscriptionPlan,
+        onSegment: @escaping @Sendable (TranscriptSegment) -> Void,
+        onLevel: @escaping @Sendable (Float) -> Void
+    ) async throws {
         throw SpeechRecognitionError.onDeviceUnavailable
     }
     public func stop() {}
@@ -72,28 +93,40 @@ public final class StubStreamingTranscriber: StreamingTranscribing, @unchecked S
     public var startError: Error?
     public private(set) var startCount = 0
     public private(set) var stopCount = 0
-    public private(set) var lastLocale: Locale?
+    public private(set) var lastPlan: CaptionTranscriptionPlan?
+    /// Convenience for assertions that only care about the source locale.
+    public var lastLocale: Locale? { lastPlan?.sourceLocale }
     private var handler: (@Sendable (TranscriptSegment) -> Void)?
+    private var levelHandler: (@Sendable (Float) -> Void)?
 
     public init(scripted: [TranscriptSegment] = [], startError: Error? = nil) {
         self.scripted = scripted
         self.startError = startError
     }
 
-    public func start(locale: Locale, onSegment: @escaping @Sendable (TranscriptSegment) -> Void) async throws {
+    public func start(
+        plan: CaptionTranscriptionPlan,
+        onSegment: @escaping @Sendable (TranscriptSegment) -> Void,
+        onLevel: @escaping @Sendable (Float) -> Void
+    ) async throws {
         startCount += 1
-        lastLocale = locale
+        lastPlan = plan
         if let startError { throw startError }
         handler = onSegment
+        levelHandler = onLevel
         for segment in scripted { onSegment(segment) }
     }
 
     /// Deliver one more segment as if the recognizer produced it (no-op before `start` / after `stop`).
     public func emit(_ segment: TranscriptSegment) { handler?(segment) }
 
+    /// Deliver one audio-level reading as if the tap measured it (no-op before `start` / after `stop`).
+    public func emitLevel(_ level: Float) { levelHandler?(level) }
+
     public func stop() {
         stopCount += 1
         handler = nil
+        levelHandler = nil
     }
 }
 #endif

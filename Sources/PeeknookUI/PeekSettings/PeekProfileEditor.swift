@@ -19,6 +19,9 @@ struct PeekProfileEditor: View {
     @State private var sourceLangDraft = ""
     @State private var didLoadDraft = false
     @State private var servedModels: [String] = []
+    /// On-device speech source languages for the From picker — loaded once (device-static). Empty where
+    /// Speech is unavailable, in which case the picker shows only "Auto-detect".
+    @State private var sourceLanguages: [SpeechSourceLanguage] = []
 
     private var profile: GroundProfile { store.profile(id: profileID) }
 
@@ -60,6 +63,7 @@ struct PeekProfileEditor: View {
             templateDraft = profile.promptTemplate ?? ""
             targetLangDraft = profile.outputConfig?.targetLanguage ?? ""
             sourceLangDraft = profile.outputConfig?.sourceLanguage ?? ""
+            if sourceLanguages.isEmpty { sourceLanguages = SpeechLocaleCatalog.supportedSourceLanguages() }
             didLoadDraft = true
             if orchestrator.settings.answerBackend == .openAICompatible {
                 servedModels = await settings.openAICompatibleServedModels()
@@ -281,17 +285,71 @@ struct PeekProfileEditor: View {
                 placeholder: "e.g. Japanese"
             )
             if !targetLangDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                PeekSettingsFormField(
-                    icon: "character.book.closed",
-                    title: "From (optional)",
-                    text: sourceLanguageBinding,
-                    placeholder: "Auto-detect"
-                )
+                sourceLanguagePicker
             }
             PeekSettingsNote(
-                text: "Set a language to translate the captured text into it and return only the translation. Leave blank for normal answers."
+                text: "Set a language to translate the captured text into it and return only the translation. Leave blank for normal answers. Live captions also need the spoken language set below — they can't auto-detect it."
             )
         }
+    }
+
+    /// The spoken-language ("From") picker. A picker, not a text field, so the value is always a real
+    /// language (no typos that silently fall back to your Mac's language) — the fix for "how is this
+    /// validated". "Auto-detect" keeps the translate-a-screenshot behavior (the model auto-detects); for
+    /// live captions it resolves to your Mac's language, which the caption chip then shows honestly.
+    private var sourceLanguagePicker: some View {
+        PeekSettingsMenuRow(
+            icon: "character.book.closed",
+            title: "Spoken language",
+            detail: "The language being spoken. Required for live captions (they can't auto-detect); optional for translating a screenshot.",
+            value: sourceLangDisplayValue
+        ) { close in
+            sourceLanguageMenu(close: close)
+        }
+    }
+
+    private var sourceLangDisplayValue: String {
+        let trimmed = sourceLangDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? PeekLocalized("Auto-detect") : trimmed
+    }
+
+    @ViewBuilder
+    private func sourceLanguageMenu(close: @escaping () -> Void) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 2) {
+                Button {
+                    setSourceLanguage("")
+                    close()
+                } label: {
+                    ValueMenuRow(
+                        title: PeekLocalized("Auto-detect"),
+                        subtitle: PeekLocalized("Your Mac's language for captions; auto-detect when translating a screenshot"),
+                        selected: sourceLangDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    )
+                }
+                .buttonStyle(.plain)
+                ForEach(sourceLanguages) { language in
+                    Button {
+                        setSourceLanguage(language.displayName)
+                        close()
+                    } label: {
+                        ValueMenuRow(
+                            title: language.displayName,
+                            selected: sourceLangDraft.caseInsensitiveCompare(language.displayName) == .orderedSame
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(4)
+        }
+        .frame(maxHeight: 280)
+    }
+
+    private func setSourceLanguage(_ label: String) {
+        sourceLangDraft = label
+        guard didLoadDraft else { return }
+        persistOutputConfig()
     }
 
     /// Buffered in a local draft and only prefix-capped here (never trimmed on keystroke), exactly like
@@ -304,17 +362,6 @@ struct PeekProfileEditor: View {
             get: { targetLangDraft },
             set: { newValue in
                 targetLangDraft = String(newValue.prefix(ProfileOutputConfig.maxLanguageLength))
-                guard didLoadDraft else { return }
-                persistOutputConfig()
-            }
-        )
-    }
-
-    private var sourceLanguageBinding: Binding<String> {
-        Binding(
-            get: { sourceLangDraft },
-            set: { newValue in
-                sourceLangDraft = String(newValue.prefix(ProfileOutputConfig.maxLanguageLength))
                 guard didLoadDraft else { return }
                 persistOutputConfig()
             }

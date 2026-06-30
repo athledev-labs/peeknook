@@ -49,4 +49,12 @@ final class ModuleTests: XCTestCase {
         settings.liveEnabled = true
         XCTAssertTrue(Module.isEnabled(.liveSession, in: settings, profile: profile), "on when the user opts in")
     }
+
+    func testLiveCaptionFollowsCaptionEnabledSetting() {
+        var settings = PeeknookSettings()
+        let profile = GroundProfile.screenDefault
+        XCTAssertFalse(Module.isEnabled(.liveCaption, in: settings, profile: profile), "off by default")
+        settings.captionEnabled = true
+        XCTAssertTrue(Module.isEnabled(.liveCaption, in: settings, profile: profile), "on when the user opts in")
+    }
 }

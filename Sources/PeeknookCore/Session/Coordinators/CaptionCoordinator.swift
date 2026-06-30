@@ -16,10 +16,14 @@ import Foundation
 ///  - **Always bounded.** Arming snapshots a mandatory auto-disarm deadline (reusing `livePolicy` + the
 ///    Live timer loop) the user cannot disable, plus a silence timeout that ends a tap whose audio went
 ///    away. Audio is never a user interaction, so neither bound is reset by hearing more sound.
-///  - **Always indicated + disarmed on EVERY exit.** Teardown funnels through ``clearCaptionSurface()``
-///    (the single idempotent choke point, mirroring ``CameraCoordinator/stopCameraPreview()``), folded
-///    into ``SessionOrchestrator/stopLiveSession()`` so every disarm path (Stop, New chat, switch/delete
-///    thread, collapse/hide/switch-away, the mandatory cap) tears the tap down.
+///  - **Always indicated + disarmed on every exit EXCEPT a bare collapse.** Teardown funnels through
+///    ``clearCaptionSurface()`` (the single idempotent choke point, mirroring
+///    ``CameraCoordinator/stopCameraPreview()``), folded into ``SessionOrchestrator/stopLiveSession()`` so
+///    every disarm path (Stop, New chat, switch/delete thread, hide, switch-away, the mandatory cap) tears
+///    the tap down. A nook COLLAPSE is the one sanctioned exception (product decision): a caption
+///    subtitles another window you are watching, so the host re-asserts the surface open and keeps the
+///    tap armed on collapse instead of disarming — still always-indicated (the nook is held open) and
+///    still bounded by the cap + silence timeout. See ``PeeknookModule``'s `onCompact` + keep-open latch.
 ///
 /// Owned by ``SessionOrchestrator``; the transient `liveCaption` lives on the facade because the caption
 /// view renders from it (the analogue of `activeCameraSession`).
@@ -49,6 +53,10 @@ final class CaptionCoordinator {
     /// can never drift the route to a remote host and bypass that arm-time gate while the tap runs
     /// (snapshot-at-arm, exactly like ``LivePolicy``'s interval/deadline). Cleared on teardown.
     private var captionRoute: RoleResolution?
+    /// The transcription plan resolved ONCE at arm. The coordinator reads `producesTargetLanguage` per
+    /// segment to decide whether a separate LLM translate pass runs — the SAME plan the transcriber acts
+    /// on, so the engine and the coordinator never disagree about whether to translate. Cleared on teardown.
+    private var captionPlan: CaptionTranscriptionPlan?
 
     init(session: SessionOrchestrator) {
         self.session = session
@@ -114,7 +122,7 @@ final class CaptionCoordinator {
             expiresAt: now.addingTimeInterval(CaptionPolicy.maxArmedSeconds)
         )
         session.liveCaption = CaptionState(
-            sourceLabel: session.resolvedActiveProfile.outputConfig?.sourceLanguage,
+            sourceLabel: session.captionSourceDisplayLabel,
             targetLabel: directive.targetLanguage,
             remoteEgressHost: remoteEgress ? route.endpoint.connection.baseURL : nil
         )
@@ -128,14 +136,23 @@ final class CaptionCoordinator {
         session.liveCoordinator.startTimerLoopIfNeeded()   // run the loop purely to watch the deadline
         startSilenceWatchdog()
 
-        let locale = session.captionSourceLocale
+        // Resolve the transcription plan ONCE (pure policy): an English target translates audio->English
+        // in-engine in one pass; any other target transcribes the source for the per-segment LLM pass.
+        let plan = CaptionEnginePolicy.plan(target: directive, sourceLocale: session.captionSourceLocale)
+        captionPlan = plan
         let transcriber = session.streamingTranscriber
         captionTask = Task { [weak self] in
             do {
-                try await transcriber.start(locale: locale) { [weak self] segment in
+                try await transcriber.start(plan: plan) { [weak self] segment in
                     // The audio buffer lands off-main; hop to the main actor and re-guard generation.
                     Task { @MainActor in
                         self?.ingest(segment, generation: captured)
+                    }
+                } onLevel: { [weak self] level in
+                    // Loudness only (no content). Same off-main hop + generation re-guard as a segment, so
+                    // a level from a torn-down tap drops rather than moving a fresh session's meter.
+                    Task { @MainActor in
+                        self?.ingestLevel(level, generation: captured)
                     }
                 }
             } catch is CancellationError {
@@ -166,11 +183,28 @@ final class CaptionCoordinator {
             lastSequence = segment.sequence
             session.liveCaption?.hearingPartial = ""
             startSilenceWatchdog()
-            translate(segment.text, generation: captured)
+            // When the engine already produced the target language (the single-pass translate route), show
+            // its line directly — running the LLM translate pass on already-target text would only re-add
+            // the per-line latency that route exists to remove. Otherwise localize via the shared seam.
+            if captionPlan?.producesTargetLanguage == true {
+                showTranslatedLine(segment.text)
+            } else {
+                translate(segment.text, generation: captured)
+            }
         } else {
             // An interim hypothesis: just the source-language "hearing…" cue, replaced in place.
             session.liveCaption?.hearingPartial = segment.text
         }
+    }
+
+    /// Fold one audio-level reading into the surface meter. Loudness, not content — and bounded to a
+    /// single scalar, so it can never accrete a transcript. Generation- and phase-guarded on the
+    /// main-actor hop exactly like ``ingest(_:generation:)``, so a reading from a torn-down or superseded
+    /// tap is dropped.
+    private func ingestLevel(_ level: Float, generation captured: Int) {
+        guard let session, generation == captured,
+              case .captioning = session.phase, session.liveCaption != nil else { return }
+        session.liveCaption?.audioLevel = level
     }
 
     /// Translate one finalized segment into the target language and stream the result into
@@ -195,6 +229,10 @@ final class CaptionCoordinator {
         }
         session.liveCaption?.isTranslating = true
         session.liveCaption?.currentLine = ""
+        // Show the recognized source line IMMEDIATELY (before the translate round-trip) so the surface
+        // reads as live — the original appears at once and the translation streams in beneath it, rather
+        // than the whole line blocking on the model. Overwritten by the next segment's source.
+        session.liveCaption?.currentSource = trimmed
 
         // Build an EPHEMERAL one-turn conversation from the transcript text leg — never the real
         // conversation. The system-audio ground carries no image, so the assembled message is text-only.
@@ -237,6 +275,22 @@ final class CaptionCoordinator {
                 session.liveCaption?.isTranslating = false
             }
         }
+    }
+
+    /// Show an engine-produced TARGET-language line directly — the single-pass translate route, where the
+    /// transcriber already emitted the target (auto-detecting and translating the spoken audio in one
+    /// step), so there is no LLM round-trip and no separate source line to pair. Mirrors
+    /// ``translate(_:generation:)``'s tail bookkeeping minus the streaming pass. Synchronous: the caller
+    /// (``ingest(_:generation:)``) already re-guarded generation + phase on the main-actor hop.
+    private func showTranslatedLine(_ text: String) {
+        guard let session else { return }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        translateTask?.cancel()
+        session.liveCaption?.commitCurrentLine()   // roll the previous finished line into the bounded tail
+        session.liveCaption?.isTranslating = false
+        session.liveCaption?.currentSource = ""    // single-pass route surfaces only the target line
+        session.liveCaption?.currentLine = trimmed
     }
 
     // MARK: - Bounds
@@ -287,6 +341,7 @@ final class CaptionCoordinator {
         translateTask?.cancel(); translateTask = nil
         silenceTask?.cancel(); silenceTask = nil
         captionRoute = nil
+        captionPlan = nil
         session.streamingTranscriber.stop()
         session.liveCaption = nil
     }

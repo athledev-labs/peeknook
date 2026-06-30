@@ -43,6 +43,13 @@ final class RotatingSFSpeechTranscriber: StreamingTranscribing, @unchecked Senda
     /// honors the rollover ceiling.
     private static let tickInterval: TimeInterval = 0.25
 
+    /// Audio-meter refresh cadence — DECOUPLED from ``tickInterval`` (segmentation) on purpose: how smooth
+    /// the level meter looks is an independent concern from when text finalizes, so each is tunable
+    /// without perturbing the other. A device-glue cadence, NOT a decision (the ballistics live in
+    /// ``AudioLevelMeter``). ~15 Hz reads smoothly once the view eases between readings, and the
+    /// perceptible-change gate keeps a silent tap from emitting at all.
+    private static let levelInterval: TimeInterval = 1.0 / 15.0
+
     /// Serial owner of ALL session state below, and the SCStream sample-handler queue.
     private let queue = DispatchQueue(label: "com.peeknook.caption.transcriber")
     /// The sync drop-all gate. Set true by ``stop()`` synchronously; checked at the top of every handler.
@@ -51,10 +58,20 @@ final class RotatingSFSpeechTranscriber: StreamingTranscribing, @unchecked Senda
 
     // Mutated only on `queue` (published there by the setup `queue.sync` in `start`).
     private var onSegment: (@Sendable (TranscriptSegment) -> Void)?
+    private var onLevel: (@Sendable (Float) -> Void)?
     private var recognizer: SFSpeechRecognizer?
     private var stream: SCStream?
     private var output: AudioStreamOutput?
     private var ticker: DispatchSourceTimer?
+    private var levelTicker: DispatchSourceTimer?
+
+    // Audio-meter state — touched only on `queue`. The window accumulates measured energy between meter
+    // ticks; `smoothedLevel`/`lastEmittedLevel` carry the ballistics + emission gate across ticks. All
+    // span recognizer rotations (a rotation is silent audio-wise); reset only on a fresh `start`.
+    private var windowSumSquares: Double = 0
+    private var windowSampleCount = 0
+    private var smoothedLevel: Float = 0
+    private var lastEmittedLevel: Float = 0
 
     // Session state — touched only on `queue`.
     private var activeRequest: SFSpeechAudioBufferRecognitionRequest?
@@ -74,7 +91,14 @@ final class RotatingSFSpeechTranscriber: StreamingTranscribing, @unchecked Senda
     private var segmentStartedAt = Date()
     private var lastTokenAt = Date()
 
-    func start(locale: Locale, onSegment: @escaping @Sendable (TranscriptSegment) -> Void) async throws {
+    func start(
+        plan: CaptionTranscriptionPlan,
+        onSegment: @escaping @Sendable (TranscriptSegment) -> Void,
+        onLevel: @escaping @Sendable (Float) -> Void
+    ) async throws {
+        // SFSpeechRecognizer cannot translate, so this conformer always transcribes the source locale and
+        // ignores `plan.mode`; the English-direct (translate) route is served by the Whisper conformer.
+        let locale = plan.sourceLocale
         // Un-latch the reused instance for this arm, BEFORE any await: a stop() that races in during the
         // setup awaits below then re-latches it, and the post-startCapture check tears the capture down.
         stopped.withLock { $0 = false }
@@ -108,11 +132,17 @@ final class RotatingSFSpeechTranscriber: StreamingTranscribing, @unchecked Senda
         queue.sync {
             self.recognizer = recognizer
             self.onSegment = onSegment
+            self.onLevel = onLevel
             self.stream = stream
             self.output = output
             self.sequence = 0
+            self.windowSumSquares = 0
+            self.windowSampleCount = 0
+            self.smoothedLevel = 0
+            self.lastEmittedLevel = 0
             self.startSession(at: Date())
             self.startTicker()
+            self.startLevelTicker()
         }
 
         do {
@@ -154,6 +184,7 @@ final class RotatingSFSpeechTranscriber: StreamingTranscribing, @unchecked Senda
     /// block and the aborted-start paths). Does NOT await `stopCapture`.
     private func clearSessionRefs() {
         ticker?.cancel(); ticker = nil
+        levelTicker?.cancel(); levelTicker = nil
         activeTask?.cancel()
         activeRequest?.endAudio()
         activeTask = nil
@@ -174,6 +205,34 @@ final class RotatingSFSpeechTranscriber: StreamingTranscribing, @unchecked Senda
         timer.setEventHandler { [weak self] in self?.tick() }
         ticker = timer
         timer.resume()
+    }
+
+    /// The independent meter clock (see ``levelInterval``). Decoupled from the segmentation ticker so the
+    /// meter keeps refreshing — and decaying to empty — even across a quiet stretch where audio buffers
+    /// slow, and so its cadence can be tuned without touching finalization timing.
+    private func startLevelTicker() {
+        let timer = DispatchSource.makeTimerSource(queue: queue)
+        timer.schedule(deadline: .now() + Self.levelInterval, repeating: Self.levelInterval)
+        timer.setEventHandler { [weak self] in self?.meterTick() }
+        levelTicker = timer
+        timer.resume()
+    }
+
+    /// Fold the window's measured energy into a smoothed 0...1 level and emit it — but only when it moved
+    /// perceptibly, so steady silence (which decays to and rests at 0) costs no consumer hops. An empty
+    /// window (no audio arrived) means a mean-square of 0, so the meter eases down to empty on its own:
+    /// no buffer, no level, no fake pulse.
+    private func meterTick() {
+        if stopped.withLock({ $0 }) { return }
+        let meanSquare = windowSampleCount > 0 ? Float(windowSumSquares / Double(windowSampleCount)) : 0
+        windowSumSquares = 0
+        windowSampleCount = 0
+        let target = AudioLevelMeter.normalized(meanSquare: meanSquare)
+        smoothedLevel = AudioLevelMeter.smoothed(previous: smoothedLevel, target: target)
+        guard AudioLevelMeter.isPerceptibleChange(from: lastEmittedLevel, to: smoothedLevel) else { return }
+        lastEmittedLevel = smoothedLevel
+        if stopped.withLock({ $0 }) { return }   // re-check after the gate, mirroring emitInterim
+        onLevel?(smoothedLevel)
     }
 
     /// Begin a fresh recognizer session. A NEW request is created every rotation, and every request
@@ -215,6 +274,50 @@ final class RotatingSFSpeechTranscriber: StreamingTranscribing, @unchecked Senda
     private func handleAudio(_ sampleBuffer: CMSampleBuffer) {
         if stopped.withLock({ $0 }) { return }   // top-of-handler sync gate
         activeRequest?.appendAudioSampleBuffer(sampleBuffer)
+        // Accumulate measured energy for the meter window. The DECISION (energy -> level) is the pure
+        // ``AudioLevelMeter``; only the CMSampleBuffer -> [Float] extraction below is device glue. The
+        // meter clock (``meterTick``) drains this window; nothing is emitted here.
+        let samples = extractFloatSamples(from: sampleBuffer)
+        guard !samples.isEmpty else { return }
+        windowSumSquares += Double(AudioLevelMeter.sumOfSquares(samples))
+        windowSampleCount += samples.count
+    }
+
+    /// Read linear-PCM Float32 samples (all channels) out of an SCStream audio buffer. The lone piece of
+    /// untestable device glue in the meter path: an unexpected format returns no samples (the meter reads
+    /// silence) rather than reinterpreting bytes into a garbage level. The retained block buffer is held
+    /// only long enough to copy into the returned array.
+    private func extractFloatSamples(from sampleBuffer: CMSampleBuffer) -> [Float] {
+        guard let formatDescription = CMSampleBufferGetFormatDescription(sampleBuffer),
+              let asbd = CMAudioFormatDescriptionGetStreamBasicDescription(formatDescription)?.pointee,
+              asbd.mFormatID == kAudioFormatLinearPCM,
+              (asbd.mFormatFlags & kAudioFormatFlagIsFloat) != 0,
+              asbd.mBitsPerChannel == 32 else {
+            return []
+        }
+        let channels = max(1, Int(asbd.mChannelsPerFrame))
+        let bufferList = AudioBufferList.allocate(maximumBuffers: channels)
+        defer { free(bufferList.unsafeMutablePointer) }
+        var blockBuffer: CMBlockBuffer?
+        let status = CMSampleBufferGetAudioBufferListWithRetainedBlockBuffer(
+            sampleBuffer,
+            bufferListSizeNeededOut: nil,
+            bufferListOut: bufferList.unsafeMutablePointer,
+            bufferListSize: AudioBufferList.sizeInBytes(maximumBuffers: channels),
+            blockBufferAllocator: nil,
+            blockBufferMemoryAllocator: nil,
+            flags: kCMSampleBufferFlag_AudioBufferList_Assure16ByteAlignment,
+            blockBufferOut: &blockBuffer
+        )
+        guard status == noErr, blockBuffer != nil else { return [] }
+        var samples: [Float] = []
+        for buffer in bufferList {
+            guard let data = buffer.mData else { continue }
+            let count = Int(buffer.mDataByteSize) / MemoryLayout<Float>.size
+            let pointer = data.assumingMemoryBound(to: Float.self)
+            samples.append(contentsOf: UnsafeBufferPointer(start: pointer, count: count))
+        }
+        return samples
     }
 
     /// The clock: consult the clock-free policies. A finalize emits the pending delta WITHOUT rotating;

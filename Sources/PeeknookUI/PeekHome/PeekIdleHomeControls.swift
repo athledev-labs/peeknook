@@ -251,6 +251,7 @@ struct PeekIdleCommandBar: View {
         case .compositeCapture: orchestrator.beginComposite()
         case .stopLive:
             withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) { orchestrator.stopLive() }
+        case .caption: orchestrator.armCaption()
         case .resume:  onResume()
         case .brief:
             PeekSessionBriefStrip.toggleComposer(

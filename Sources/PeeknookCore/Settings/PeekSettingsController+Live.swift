@@ -16,6 +16,17 @@ extension PeekSettingsController {
         if !enabled { orchestrator.stopLive() }
     }
 
+    /// Opt in to live captions (surfaces the "Caption" command on the idle bar). Off by default — see
+    /// ``PeeknookSettings/captionEnabled``. Turning it OFF stops any armed caption so the tap can't
+    /// outlive the flag, with the same load-bearing order as ``setLiveEnabled(_:)``: flip the flag OFF
+    /// first (synchronous `update`), THEN tear down — so no concurrent re-arm can observe it still on.
+    /// `stopCaption()` is idempotent (no-op when not captioning).
+    public func setCaptionEnabled(_ enabled: Bool) {
+        guard settings.captionEnabled != enabled else { return }
+        update { $0.captionEnabled = enabled }
+        if !enabled { orchestrator.stopCaption() }
+    }
+
     /// Opt-in: keep an armed Live session across Done (Resume re-enters the same live chat). Off by
     /// default — see ``PeeknookSettings/livePersistAcrossDone``.
     public func setLivePersistAcrossDone(_ enabled: Bool) {

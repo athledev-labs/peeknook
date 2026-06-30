@@ -101,6 +101,19 @@ extension SessionOrchestrator {
         ) ?? .current
     }
 
+    /// The HONEST source-language label for the caption chip. When the profile pinned a spoken language
+    /// it's that; otherwise it's the language the recognizer ACTUALLY uses — the device locale it falls
+    /// back to — so the chip reads "English" (revealing a wrong-language mismatch at a glance) instead of
+    /// a misleading "Auto" that implies a detection that `SFSpeechRecognizer` cannot do.
+    var captionSourceDisplayLabel: String {
+        if let pinned = resolvedActiveProfile.outputConfig?.sourceLanguage,
+           !pinned.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return pinned
+        }
+        let locale = captionSourceLocale
+        return SpeechLocaleCatalog.displayName(for: locale, in: Locale(identifier: "en")) ?? locale.identifier
+    }
+
     /// The candidate locale set the source-language label is resolved against — every locale the system
     /// knows about. Computed once: `Locale.availableIdentifiers` is ~stable and the resolution runs only
     /// at arm. The device's narrower SPEECH-supported set is the production transcriber's authority.
