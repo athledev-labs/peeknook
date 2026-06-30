@@ -4,7 +4,6 @@ import Foundation
 import NookApp
 import PeeknookCore
 import PeeknookUI
-import PeeknookWhisper
 import SwiftUI
 
 /// Quiet contextual label for the home top bar, breadcrumb drill-ins still win.
@@ -57,9 +56,10 @@ public final class PeeknookModule: NookModule {
                 cameraSession: StubCameraSession()
             )
         } else {
-            // Inject the on-device Whisper caption engine. Constructing it is cheap and side-effect-free
-            // beyond kicking a background model load; it stays dormant until the user enables captions.
-            dependencies = .production(streamingTranscriberOverride: WhisperKitStreamingTranscriber())
+            // Captions use the in-Core on-device baseline engine (SFSpeech) by default; a stronger engine
+            // is injected via `streamingTranscriberOverride` when one exists. The whole surface stays
+            // dormant until the user enables the off-by-default, experimental `captionEnabled`.
+            dependencies = .production()
         }
         let stack = PeeknookServices.makeStack(
             settings: loaded,

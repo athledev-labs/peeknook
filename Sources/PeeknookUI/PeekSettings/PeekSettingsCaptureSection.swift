@@ -133,10 +133,11 @@ struct PeekSettingsCaptureSection: View {
 
             PeekSettingsToggleRow(
                 icon: orchestrator.settings.captionEnabled ? "captions.bubble.fill" : "captions.bubble",
-                title: "Live captions",
-                detail: "Adds a Caption command to the home screen that turns what's playing on your Mac into rolling on-screen subtitles. Audio is transcribed and translated on-device. Set the spoken and target languages on a profile's Translate section. Needs Screen Recording and Speech Recognition.",
+                title: "Live captions (experimental)",
+                detail: "Experimental developer preview, off by default. Adds a Caption command that turns what's playing on your Mac into rolling subtitles: audio is transcribed on-device by a baseline recognizer and translated by your model. Latency and accuracy are limited today. This is an open, community-extensible surface built behind a swappable engine seam. Set the spoken and target languages on a profile's Translate section. Needs Screen Recording and Speech Recognition.",
                 isOn: captionEnabledBinding
             )
+            .opacity(orchestrator.settings.captionEnabled ? 1 : 0.6)
 
             if orchestrator.settings.liveEnabled {
                 liveRefreshTriggerRow

@@ -234,11 +234,13 @@ final class SessionOrchestratorCaptionTests: XCTestCase {
         XCTAssertTrue(translated)
     }
 
-    /// An English target takes the single-pass route: the on-device engine translates audio->English itself
-    /// (the plan it receives says so), so the engine's line shows directly and NO separate LLM translate
-    /// pass runs — the latency win this route exists for.
+    /// An English target on a TRANSLATE-CAPABLE engine takes the single-pass route: the engine produces
+    /// English itself, so its line shows directly and NO separate LLM translate pass runs — the latency win
+    /// this route exists for. (The baseline SFSpeech engine reports it cannot translate, so it never hits
+    /// this path; the stub opts in to simulate a future translate-capable engine.)
     func testEnglishTargetTranslatesInEngineAndSkipsTheLLMPass() async throws {
         let transcriber = StubStreamingTranscriber(scripted: [stableSegment("Hello there", 0)])
+        transcriber.canTranslateToEnglish = true
         let engine = ScriptedEngine(responsesPerCall: [["unused"]])
         let orchestrator = try makeOrchestrator(transcriber: transcriber, engine: engine, targetLanguage: "English")
 
