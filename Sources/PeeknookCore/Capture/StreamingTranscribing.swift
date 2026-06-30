@@ -42,7 +42,8 @@ public protocol StreamingTranscribing: Sendable {
     ///
     /// `plan` carries the source-language hint and whether to translate to English in-engine (one pass).
     /// A conformer that cannot translate (e.g. `SFSpeechRecognizer`) honors `plan.sourceLocale` and
-    /// transcribes regardless of mode; the production English-direct route uses the Whisper conformer.
+    /// transcribes regardless of mode; only an engine that reports ``canTranslateToEnglish`` is ever handed
+    /// a `.translateToEnglish` plan by ``CaptionEnginePolicy``.
     func start(
         plan: CaptionTranscriptionPlan,
         onSegment: @escaping @Sendable (TranscriptSegment) -> Void,
@@ -52,6 +53,17 @@ public protocol StreamingTranscribing: Sendable {
     /// a drop-all flag the audio handler checks at the top) so no segment lands after this returns, then
     /// may finish the underlying capture asynchronously.
     func stop()
+
+    /// Whether this engine produces the TARGET language itself in a single pass (e.g. Whisper's translate
+    /// task → English), so the coordinator can skip the separate LLM translation pass. The capability lives
+    /// with the conformer — not the policy — so the engine and the coordinator can never disagree about
+    /// whether a second pass runs. Defaults to `false` (the engine transcribes; the LLM translates).
+    var canTranslateToEnglish: Bool { get }
+}
+
+public extension StreamingTranscribing {
+    /// Most engines only transcribe; a translate-capable engine overrides this to `true`.
+    var canTranslateToEnglish: Bool { false }
 }
 
 /// Pure policy for the SFSpeechRecognizer ~1-minute on-device session ceiling: rotate to a pre-warmed
@@ -96,6 +108,9 @@ public final class StubStreamingTranscriber: StreamingTranscribing, @unchecked S
     public private(set) var lastPlan: CaptionTranscriptionPlan?
     /// Convenience for assertions that only care about the source locale.
     public var lastLocale: Locale? { lastPlan?.sourceLocale }
+    /// Simulate a translate-capable engine (e.g. a future Whisper/SpeechAnalyzer-with-translate) so tests
+    /// can exercise the single-pass route. Defaults to the baseline `false`.
+    public var canTranslateToEnglish: Bool = false
     private var handler: (@Sendable (TranscriptSegment) -> Void)?
     private var levelHandler: (@Sendable (Float) -> Void)?
 

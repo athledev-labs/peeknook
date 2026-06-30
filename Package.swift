@@ -28,11 +28,7 @@ let package = Package(
         .library(name: "PeeknookDesign", targets: ["PeeknookDesign"])
     ],
     dependencies: [
-        opennookDependency,
-        // On-device Whisper (Argmax) for the live-caption ASR engine. Used ONLY by the isolated
-        // `PeeknookWhisper` target so PeeknookCore (and its fast test suite) never links the heavy
-        // Core ML model stack. Models download at runtime from HuggingFace on first use, not at resolve.
-        .package(url: "https://github.com/argmaxinc/argmax-oss-swift.git", from: "0.9.0")
+        opennookDependency
     ],
     targets: [
         .target(
@@ -58,24 +54,11 @@ let package = Package(
             resources: [.process("Resources")],
             swiftSettings: strictConcurrency
         ),
-        // Isolated home for the heavy on-device Whisper engine. Depends on PeeknookCore for the
-        // `StreamingTranscribing` seam and on WhisperKit for the Core ML ASR; nothing in Core or its tests
-        // links it. The host wires the Whisper-backed transcriber in through the existing seam.
-        .target(
-            name: "PeeknookWhisper",
-            dependencies: [
-                "PeeknookCore",
-                .product(name: "WhisperKit", package: "argmax-oss-swift")
-            ],
-            path: "Sources/PeeknookWhisper",
-            swiftSettings: strictConcurrency
-        ),
         .target(
             name: "PeeknookHost",
             dependencies: [
                 "PeeknookCore",
                 "PeeknookUI",
-                "PeeknookWhisper",
                 .product(name: "NookApp", package: "opennook")
             ],
             path: "Sources/PeeknookHost",

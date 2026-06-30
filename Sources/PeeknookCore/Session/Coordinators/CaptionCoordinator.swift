@@ -136,11 +136,16 @@ final class CaptionCoordinator {
         session.liveCoordinator.startTimerLoopIfNeeded()   // run the loop purely to watch the deadline
         startSilenceWatchdog()
 
-        // Resolve the transcription plan ONCE (pure policy): an English target translates audio->English
-        // in-engine in one pass; any other target transcribes the source for the per-segment LLM pass.
-        let plan = CaptionEnginePolicy.plan(target: directive, sourceLocale: session.captionSourceLocale)
-        captionPlan = plan
+        // Resolve the transcription plan ONCE (pure policy): only an engine that can translate in its own
+        // pass AND an English target take the single-pass route; otherwise transcribe the source for the
+        // per-segment LLM translate pass. The baseline SFSpeech engine reports it cannot translate.
         let transcriber = session.streamingTranscriber
+        let plan = CaptionEnginePolicy.plan(
+            target: directive,
+            sourceLocale: session.captionSourceLocale,
+            engineTranslatesToEnglish: transcriber.canTranslateToEnglish
+        )
+        captionPlan = plan
         captionTask = Task { [weak self] in
             do {
                 try await transcriber.start(plan: plan) { [weak self] segment in

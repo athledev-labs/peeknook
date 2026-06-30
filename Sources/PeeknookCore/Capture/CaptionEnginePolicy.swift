@@ -48,10 +48,19 @@ public struct CaptionTranscriptionPlan: Sendable, Equatable {
 /// never leaks into the prompt path or a call site.
 public enum CaptionEnginePolicy: Sendable {
     /// Decide the transcription plan for a caption's translation `target` and resolved `sourceLocale`.
-    public static func plan(target: TranslationDirective, sourceLocale: Locale) -> CaptionTranscriptionPlan {
-        let mode: CaptionTranscriptionPlan.Mode =
-            targetsBuiltInTranslation(target.targetLanguage) ? .translateToEnglish : .transcribe
-        return CaptionTranscriptionPlan(mode: mode, sourceLocale: sourceLocale)
+    ///
+    /// The single-pass `.translateToEnglish` route is chosen ONLY when the target is English AND the active
+    /// engine can actually translate in its own pass (`engineTranslatesToEnglish`). The SFSpeech baseline
+    /// reports `false`, so it always gets a `.transcribe` plan and the coordinator runs the LLM translate
+    /// pass — no engine/coordinator disagreement, no untranslated text shown. A future translate-capable
+    /// engine flips the flag and the single-pass route activates with no other change.
+    public static func plan(
+        target: TranslationDirective,
+        sourceLocale: Locale,
+        engineTranslatesToEnglish: Bool
+    ) -> CaptionTranscriptionPlan {
+        let canSinglePass = engineTranslatesToEnglish && targetsBuiltInTranslation(target.targetLanguage)
+        return CaptionTranscriptionPlan(mode: canSinglePass ? .translateToEnglish : .transcribe, sourceLocale: sourceLocale)
     }
 
     /// Whether `targetLanguage` names English — the only target the on-device engine can produce in a single
