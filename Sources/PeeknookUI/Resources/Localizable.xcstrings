@@ -345,6 +345,42 @@
       "comment": "History archive: dismiss inline rename.",
       "extractionState": "manual"
     },
+    "Caption": {
+      "comment": "Idle command-bar button: arm live captions.",
+      "extractionState": "manual"
+    },
+    "Show live translated subtitles of what's playing": {
+      "comment": "Command-bar help: Caption button.",
+      "extractionState": "manual"
+    },
+    "Live captions": {
+      "comment": "Settings → Capture: live-captions opt-in toggle title.",
+      "extractionState": "manual"
+    },
+    "Adds a Caption command to the home screen that turns what's playing on your Mac into rolling on-screen subtitles. Audio is transcribed and translated on-device. Set the spoken and target languages on a profile's Translate section. Needs Screen Recording and Speech Recognition.": {
+      "comment": "Settings → Capture: live-captions opt-in toggle detail.",
+      "extractionState": "manual"
+    },
+    "Spoken language": {
+      "comment": "Profile editor: source-language picker title (the language being spoken).",
+      "extractionState": "manual"
+    },
+    "The language being spoken. Required for live captions (they can't auto-detect); optional for translating a screenshot.": {
+      "comment": "Profile editor: source-language picker detail.",
+      "extractionState": "manual"
+    },
+    "Auto-detect": {
+      "comment": "Profile editor: source-language picker default option (no pinned spoken language).",
+      "extractionState": "manual"
+    },
+    "Your Mac's language for captions; auto-detect when translating a screenshot": {
+      "comment": "Profile editor: source-language picker Auto-detect option subtitle.",
+      "extractionState": "manual"
+    },
+    "Set a language to translate the captured text into it and return only the translation. Leave blank for normal answers. Live captions also need the spoken language set below — they can't auto-detect it.": {
+      "comment": "Profile editor: translate field note.",
+      "extractionState": "manual"
+    },
     "Capture area": {
       "comment": "Tier B localization",
       "extractionState": "manual"
@@ -743,6 +779,10 @@
     },
     "Listening…": {
       "comment": "Tier B localization",
+      "extractionState": "manual"
+    },
+    "Translating…": {
+      "comment": "Caption surface: cue shown under the recognized source line while its translation streams in.",
       "extractionState": "manual"
     },
     "Live": {

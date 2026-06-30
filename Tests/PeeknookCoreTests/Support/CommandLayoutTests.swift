@@ -16,13 +16,30 @@ final class CommandLayoutTests: XCTestCase {
     // MARK: Migration anchor — exact per-placement order (reproduces today's three surfaces)
 
     func testIdleBarReproducesTodaysOrder() {
-        // `idle.compositeCapture` is gated on `.parallelScreen` (opt-in), so the renderer hides it by
-        // default; it still appears in the unfiltered layout, ordered last in the scroll.
+        // `idle.compositeCapture` is gated on `.parallelScreen` and `idle.caption` on `.liveCaption`
+        // (both opt-in), so the renderer hides them by default; they still appear in the unfiltered
+        // layout, ordered after the always-on commands.
         XCTAssertEqual(
             layout.forPlacement(.idle).map(\.id),
             ["idle.resume", "idle.brief", "idle.model", "idle.depth", "idle.scope",
-             "idle.importFile", "idle.capture", "idle.compositeCapture", "idle.stopLive"]
+             "idle.importFile", "idle.capture", "idle.compositeCapture", "idle.stopLive", "idle.caption"]
         )
+    }
+
+    func testCaptionGatesOnLiveCaptionModule() {
+        let caption = descriptor("idle.caption")
+        XCTAssertEqual(caption.requiredModules, [.liveCaption])
+        XCTAssertEqual(caption.action, .caption)
+        XCTAssertEqual(caption.accessibilityIdentifier, "peeknook.caption")
+        // No permission gate: arm() fails closed with a typed recovery card instead of disabling.
+        XCTAssertTrue(caption.requiredPermissions.isEmpty)
+    }
+
+    func testCaptionHiddenUntilOptedInThenVisible() {
+        let off = CommandBarContext(enabledModules: [])
+        XCTAssertFalse(descriptor("idle.caption").isVisible(in: off))
+        let on = CommandBarContext(enabledModules: [.liveCaption])
+        XCTAssertTrue(descriptor("idle.caption").isVisible(in: on))
     }
 
     func testActiveControlsReproduceTodaysOrder() {

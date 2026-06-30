@@ -27,7 +27,9 @@ final class TranslatePromptTests: XCTestCase {
             translation: TranslationDirective(targetLanguage: "Japanese")
         )
         XCTAssertTrue(message.contains("Translate the captured text into Japanese"))
-        XCTAssertTrue(message.contains("output ONLY the translation, nothing else."))
+        XCTAssertTrue(message.contains("Output ONLY the translated text itself"))
+        XCTAssertTrue(message.contains("never ask for clarification"),
+                      "the subtitle-hardened directive forbids the model's refuse/ask-for-context behavior")
         XCTAssertFalse(message.contains("Respond to the screenshot above."), "the directive replaces the default Task")
         XCTAssertFalse(message.contains("## Answer depth"), "a translate turn drops the answer-depth framing")
         XCTAssertFalse(message.contains("**Deep**"))

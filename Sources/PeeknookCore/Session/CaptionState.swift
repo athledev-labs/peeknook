@@ -11,12 +11,20 @@ import Foundation
 public struct CaptionState: Sendable, Equatable {
     /// The segment currently streaming a translation (replaced in place as tokens arrive).
     public var currentLine: String
+    /// The FINALIZED source-language text of the line `currentLine` is translating — set the instant a
+    /// segment finalizes (before the translation round-trip), so the surface can show the original
+    /// immediately and stream the translation in underneath it. Cleared/overwritten per segment.
+    public var currentSource: String
     /// The source-language interim hypothesis ("hearing…" cue), cleared when a segment finalizes.
     public var hearingPartial: String
     /// The last few finalized translated lines, oldest first, capped at ``maxRecentLines``.
     public var recentLines: [String]
     /// True while a finalized segment is being translated (drives a subtle in-progress affordance).
     public var isTranslating: Bool
+    /// The current smoothed, normalized (0...1) microphone-of-the-screen audio level — loudness only,
+    /// never content. Drives the surface's honest level meter; a single scalar by design, so the
+    /// ephemeral surface holds no growing waveform buffer. 0 = silence.
+    public var audioLevel: Float
     /// Human label for the source language (nil = auto), for the surface header.
     public var sourceLabel: String?
     /// Human label for the target language, for the surface header.
@@ -30,17 +38,21 @@ public struct CaptionState: Sendable, Equatable {
 
     public init(
         currentLine: String = "",
+        currentSource: String = "",
         hearingPartial: String = "",
         recentLines: [String] = [],
         isTranslating: Bool = false,
+        audioLevel: Float = 0,
         sourceLabel: String? = nil,
         targetLabel: String = "",
         remoteEgressHost: String? = nil
     ) {
         self.currentLine = currentLine
+        self.currentSource = currentSource
         self.hearingPartial = hearingPartial
         self.recentLines = recentLines
         self.isTranslating = isTranslating
+        self.audioLevel = audioLevel
         self.sourceLabel = sourceLabel
         self.targetLabel = targetLabel
         self.remoteEgressHost = remoteEgressHost

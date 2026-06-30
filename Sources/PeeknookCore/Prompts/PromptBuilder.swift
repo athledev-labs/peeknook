@@ -208,10 +208,21 @@ enum PromptBuilder {
     /// The task line for a translate turn. The languages are interpolated as plain data — the model
     /// reads the labels directly and nothing in the builder branches on their value (invariant 1). The
     /// "from <source>" clause appears only when the profile pinned a source language; otherwise the
-    /// model auto-detects. "Output ONLY the translation" keeps the answer free of commentary.
+    /// model auto-detects.
+    ///
+    /// The directive is hardened for the LIVE-CAPTION case (and harmless for a one-shot screenshot): the
+    /// caption pipeline feeds one short subtitle line at a time with no surrounding context, and a chat-
+    /// tuned model "helpfully" wraps the answer ("Here's the translation: …") or REFUSES the fragment
+    /// ("I don't have enough context, could you provide more?"). Those are caption-killers, so the task is
+    /// explicit: output only the translated line, translate fragments verbatim, never ask for context.
     private static func translateTaskSection(_ directive: TranslationDirective) -> String {
         let from = directive.sourceLanguage.map { " from \($0)" } ?? ""
-        return "## Task\nTranslate the captured text\(from) into \(directive.targetLanguage); output ONLY the translation, nothing else."
+        return """
+        ## Task
+        Translate the captured text\(from) into \(directive.targetLanguage). Output ONLY the translated \
+        text itself: no preamble, no quotation marks, no notes, no questions. Translate exactly what is \
+        given, even a short or incomplete fragment, and never ask for clarification or add context.
+        """
     }
 
     private static func captureContextSection(

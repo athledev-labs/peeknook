@@ -76,6 +76,17 @@ public extension CommandLayout {
             helpKey: "Stop the live session",
             placement: .idle, visibility: .liveArmed, defaultOrder: 8
         ),
+        // Live captions — hidden until the user opts in (the `.liveCaption` module reads
+        // `captionEnabled`), mirroring how `.liveSession` gates "Go live". No permission gate here: the
+        // tap fails CLOSED with a typed recovery card (`CaptionCoordinator.arm()`) if Screen Recording /
+        // Speech Recognition or the on-device model is missing, so disabling on `isReady` (which tracks
+        // the active profile's perms, not Speech) would be the wrong gate.
+        CommandDescriptor(
+            id: "idle.caption", kind: .button, action: .caption,
+            titleKey: "Caption", symbol: "captions.bubble",
+            helpKey: "Show live translated subtitles of what's playing",
+            placement: .idle, requiredModules: [.liveCaption], defaultOrder: 9
+        ),
 
         // ── Active controls (post-capture confirm) ────────────────────────────────────────────
         CommandDescriptor(

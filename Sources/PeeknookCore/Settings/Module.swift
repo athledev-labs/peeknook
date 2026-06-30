@@ -9,6 +9,7 @@ public enum ModuleID: String, Codable, Sendable, CaseIterable, Hashable {
     case cameraCapture
     case parallelScreen
     case liveSession
+    case liveCaption
     case voiceInput
     case speakAnswers
     case selectedText
@@ -41,6 +42,7 @@ public enum Module {
         case .cameraCapture:    return profile.activeGrounds.contains(.camera)
         case .parallelScreen:   return settings.compositeCaptureEnabled   // composite (screen + camera)
         case .liveSession:      return settings.liveEnabled               // armed multi-turn live session
+        case .liveCaption:      return settings.captionEnabled            // live translated subtitles
         case .agentActions:     return false                              // reserved, not shipped
         }
     }

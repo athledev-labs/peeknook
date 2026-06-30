@@ -131,6 +131,13 @@ struct PeekSettingsCaptureSection: View {
                 isOn: liveEnabledBinding
             )
 
+            PeekSettingsToggleRow(
+                icon: orchestrator.settings.captionEnabled ? "captions.bubble.fill" : "captions.bubble",
+                title: "Live captions",
+                detail: "Adds a Caption command to the home screen that turns what's playing on your Mac into rolling on-screen subtitles. Audio is transcribed and translated on-device. Set the spoken and target languages on a profile's Translate section. Needs Screen Recording and Speech Recognition.",
+                isOn: captionEnabledBinding
+            )
+
             if orchestrator.settings.liveEnabled {
                 liveRefreshTriggerRow
                 if orchestrator.settings.liveRefreshTrigger == .timer {
@@ -452,6 +459,13 @@ struct PeekSettingsCaptureSection: View {
         Binding(
             get: { orchestrator.settings.liveEnabled },
             set: { settings.setLiveEnabled($0) }
+        )
+    }
+
+    private var captionEnabledBinding: Binding<Bool> {
+        Binding(
+            get: { orchestrator.settings.captionEnabled },
+            set: { settings.setCaptionEnabled($0) }
         )
     }
 

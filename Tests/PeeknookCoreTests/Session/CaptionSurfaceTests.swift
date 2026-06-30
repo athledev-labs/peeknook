@@ -218,6 +218,41 @@ final class SessionOrchestratorCaptionTests: XCTestCase {
         XCTAssertTrue(request.messages.last?.imagesBase64.isEmpty ?? false, "an audio transcript carries no image")
     }
 
+    /// The recognized SOURCE line is surfaced the instant a segment finalizes — before the translate
+    /// round-trip lands — so the surface reads as live (the original shows, the translation streams in
+    /// beneath it).
+    func testFinalizedSegmentShowsSourceLineImmediately() async throws {
+        let transcriber = StubStreamingTranscriber(scripted: [stableSegment("hola", 0)])
+        let engine = ScriptedEngine(responsesPerCall: [["Hallo"]])
+        let orchestrator = try makeOrchestrator(transcriber: transcriber, engine: engine)
+
+        orchestrator.armCaption()
+
+        let sourceShown = await orchestrator.waitUntil { orchestrator.liveCaption?.currentSource == "hola" }
+        XCTAssertTrue(sourceShown, "the recognized source line shows immediately, paired with its streaming translation")
+        let translated = await orchestrator.waitUntil { orchestrator.liveCaption?.currentLine == "Hallo" }
+        XCTAssertTrue(translated)
+    }
+
+    /// An English target takes the single-pass route: the on-device engine translates audio->English itself
+    /// (the plan it receives says so), so the engine's line shows directly and NO separate LLM translate
+    /// pass runs — the latency win this route exists for.
+    func testEnglishTargetTranslatesInEngineAndSkipsTheLLMPass() async throws {
+        let transcriber = StubStreamingTranscriber(scripted: [stableSegment("Hello there", 0)])
+        let engine = ScriptedEngine(responsesPerCall: [["unused"]])
+        let orchestrator = try makeOrchestrator(transcriber: transcriber, engine: engine, targetLanguage: "English")
+
+        orchestrator.armCaption()
+
+        let shown = await orchestrator.waitUntil { orchestrator.liveCaption?.currentLine == "Hello there" }
+        XCTAssertTrue(shown, "an English target shows the engine's translated line directly")
+        let planSeen = await orchestrator.waitUntil { transcriber.lastPlan?.mode == .translateToEnglish }
+        XCTAssertTrue(planSeen, "an English target routes the engine to the single-pass translate task")
+        XCTAssertTrue(engine.requests.isEmpty, "the single-pass route must not run a second LLM translation")
+        XCTAssertEqual(orchestrator.liveCaption?.currentSource, "", "the single-pass route surfaces only the target line")
+        XCTAssertTrue(orchestrator.conversation.isEmpty, "a caption never appends to the conversation")
+    }
+
     /// The egress gate runs once at arm and FREEZES the route. A mid-session model change (here a drift to
     /// a remote `:cloud` tag, with no disarm hook firing) must NOT redirect the running tap's translate
     /// pass — otherwise audio-derived text would egress remotely without the opt-in.
@@ -269,6 +304,40 @@ final class SessionOrchestratorCaptionTests: XCTestCase {
         let heard = await orchestrator.waitUntil { orchestrator.liveCaption?.hearingPartial == "bonjo" }
         XCTAssertTrue(heard)
         XCTAssertEqual(orchestrator.liveCaption?.currentLine ?? "", "", "an interim hypothesis never finalizes a line")
+    }
+
+    /// A measured audio-level reading (loudness, not content) flows across the seam into the surface meter
+    /// without touching the transcript line or the "hearing…" cue.
+    func testAudioLevelReadingUpdatesSurfaceMeter() async throws {
+        let transcriber = StubStreamingTranscriber()
+        let orchestrator = try makeOrchestrator(transcriber: transcriber, engine: ScriptedEngine(responsesPerCall: []))
+        orchestrator.armCaption()
+        _ = await orchestrator.waitUntil { transcriber.startCount == 1 }
+
+        transcriber.emitLevel(0.7)
+
+        let metered = await orchestrator.waitUntil { orchestrator.liveCaption?.audioLevel == 0.7 }
+        XCTAssertTrue(metered, "a measured loudness reading drives the surface meter")
+        XCTAssertEqual(orchestrator.liveCaption?.currentLine ?? "", "", "the meter never writes the transcript line")
+        XCTAssertEqual(orchestrator.liveCaption?.hearingPartial ?? "", "", "the meter is loudness, not the hearing cue")
+    }
+
+    /// A level reading from a torn-down tap is dropped on the generation guard — loudness can never reach
+    /// a disarmed surface (the surface is gone, and nothing resurrects it).
+    func testAudioLevelAfterStopIsDropped() async throws {
+        let transcriber = StubStreamingTranscriber()
+        let orchestrator = try makeOrchestrator(transcriber: transcriber, engine: ScriptedEngine(responsesPerCall: []))
+        orchestrator.armCaption()
+        _ = await orchestrator.waitUntil { transcriber.startCount == 1 }
+
+        orchestrator.stopCaption()
+        XCTAssertNil(orchestrator.liveCaption, "precondition: the surface is torn down")
+
+        transcriber.emitLevel(0.9)
+
+        // Give the main-actor hop a chance to (incorrectly) land, then confirm it didn't.
+        _ = await orchestrator.waitUntil(timeout: 0.3) { false }
+        XCTAssertNil(orchestrator.liveCaption, "a late level reading must not resurrect a disarmed surface")
     }
 
     func testSecondFinalizedSegmentRollsThePreviousLineIntoTheTail() async throws {
@@ -347,9 +416,9 @@ final class SessionOrchestratorCaptionTests: XCTestCase {
         XCTAssertEqual(transcriber.stopCount, 1, "the second Stop finds nothing to tear down")
     }
 
-    /// The host fires `stopLiveSession()` THEN `stopCaption()` unconditionally on collapse/hide. During
-    /// captioning the first nils `liveCaption` while the phase is still `.captioning`; the phase-guarded
-    /// `stop()` must still run `.cancelCaption` and reach idle, never strand the phase.
+    /// The host fires `stopLiveSession()` THEN `stopCaption()` on a HARD disarm (hide / switch-away).
+    /// During captioning the first nils `liveCaption` while the phase is still `.captioning`; the
+    /// phase-guarded `stop()` must still run `.cancelCaption` and reach idle, never strand the phase.
     func testHostCollapseSequenceDuringCaptioningReachesIdle() async throws {
         let transcriber = StubStreamingTranscriber()
         let orchestrator = try makeOrchestrator(transcriber: transcriber, engine: ScriptedEngine(responsesPerCall: []))

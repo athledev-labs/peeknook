@@ -68,6 +68,7 @@ public enum CommandAction: String, Codable, Sendable, CaseIterable {
     case answerLive         // answer from the already-parked live frame (no new capture)
     case updateAndAskLive   // capture the latest screen AND answer in one press
     case stopLive           // disarm the live session — the single, never-hideable exit
+    case caption            // arm live translated subtitles (opt-in, gated on .liveCaption)
     // case planAction   ← Phase 5 sidecar (agent control)
 }
 
